@@ -323,84 +323,157 @@ def render_upload() -> None:
 
 
 def _render_database_loader() -> None:
-    """Render the database connection UI."""
+    """Render the database connection UI.
+
+    Connection state is persisted in session_state so the table selector
+    remains visible across reruns after a successful connect.
+    """
     st.subheader('Connect to Database')
 
-    col1, col2 = st.columns(2)
+    col1, _ = st.columns(2)
     with col1:
         db_type = st.selectbox(
             'Database Type',
-            ['PostgreSQL', 'MySQL', 'SQLite', 'SQL Server'],
+            ['PostgreSQL', 'MySQL', 'MySQL Workbench (Local)', 'SQLite', 'SQL Server'],
             key='db_type_select',
         )
 
-    # Connection parameters based on DB type
+    # Reset stored connection when db_type changes
+    if st.session_state.get('_db_connected_type') != db_type:
+        st.session_state.pop('_db_conn_str', None)
+        st.session_state.pop('_db_tables', None)
+        st.session_state.pop('_db_connected_type', None)
+
+    # ---- type-specific help ----
+    if db_type == 'MySQL Workbench (Local)':
+        st.info(
+            '**MySQL Workbench (Local)**  \n'
+            'Use the same credentials as your Workbench connection:  \n'
+            '1. Open MySQL Workbench → right-click your connection → **Edit Connection**  \n'
+            '2. Copy **Hostname**, **Port**, **Username**, and **Default Schema** (= Database)  \n'
+            '3. Use the password you set when installing MySQL Server.'
+        )
+    elif db_type == 'MySQL':
+        st.info(
+            '**MySQL (remote)**  \n'
+            'Connect to any remote MySQL server. For a local MySQL instance use '
+            '**MySQL Workbench (Local)** instead.'
+        )
+    elif db_type == 'PostgreSQL':
+        st.info(
+            '**PostgreSQL**  \n'
+            'Default port is **5432**. For cloud databases (Supabase, Neon, RDS) '
+            'paste the full host string from the provider dashboard.'
+        )
+    elif db_type == 'SQL Server':
+        st.info(
+            '**SQL Server / Azure SQL**  \n'
+            'Requires ODBC Driver 17 for SQL Server installed on this machine. '
+            'Default port is **1433**.'
+        )
+
+    # Internal dialect type for build_connection_string (Workbench == MySQL)
+    _dialect = 'MySQL' if db_type == 'MySQL Workbench (Local)' else db_type
+
+    # ---- connection form ----
     if db_type == 'SQLite':
-        db_path = st.text_input('Database File Path', key='sqlite_path')
-        if not st.button('Connect & Load', key='connect_sqlite_btn'):
-            return
-        try:
-            conn_str = build_connection_string('SQLite', path=db_path)
-            engine = create_connection(conn_str)
-            tables = list_tables(engine)
-            if not tables:
-                st.warning('No tables found in database')
-                return
-            table_name = st.selectbox('Select Table', tables, key='sqlite_table')
-            df = load_table(conn_str, table_name)
-            _finalize_database_load(df)
-        except Exception as e:
-            st.error(f'Connection failed: {e}')
+        db_path = st.text_input(
+            'Database File Path',
+            placeholder='C:/path/to/database.db',
+            key='sqlite_path',
+        )
+        if st.button('Connect', key='connect_sqlite_btn'):
+            try:
+                conn_str = build_connection_string('SQLite', path=db_path)
+                engine = create_connection(conn_str)
+                tables = list_tables(engine)
+                engine.dispose()
+                if not tables:
+                    st.warning('No tables found in this database.')
+                else:
+                    st.session_state['_db_conn_str'] = conn_str
+                    st.session_state['_db_tables'] = tables
+                    st.session_state['_db_connected_type'] = db_type
+                    st.rerun()
+            except Exception as e:
+                st.error(f'Connection failed: {e}')
     else:
-        # Network databases
-        col1, col2 = st.columns(2)
-        with col1:
-            host = st.text_input('Host', key=f'{db_type}_host')
-            port = st.number_input('Port', value=_get_default_port(db_type), key=f'{db_type}_port')
-        with col2:
-            database = st.text_input('Database', key=f'{db_type}_database')
+        default_host = 'localhost' if db_type == 'MySQL Workbench (Local)' else ''
+        default_user = 'root' if db_type == 'MySQL Workbench (Local)' else ''
 
         col1, col2 = st.columns(2)
         with col1:
-            user = st.text_input('Username', key=f'{db_type}_user')
+            host = st.text_input('Host', value=default_host, key=f'{db_type}_host')
+            port = st.number_input('Port', value=_get_default_port(db_type), key=f'{db_type}_port')
+        with col2:
+            database = st.text_input('Database / Schema', placeholder='my_database', key=f'{db_type}_database')
+
+        col1, col2 = st.columns(2)
+        with col1:
+            user = st.text_input('Username', value=default_user, key=f'{db_type}_user')
         with col2:
             password = st.text_input('Password', type='password', key=f'{db_type}_password')
 
-        row_limit = st.slider('Row Limit', 100, 100000, 10000, step=1000)
+        if st.button('Connect', key=f'connect_{db_type}_btn'):
+            if not host or not database or not user:
+                st.warning('Please fill in Host, Database, and Username.')
+            else:
+                try:
+                    conn_str = build_connection_string(
+                        _dialect,
+                        host=host,
+                        port=int(port),
+                        database=database,
+                        user=user,
+                        password=password,
+                    )
+                    engine = create_connection(conn_str)
+                    tables = list_tables(engine)
+                    engine.dispose()
+                    if not tables:
+                        st.warning('Connected but no tables found in this database/schema.')
+                    else:
+                        st.session_state['_db_conn_str'] = conn_str
+                        st.session_state['_db_tables'] = tables
+                        st.session_state['_db_connected_type'] = db_type
+                        st.rerun()
+                except Exception as e:
+                    st.error(f'Connection failed: {e}')
+                    if db_type == 'MySQL Workbench (Local)':
+                        st.caption(
+                            'Tip: Make sure MySQL Server is running. '
+                            'Check MySQL Workbench → Server → Startup/Shutdown.'
+                        )
 
-        if st.button('Connect & Load', key=f'connect_{db_type}_btn'):
+    # ---- post-connect: table/query picker (persists across reruns) ----
+    conn_str = st.session_state.get('_db_conn_str')
+    tables = st.session_state.get('_db_tables')
+    if not conn_str or not tables:
+        return
+
+    st.success(f'Connected — {len(tables)} table(s) found')
+    row_limit = st.slider('Row Limit', 100, 100_000, 10_000, step=1_000, key='db_row_limit')
+    load_mode = st.radio('Load Mode', ['Select Table', 'Custom Query'], horizontal=True, key='db_load_mode')
+
+    if load_mode == 'Select Table':
+        table_name = st.selectbox('Select Table', tables, key='db_table_select')
+        if st.button('Load Table', key='db_load_table_btn', type='primary'):
             try:
-                conn_str = build_connection_string(
-                    db_type,
-                    host=host,
-                    port=int(port),
-                    database=database,
-                    user=user,
-                    password=password,
-                )
-                engine = create_connection(conn_str)
-                tables = list_tables(engine)
-
-                if not tables:
-                    st.warning('No tables found in database')
-                    return
-
-                # Let user choose between table or custom query
-                load_mode = st.radio('Load Mode', ['Select Table', 'Custom Query'], horizontal=True)
-
-                if load_mode == 'Select Table':
-                    table_name = st.selectbox('Select Table', tables)
-                    df = load_table(conn_str, table_name, limit=row_limit)
-                else:
-                    sql_query = st.text_area('SQL Query', height=100)
-                    if not sql_query.strip():
-                        st.info('Enter a SQL SELECT query')
-                        return
-                    df = load_query(conn_str, sql_query, limit=row_limit)
-
+                df = load_table(conn_str, table_name, limit=row_limit)
                 _finalize_database_load(df)
             except Exception as e:
-                st.error(f'Connection failed: {e}')
+                st.error(f'Load failed: {e}')
+    else:
+        sql_query = st.text_area('SQL Query', placeholder='SELECT * FROM my_table', height=100, key='db_sql_query')
+        if st.button('Run Query', key='db_run_query_btn', type='primary'):
+            if not sql_query.strip():
+                st.info('Enter a SQL SELECT query above.')
+            else:
+                try:
+                    df = load_query(conn_str, sql_query, limit=row_limit)
+                    _finalize_database_load(df)
+                except Exception as e:
+                    st.error(f'Query failed: {e}')
 
 
 def _finalize_database_load(df: pd.DataFrame) -> None:
@@ -422,7 +495,7 @@ def _finalize_database_load(df: pd.DataFrame) -> None:
 
 def _get_default_port(db_type: str) -> int:
     """Get the default port for a database type."""
-    ports = {'PostgreSQL': 5432, 'MySQL': 3306, 'SQL Server': 1433}
+    ports = {'PostgreSQL': 5432, 'MySQL': 3306, 'MySQL Workbench (Local)': 3306, 'SQL Server': 1433}
     return ports.get(db_type, 5432)
 
 # ---------------------------------------------------------------------------

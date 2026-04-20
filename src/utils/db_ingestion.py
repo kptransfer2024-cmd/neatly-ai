@@ -7,6 +7,7 @@ from sqlalchemy.engine import Engine
 _DIALECTS = {
     'PostgreSQL': 'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}',
     'MySQL': 'mysql+pymysql://{user}:{password}@{host}:{port}/{database}',
+    'MySQL Workbench (Local)': 'mysql+pymysql://{user}:{password}@{host}:{port}/{database}',
     'SQLite': 'sqlite:///{path}',
     'SQL Server': 'mssql+pyodbc://{user}:{password}@{host}:{port}/{database}?driver=ODBC+Driver+17+for+SQL+Server',
 }
@@ -14,6 +15,7 @@ _DIALECTS = {
 _DEFAULT_PORTS = {
     'PostgreSQL': 5432,
     'MySQL': 3306,
+    'MySQL Workbench (Local)': 3306,
     'SQLite': None,
     'SQL Server': 1433,
 }
