@@ -506,3 +506,101 @@ def test_handler_drop_out_of_range():
     result = handler(df, log)
 
     assert len(result) == 2
+
+
+def test_actions_for_whitespace_values():
+    """Verify whitespace_values issue type returns correct actions."""
+    issue = {'type': 'whitespace_values', 'column': 'notes'}
+    actions = _actions_for(issue)
+    labels = [a[0] for a in actions]
+    assert 'Null out' in labels
+    assert 'Drop rows' in labels
+
+
+def test_actions_for_mixed_type():
+    """Verify mixed_type issue type returns correct actions."""
+    issue = {'type': 'mixed_type', 'column': 'revenue'}
+    actions = _actions_for(issue)
+    labels = [a[0] for a in actions]
+    assert 'Coerce to numeric' in labels
+    assert 'Drop non-numeric rows' in labels
+
+
+def test_actions_for_duplicate_column():
+    """Verify duplicate_column issue type returns drop action."""
+    issue = {'type': 'duplicate_column', 'column': 'col_copy'}
+    actions = _actions_for(issue)
+    assert len(actions) == 1
+    assert actions[0][0] == 'Drop column'
+
+
+def test_actions_for_constant_column():
+    """Verify constant_column issue type returns drop action."""
+    issue = {'type': 'constant_column', 'column': 'status'}
+    actions = _actions_for(issue)
+    assert len(actions) == 1
+    assert actions[0][0] == 'Drop column'
+
+
+def test_handler_null_out_whitespace():
+    """Verify null_out_whitespace handler integration."""
+    issue = {'type': 'whitespace_values', 'column': 'a'}
+    df = pd.DataFrame({'a': ['  ', 'hello', 'x']})
+    log = []
+    _, handler = _actions_for(issue)[0]
+    result = handler(df, log)
+    assert pd.isna(result['a'].iloc[0])
+    assert result['a'].iloc[1] == 'hello'
+
+
+def test_handler_drop_whitespace_rows():
+    """Verify drop_whitespace_rows handler integration."""
+    issue = {'type': 'whitespace_values', 'column': 'a'}
+    df = pd.DataFrame({'a': ['  ', 'hello', 'x']})
+    log = []
+    _, handler = _actions_for(issue)[1]
+    result = handler(df, log)
+    assert len(result) == 2
+    assert result['a'].iloc[0] == 'hello'
+
+
+def test_handler_coerce_to_numeric():
+    """Verify coerce_to_numeric handler integration."""
+    issue = {'type': 'mixed_type', 'column': 'rev'}
+    df = pd.DataFrame({'rev': ['100', 'bad', '200']})
+    log = []
+    _, handler = _actions_for(issue)[0]
+    result = handler(df, log)
+    assert pd.isna(result['rev'].iloc[1])
+    assert result['rev'].iloc[0] == 100.0
+
+
+def test_handler_drop_non_numeric_rows():
+    """Verify drop_non_numeric_rows handler integration."""
+    issue = {'type': 'mixed_type', 'column': 'rev'}
+    df = pd.DataFrame({'rev': ['100', 'bad', '200']})
+    log = []
+    _, handler = _actions_for(issue)[1]
+    result = handler(df, log)
+    assert len(result) == 2
+    assert result['rev'].iloc[0] == '100'
+
+
+def test_handler_drop_column_for_duplicate():
+    """Verify drop_column handler for duplicate_column issue."""
+    issue = {'type': 'duplicate_column', 'column': 'col_copy'}
+    df = pd.DataFrame({'original': [1, 2], 'col_copy': [1, 2]})
+    log = []
+    _, handler = _actions_for(issue)[0]
+    result = handler(df, log)
+    assert list(result.columns) == ['original']
+
+
+def test_handler_drop_column_for_constant():
+    """Verify drop_column handler for constant_column issue."""
+    issue = {'type': 'constant_column', 'column': 'status'}
+    df = pd.DataFrame({'status': ['active', 'active'], 'id': [1, 2]})
+    log = []
+    _, handler = _actions_for(issue)[0]
+    result = handler(df, log)
+    assert list(result.columns) == ['id']
