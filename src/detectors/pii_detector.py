@@ -41,27 +41,38 @@ def detect(df: pd.DataFrame) -> list[dict]:
 
     for col in string_cols:
         series = df[col]
+        non_null = series.dropna()
 
-        # Pattern-based detection (high confidence)
-        pii_type, match_rate = _detect_by_pattern(col, series)
+        # Try pattern-based detection first (only if there are non-null values)
+        pii_type = None
+        match_rate = 0.0
 
-        if pii_type:
-            row_indices = _get_matching_row_indices(series, _PII_PATTERNS[pii_type], limit=10)
-            if len(row_indices) >= _MIN_INVALID_FOR_REPORT:
-                sample_values = _get_sample_values(series, _PII_PATTERNS[pii_type], count=3)
-                issues.append(
-                    _build_issue(
-                        col,
-                        pii_type,
-                        match_rate,
-                        row_indices,
-                        sample_values,
-                        detection_method='regex_pattern',
+        if len(non_null) > 0:
+            # Normalize once: convert to string and strip whitespace
+            # This is used by all pattern-based detection functions
+            normalized = non_null.astype(str).str.strip()
+
+            # Pattern-based detection (high confidence)
+            pii_type, match_rate = _detect_by_pattern(col, normalized)
+
+            if pii_type:
+                row_indices = _get_matching_row_indices(non_null, normalized, _PII_PATTERNS[pii_type], limit=10)
+                if len(row_indices) >= _MIN_INVALID_FOR_REPORT:
+                    sample_values = _get_sample_values(normalized, _PII_PATTERNS[pii_type], count=3)
+                    issues.append(
+                        _build_issue(
+                            col,
+                            pii_type,
+                            match_rate,
+                            row_indices,
+                            sample_values,
+                            detection_method='regex_pattern',
+                        )
                     )
-                )
-            continue
+                # Move to next column if pattern-based detection found a match
+                continue
 
-        # Name heuristic (lower confidence)
+        # Name heuristic (lower confidence) — runs if pattern detection failed or no non-null values
         pii_type = _detect_by_name_hint(col)
         if pii_type:
             issues.append(
@@ -83,22 +94,18 @@ def _get_string_columns(df: pd.DataFrame) -> list[str]:
     return [col for col in df.columns if df[col].dtype in ('object', 'string', 'str')]
 
 
-def _detect_by_pattern(column: str, series: pd.Series) -> Tuple[str | None, float]:
+def _detect_by_pattern(column: str, normalized_series: pd.Series) -> Tuple[str | None, float]:
     """Detect PII by regex pattern matching.
 
     Args:
         column: Column name (unused, for logging)
-        series: Series to scan
+        normalized_series: Series of normalized (string, stripped) values to scan
 
     Returns:
         (pii_type, match_rate) or (None, 0.0) if no pattern matches >=60%
     """
-    non_null = series.dropna()
-    if len(non_null) == 0:
+    if len(normalized_series) == 0:
         return None, 0.0
-
-    # Normalize: convert to string and strip whitespace
-    values_str = non_null.astype(str).str.strip()
 
     best_type = None
     best_rate = 0.0
@@ -106,9 +113,9 @@ def _detect_by_pattern(column: str, series: pd.Series) -> Tuple[str | None, floa
     # Test each pattern in priority order (SSN > credit_card > email > phone)
     for pii_type in ['ssn', 'credit_card', 'email', 'phone']:
         pattern = _PII_PATTERNS[pii_type]
-        matches = values_str.str.match(pattern, na=False)
+        matches = normalized_series.str.match(pattern, na=False)
         match_count = matches.sum()
-        match_rate = match_count / len(values_str)
+        match_rate = match_count / len(normalized_series)
 
         if match_rate >= _MIN_MATCH_RATE and match_rate > best_rate:
             best_type = pii_type
@@ -144,49 +151,42 @@ def _detect_by_name_hint(column: str) -> str | None:
     return None
 
 
-def _get_matching_row_indices(series: pd.Series, pattern: re.Pattern, limit: int = 10) -> list[int]:
+def _get_matching_row_indices(non_null_series: pd.Series, normalized_series: pd.Series, pattern: re.Pattern, limit: int = 10) -> list[int]:
     """Get indices of rows matching a regex pattern.
 
     Args:
-        series: Series to scan
+        non_null_series: Original (non-null) series, used for indices
+        normalized_series: Normalized (string, stripped) series, used for pattern matching
         pattern: Compiled regex pattern
         limit: Max number of indices to return
 
     Returns:
         List of matching row indices (int type)
     """
-    non_null_mask = series.notna()
-    non_null_series = series[non_null_mask]
-
-    # Normalize: convert to string and strip whitespace
-    values_str = non_null_series.astype(str).str.strip()
-
-    # Find matches
-    matches = values_str.str.match(pattern, na=False)
+    # Find matches in normalized series
+    matches = normalized_series.str.match(pattern, na=False)
     matching_indices = non_null_series.index[matches].tolist()
 
     # Convert to int and cap at limit
     return [int(i) for i in matching_indices[:limit]]
 
 
-def _get_sample_values(series: pd.Series, pattern: re.Pattern, count: int = 3) -> list[str]:
+def _get_sample_values(normalized_series: pd.Series, pattern: re.Pattern, count: int = 3) -> list[str]:
     """Get sample values matching a pattern.
 
     Args:
-        series: Series to sample from
+        normalized_series: Series of normalized (string, stripped) values to sample from
         pattern: Compiled regex pattern
         count: Number of samples to return
 
     Returns:
         List of sample values as strings
     """
-    non_null = series.dropna()
-    if len(non_null) == 0:
+    if len(normalized_series) == 0:
         return []
 
-    values_str = non_null.astype(str).str.strip()
-    matches = values_str.str.match(pattern, na=False)
-    matching_values = values_str[matches].unique()
+    matches = normalized_series.str.match(pattern, na=False)
+    matching_values = normalized_series[matches].unique()
 
     return [str(v) for v in matching_values[:count]]
 
