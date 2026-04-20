@@ -2,6 +2,7 @@
 import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.jobstores.base import JobLookupError
 from apscheduler.executors.asyncio import AsyncIOExecutor
 
 from src.core.config import settings
@@ -46,11 +47,11 @@ async def add_dataset_schedule(
     """
     job_id = f"dataset-{dataset_id}"
 
-    # Remove existing job if present
+    # Remove existing job if present (no-op if it doesn't exist yet)
     try:
         scheduler.remove_job(job_id)
         logger.info(f"Removed existing job for dataset {dataset_id}")
-    except Exception:
+    except JobLookupError:
         pass
 
     if cron_expr is None:

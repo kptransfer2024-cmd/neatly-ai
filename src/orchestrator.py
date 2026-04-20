@@ -23,6 +23,8 @@ from detectors.whitespace_value_detector import detect as detect_whitespace_valu
 from detectors.mixed_type_detector import detect as detect_mixed_types
 from detectors.duplicate_column_detector import detect as detect_duplicate_columns
 from detectors.id_column_detector import detect as detect_id_columns
+from detectors.pii_detector import detect as detect_pii
+from detectors.date_range_validator import detect as detect_date_ranges
 from explanation_layer import explain_issues
 from context_interpreter import build_column_contexts
 
@@ -88,7 +90,7 @@ def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
     try:
         column_contexts = build_column_contexts(df)
     except Exception as e:
-        print(f"[orchestrator] context_interpreter failed: {e}\n{traceback.format_exc()}")
+        logger.error("[orchestrator] context_interpreter failed: %s\n%s", e, traceback.format_exc())
         column_contexts = []
 
     return {
@@ -110,6 +112,9 @@ def _normalize_issue(issue: dict, detector_name: str, issue_type: str) -> None:
         if field in issue:
             continue
         issue[field] = default() if isinstance(default, type) else default
+    # Detectors that emit 'column' (singular str) instead of 'columns' (list)
+    if not issue['columns'] and issue.get('column'):
+        issue['columns'] = [issue['column']]
 
 
 def _collect_df_stats(df: pd.DataFrame) -> dict:
@@ -170,7 +175,7 @@ def _extract_column_profiles(df_stats: dict) -> dict[str, Any]:
     """Extract per-column dtype and null info from df_stats."""
     profiles = {}
     for key in df_stats:
-        if key.endswith('_stats') and key != 'rows' and key != 'columns':
+        if key.endswith('_stats'):
             col_name = key.replace('_stats', '')
             profiles[col_name] = df_stats[key]
     return profiles
