@@ -275,6 +275,36 @@ def test_run_diagnosis_empty_dataframe():
         assert result['column_count'] == 0
 
 
+def test_run_diagnosis_handles_context_interpreter_exception():
+    """Verify run_diagnosis gracefully handles context_interpreter failure."""
+    df = pd.DataFrame({'a': [1, 2, 3]})
+    with patch('orchestrator.build_column_contexts', side_effect=ValueError('Context interpretation failed')), \
+         patch('orchestrator.detect_missing', return_value=[]), \
+         patch('orchestrator.detect_duplicates', return_value=[]), \
+         patch('orchestrator.detect_schema', return_value=[]), \
+         patch('orchestrator.detect_consistency', return_value=[]), \
+         patch('orchestrator.detect_outliers', return_value=[]), \
+         patch('orchestrator.detect_patterns', return_value=[]), \
+         patch('orchestrator.detect_pii', return_value=[]), \
+         patch('orchestrator.detect_ranges', return_value=[]), \
+         patch('orchestrator.detect_near_duplicates', return_value=[]), \
+         patch('orchestrator.detect_constant_columns', return_value=[]), \
+         patch('orchestrator.detect_whitespace_values', return_value=[]), \
+         patch('orchestrator.detect_mixed_types', return_value=[]), \
+         patch('orchestrator.detect_duplicate_columns', return_value=[]), \
+         patch('orchestrator.detect_id_columns', return_value=[]), \
+         patch('orchestrator.detect_date_ranges', return_value=[]), \
+         patch('orchestrator.explain_issues', return_value=[]):
+
+        result = run_diagnosis(df)
+
+        # Should still return valid result even when context interpreter fails
+        assert result['row_count'] == 3
+        assert result['column_count'] == 1
+        # column_contexts should be empty list on exception
+        assert result['column_contexts'] == []
+
+
 # --- Integration test ---
 
 def test_run_diagnosis_full_flow():
