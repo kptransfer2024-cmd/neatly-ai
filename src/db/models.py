@@ -34,10 +34,12 @@ class Dataset(Base):
     source_config = Column(JSON)  # {bucket: 'x', key: 'y'} or {dsn: '...'} etc.
     schedule_cron = Column(String, nullable=True)  # '0 * * * *' for hourly
     alert_threshold = Column(Float, default=80.0)  # quality_score below this → alert
+    alert_webhook_url = Column(String, nullable=True)  # webhook endpoint for alerts
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     owner = relationship("User", back_populates="datasets")
     runs = relationship("DiagnosisRun", back_populates="dataset")
+    alert_logs = relationship("AlertLog", back_populates="dataset")
 
 
 class DiagnosisRun(Base):
@@ -75,3 +77,18 @@ class Issue(Base):
     resolved_at = Column(DateTime, nullable=True)
 
     run = relationship("DiagnosisRun", back_populates="issues")
+
+
+class AlertLog(Base):
+    """Tracks sent alerts for deduplication (no duplicate alerts within 24h)."""
+
+    __tablename__ = "alert_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    dataset_id = Column(Integer, ForeignKey("datasets.id"), index=True)
+    run_id = Column(Integer, ForeignKey("diagnosis_runs.id"), index=True)
+    alert_type = Column(String)  # 'email', 'webhook', 'sms'
+    sent_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    quality_score = Column(Float)  # score that triggered the alert
+
+    dataset = relationship("Dataset", back_populates="alert_logs")

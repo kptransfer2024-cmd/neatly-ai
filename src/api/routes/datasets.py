@@ -20,6 +20,7 @@ class DatasetCreate(BaseModel):
     source_config: dict  # {'bucket': 'x', 'key': 'y'} or {'host': '...', 'database': '...'}
     schedule_cron: str | None = None  # '0 * * * *' for hourly, None for manual
     alert_threshold: float = 80.0
+    alert_webhook_url: str | None = None  # Optional webhook for alerts
 
 
 class DatasetUpdate(BaseModel):
@@ -28,6 +29,7 @@ class DatasetUpdate(BaseModel):
     name: str | None = None
     schedule_cron: str | None = None
     alert_threshold: float | None = None
+    alert_webhook_url: str | None = None
 
 
 class DatasetResponse(BaseModel):
@@ -38,6 +40,7 @@ class DatasetResponse(BaseModel):
     source_type: str
     schedule_cron: str | None
     alert_threshold: float
+    alert_webhook_url: str | None = None
     created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -100,6 +103,7 @@ async def create_dataset(
         source_config=dataset_data.source_config,
         schedule_cron=dataset_data.schedule_cron,
         alert_threshold=dataset_data.alert_threshold,
+        alert_webhook_url=dataset_data.alert_webhook_url,
     )
     db.add(new_dataset)
     db.commit()
@@ -169,6 +173,8 @@ async def update_dataset(
         dataset.schedule_cron = dataset_data.schedule_cron
     if dataset_data.alert_threshold is not None:
         dataset.alert_threshold = dataset_data.alert_threshold
+    if dataset_data.alert_webhook_url is not None:
+        dataset.alert_webhook_url = dataset_data.alert_webhook_url
 
     db.commit()
     db.refresh(dataset)

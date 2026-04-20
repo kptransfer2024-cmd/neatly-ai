@@ -154,10 +154,8 @@ def load_query(
     engine = create_connection(conn_str)
 
     try:
-        # Add LIMIT if not already present (case-insensitive)
-        query = sql_query.strip()
-        if not query.upper().endswith('LIMIT'):
-            query += f" LIMIT {limit}"
+        # Wrap in subquery to cap rows without breaking queries that already have LIMIT
+        query = f"SELECT * FROM ({sql_query.strip()}) AS _q LIMIT {limit}"
 
         df = pd.read_sql(query, engine)
         return df
