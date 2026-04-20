@@ -41,8 +41,10 @@ class S3Connector(DataSourceConnector):
             "region_name": region,
         }
         if "aws_access_key_id" in self.config:
+            if "aws_secret_access_key" not in self.config:
+                raise ValueError("S3Connector requires 'aws_secret_access_key' when 'aws_access_key_id' is provided")
             s3_kwargs["aws_access_key_id"] = self.config["aws_access_key_id"]
-            s3_kwargs["aws_secret_access_key"] = self.config.get("aws_secret_access_key")
+            s3_kwargs["aws_secret_access_key"] = self.config["aws_secret_access_key"]
 
         s3 = boto3.client("s3", **s3_kwargs)
 

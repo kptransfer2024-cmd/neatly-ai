@@ -2,6 +2,7 @@
 import pathlib
 import uuid
 from datetime import datetime, timezone
+from io import BytesIO
 from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
@@ -207,23 +208,25 @@ async def upload_file(
                 detail="Pro tier limited to 10 datasets. Upgrade to Business.",
             )
 
+    # Read file bytes once — stream can only be consumed once
     try:
-        # Parse the uploaded file
-        df = parse_uploaded_file(file)
+        raw = await file.read()
+        buf = BytesIO(raw)
+        buf.name = file.filename  # parse_uploaded_file needs .name
+        df = parse_uploaded_file(buf)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to parse file: {str(e)}",
         )
 
-    # Save the file to disk for future re-diagnosis
+    # Save the same raw bytes to disk for future re-diagnosis
     try:
         upload_dir = pathlib.Path(settings.UPLOAD_DIR)
         upload_dir.mkdir(parents=True, exist_ok=True)
         suffix = pathlib.Path(file.filename).suffix
         saved_path = upload_dir / f"{uuid.uuid4().hex}{suffix}"
-        contents = await file.read()
-        saved_path.write_bytes(contents)
+        saved_path.write_bytes(raw)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -253,6 +256,7 @@ async def upload_file(
     # Create a DiagnosisRun record
     run = DiagnosisRun(
         dataset_id=temp_dataset.id,
+        started_at=datetime.now(timezone.utc),
         finished_at=datetime.now(timezone.utc),
         status="success",
         quality_score=diagnosis_result.get("quality_score"),
