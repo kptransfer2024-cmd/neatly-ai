@@ -22,6 +22,7 @@ from detectors.constant_column_detector import detect as detect_constant_columns
 from detectors.whitespace_value_detector import detect as detect_whitespace_values
 from detectors.mixed_type_detector import detect as detect_mixed_types
 from detectors.duplicate_column_detector import detect as detect_duplicate_columns
+from detectors.id_column_detector import detect as detect_id_columns
 from explanation_layer import explain_issues
 from context_interpreter import build_column_contexts
 
@@ -64,6 +65,7 @@ def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
         (detect_whitespace_values, 'whitespace_value_detector', 'whitespace_values'),
         (detect_mixed_types, 'mixed_type_detector', 'mixed_type'),
         (detect_duplicate_columns, 'duplicate_column_detector', 'duplicate_column'),
+        (detect_id_columns, 'id_column_detector', 'id_column'),
     ]:
         try:
             detector_issues = detector_fn(df)

@@ -22,6 +22,7 @@ from transformation_executor import (
     drop_out_of_range_rows,
     drop_whitespace_rows,
     fill_missing,
+    clip_to_range,
     flag_invalid_patterns,
     flag_near_duplicates,
     merge_near_duplicates,
@@ -467,11 +468,14 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
         lo, hi = sample.get('valid_lo'), sample.get('valid_hi')
         if lo is not None or hi is not None:
             return [
-                ('Clip to range', lambda df, log: drop_out_of_range_rows(df, log, col, lo, hi)),
+                ('Clip to range', lambda df, log: clip_to_range(df, log, col, lo, hi)),
                 ('Drop invalid rows', lambda df, log: drop_out_of_range_rows(df, log, col, lo, hi)),
             ]
 
     if issue_type == 'constant_column' and col:
+        return [('Drop column', lambda df, log: drop_column(df, col, log))]
+
+    if issue_type == 'id_column' and col:
         return [('Drop column', lambda df, log: drop_column(df, col, log))]
 
     if issue_type == 'whitespace_values' and col:
