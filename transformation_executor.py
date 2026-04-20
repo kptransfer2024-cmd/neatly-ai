@@ -1,20 +1,22 @@
 """Applies deterministic pandas transforms and appends entries to cleaning_log.
 
-RULE: Every public function here must append to st.session_state['cleaning_log'].
+RULE: Every public function appends a dict to the caller's cleaning_log list.
 RULE: No LLM calls — pure pandas/Python only.
+
+The cleaning_log parameter is a plain list — the Streamlit layer passes
+st.session_state['cleaning_log']; tests pass [] and inspect the result.
 """
 import pandas as pd
-import streamlit as st
 
 
-def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+def drop_duplicates(df: pd.DataFrame, cleaning_log: list) -> pd.DataFrame:
     """Remove duplicate rows and log the action."""
     before_count = len(df)
     result = df.drop_duplicates(keep='first').reset_index(drop=True)
     after_count = len(result)
 
     if before_count > after_count:
-        _log('drop_duplicates', {
+        _log(cleaning_log, 'drop_duplicates', {
             'row_count_before': before_count,
             'row_count_after': after_count,
             'duplicates_removed': before_count - after_count,
@@ -23,17 +25,19 @@ def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def fill_missing(df: pd.DataFrame, column: str, strategy: str, fill_value=None) -> pd.DataFrame:
-    """Fill missing values in *column* using *strategy* ('mean'|'median'|'mode'|'constant').
-
-    Appends to cleaning_log with column, strategy, and count of filled cells.
-    """
+def fill_missing(
+    df: pd.DataFrame,
+    column: str,
+    strategy: str,
+    cleaning_log: list,
+    fill_value=None,
+) -> pd.DataFrame:
+    """Fill missing values in *column* using *strategy* ('mean'|'median'|'mode'|'constant')."""
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
     result = df.copy()
-    missing_count = result[column].isna().sum()
-
+    missing_count = int(result[column].isna().sum())
     if missing_count == 0:
         return result
 
@@ -44,26 +48,29 @@ def fill_missing(df: pd.DataFrame, column: str, strategy: str, fill_value=None) 
         fill_val = result[column].median()
         result[column] = result[column].fillna(fill_val)
     elif strategy == 'mode':
-        fill_val = result[column].mode()
-        if len(fill_val) > 0:
-            result[column] = result[column].fillna(fill_val[0])
+        modes = result[column].mode()
+        if len(modes) == 0:
+            return result
+        fill_val = modes.iloc[0]
+        result[column] = result[column].fillna(fill_val)
     elif strategy == 'constant':
         if fill_value is None:
             raise ValueError("fill_value required for 'constant' strategy")
+        fill_val = fill_value
         result[column] = result[column].fillna(fill_value)
     else:
         raise ValueError(f"Unknown strategy: {strategy}")
 
-    _log('fill_missing', {
+    _log(cleaning_log, 'fill_missing', {
         'column': column,
         'strategy': strategy,
         'filled_count': missing_count,
+        'fill_value': _coerce_for_log(fill_val),
     })
-
     return result
 
 
-def drop_missing(df: pd.DataFrame, column: str) -> pd.DataFrame:
+def drop_missing(df: pd.DataFrame, column: str, cleaning_log: list) -> pd.DataFrame:
     """Drop rows where *column* is null and log the action."""
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
@@ -73,18 +80,26 @@ def drop_missing(df: pd.DataFrame, column: str) -> pd.DataFrame:
     after_count = len(result)
 
     if before_count > after_count:
-        _log('drop_missing', {
+        _log(cleaning_log, 'drop_missing', {
             'column': column,
             'row_count_before': before_count,
             'row_count_after': after_count,
             'rows_dropped': before_count - after_count,
         })
-
     return result
 
 
-def cast_column(df: pd.DataFrame, column: str, target_dtype: str) -> pd.DataFrame:
-    """Cast *column* to *target_dtype* and log the action."""
+def cast_column(
+    df: pd.DataFrame,
+    column: str,
+    target_dtype: str,
+    cleaning_log: list,
+) -> pd.DataFrame:
+    """Cast *column* to *target_dtype* and log the action.
+
+    Supported target_dtype values: 'int', 'float', 'str', 'bool', 'datetime',
+    or any pandas dtype string accepted by astype.
+    """
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
@@ -93,9 +108,11 @@ def cast_column(df: pd.DataFrame, column: str, target_dtype: str) -> pd.DataFram
 
     try:
         if target_dtype == 'int':
-            result[column] = result[column].astype('Int64')  # nullable int
+            result[column] = pd.to_numeric(result[column], errors='coerce').astype('Int64')
         elif target_dtype == 'float':
-            result[column] = result[column].astype('float64')
+            result[column] = pd.to_numeric(result[column], errors='coerce').astype('float64')
+        elif target_dtype == 'datetime':
+            result[column] = pd.to_datetime(result[column], errors='coerce')
         elif target_dtype == 'str':
             result[column] = result[column].astype('str')
         elif target_dtype == 'bool':
@@ -103,21 +120,24 @@ def cast_column(df: pd.DataFrame, column: str, target_dtype: str) -> pd.DataFram
         else:
             result[column] = result[column].astype(target_dtype)
     except (ValueError, TypeError) as e:
-        raise ValueError(f"Cannot cast column '{column}' to {target_dtype}: {e}")
+        raise ValueError(f"Cannot cast column '{column}' to {target_dtype}: {e}") from e
 
     new_dtype = str(result[column].dtype)
-
     if original_dtype != new_dtype:
-        _log('cast_column', {
+        _log(cleaning_log, 'cast_column', {
             'column': column,
             'from_dtype': original_dtype,
             'to_dtype': new_dtype,
         })
-
     return result
 
 
-def normalize_text(df: pd.DataFrame, column: str, operation: str) -> pd.DataFrame:
+def normalize_text(
+    df: pd.DataFrame,
+    column: str,
+    operation: str,
+    cleaning_log: list,
+) -> pd.DataFrame:
     """Apply text normalization to *column*.
 
     operation: 'strip_whitespace' | 'lowercase' | 'uppercase' | 'titlecase'
@@ -126,55 +146,66 @@ def normalize_text(df: pd.DataFrame, column: str, operation: str) -> pd.DataFram
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
     result = df.copy()
-    original_count = result[column].dtype == object or result[column].dtype == 'str'
-
     if operation == 'strip_whitespace':
         result[column] = result[column].str.strip()
-        op_name = 'strip_whitespace'
     elif operation == 'lowercase':
         result[column] = result[column].str.lower()
-        op_name = 'lowercase'
     elif operation == 'uppercase':
         result[column] = result[column].str.upper()
-        op_name = 'uppercase'
     elif operation == 'titlecase':
         result[column] = result[column].str.title()
-        op_name = 'titlecase'
     else:
         raise ValueError(f"Unknown operation: {operation}")
 
-    _log('normalize_text', {
+    _log(cleaning_log, 'normalize_text', {
         'column': column,
-        'operation': op_name,
+        'operation': operation,
     })
-
     return result
 
 
-def clip_outliers(df: pd.DataFrame, column: str, lower: float, upper: float) -> pd.DataFrame:
+def clip_outliers(
+    df: pd.DataFrame,
+    column: str,
+    lower: float,
+    upper: float,
+    cleaning_log: list,
+) -> pd.DataFrame:
     """Clip values in *column* to [lower, upper] and log the action."""
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
     result = df.copy()
-    before_min = result[column].min()
-    before_max = result[column].max()
+    series = result[column]
+    before_min = float(series.min()) if series.notna().any() else None
+    before_max = float(series.max()) if series.notna().any() else None
 
-    clipped_count = ((result[column] < lower) | (result[column] > upper)).sum()
-    result[column] = result[column].clip(lower, upper)
+    clipped_count = int(((series < lower) | (series > upper)).sum())
+    result[column] = series.clip(lower, upper)
 
     if clipped_count > 0:
-        _log('clip_outliers', {
+        _log(cleaning_log, 'clip_outliers', {
             'column': column,
             'lower_bound': lower,
             'upper_bound': upper,
             'clipped_count': clipped_count,
-            'value_range_before': [float(before_min), float(before_max)],
+            'value_range_before': [before_min, before_max],
         })
-
     return result
 
 
-def _log(action: str, details: dict) -> None:
-    """Append a log entry to st.session_state['cleaning_log']."""
-    st.session_state['cleaning_log'].append({'action': action, **details})
+def _log(cleaning_log: list, action: str, details: dict) -> None:
+    """Append one log entry to the caller's cleaning_log list."""
+    cleaning_log.append({'action': action, **details})
+
+
+def _coerce_for_log(value):
+    """Convert pandas/numpy scalar to a JSON-friendly value for logging."""
+    if value is None:
+        return None
+    if hasattr(value, 'item'):
+        try:
+            return value.item()
+        except (ValueError, AttributeError):
+            pass
+    return value
