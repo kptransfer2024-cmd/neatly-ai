@@ -78,12 +78,12 @@ def test_multiple_numeric_columns_with_outliers():
     assert {i['columns'][0] for i in issues} == {'a', 'b'}
 
 
-def test_sample_indices_capped_at_five():
-    # 20 baseline + 7 outliers: baseline dominates quartiles, all 7 fall past fence
+def test_sample_indices_capped_at_100():
+    # 20 baseline + 6 outliers detected: cap is 100, so all 6 should be included
     df = pd.DataFrame({'x': [1] * 20 + [100, 200, 300, 400, 500, 600, 700]})
     issues = detect(df)
     assert issues[0]['outlier_count'] > 5  # more than 5 outliers exist
-    assert len(issues[0]['row_indices']) == 5  # sample is capped at 5
+    assert len(issues[0]['row_indices']) == issues[0]['outlier_count']  # all outliers included (cap is 100)
 
 
 def test_outlier_pct_correct():

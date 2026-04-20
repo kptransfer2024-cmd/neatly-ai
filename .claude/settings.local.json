@@ -22,7 +22,8 @@
       "Bash(awk '{print $2}')",
       "Bash(/c/Users/KPdesktop/AppData/Local/Programs/Python/Python313/python3 -m pytest \"C:\\\\Users\\\\KPdesktop\\\\Desktop\\\\neatly_ai\\\\product\\\\tests\\\\test_e2e_workflow.py\" -v)",
       "WebFetch(domain:neatly-ai-uwtpra3gvxqp5rpblghbw9.streamlit.app)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(wc *)"
     ],
     "defaultMode": "auto"
   }

@@ -72,7 +72,11 @@ def create_connection(conn_str: str, timeout: int = 10) -> Engine:
     Raises:
         Exception: If connection cannot be established
     """
-    engine = create_engine(conn_str, connect_args={'timeout': timeout}, echo=False)
+    if conn_str.startswith('sqlite'):
+        connect_args = {'timeout': timeout}
+    else:
+        connect_args = {'connect_timeout': timeout}
+    engine = create_engine(conn_str, connect_args=connect_args, echo=False)
     # Test the connection
     with engine.connect() as conn:
         pass
@@ -113,13 +117,13 @@ def load_table(
     """
     engine = create_connection(conn_str)
 
-    # Verify table exists
-    inspector = inspect(engine)
-    tables = inspector.get_table_names()
-    if table_name not in tables:
-        raise ValueError(f"Table '{table_name}' not found. Available: {', '.join(tables[:5])}")
-
     try:
+        # Verify table exists
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        if table_name not in tables:
+            raise ValueError(f"Table '{table_name}' not found. Available: {', '.join(tables[:5])}")
+
         query = f"SELECT * FROM {table_name} LIMIT {limit}"
         df = pd.read_sql(query, engine)
         return df

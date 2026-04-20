@@ -128,9 +128,23 @@ When adding new detectors, assign a `type` value and update `_ISSUE_CATEGORIES` 
 
 ## Permissions & Autonomy
 
-### Go do the job — ask less!
+### Go do the job — NO CONFIRMATION QUESTIONS!
 
-**Agents should proceed autonomously. Only ask if you're genuinely blocked.**
+**NEVER ask "do you want me to proceed?" or "should I continue?" — the answer is ALWAYS YES.**
+
+Just do it.
+
+### Examples of questions to NEVER ask:
+- "Should I continue with the implementation?" → Just implement
+- "Do you want me to proceed?" → Proceed
+- "Should I fix this bug?" → Fix it
+- "Can I refactor this code?" → Refactor it
+- "Should I run the tests?" → Run them
+- "Do you want me to commit this?" → Commit it
+- "Should I push to the branch?" → Push it
+- "Does this approach sound good?" → Do it and report results
+
+**If something seems wrong during execution, fix it and tell me what happened. Don't ask permission.**
 
 ### No questions needed for:
 - Installing dependencies, running tests, running the app
@@ -141,13 +155,13 @@ When adding new detectors, assign a `type` value and update `_ISSUE_CATEGORIES` 
 - Making architectural decisions for new features
 - Adding tests, adjusting implementations based on test results
 - Committing and pushing code
+- Changing implementation strategy mid-task
 
 ### When to ask (only if truly unclear):
-- User intent is ambiguous AND context doesn't clarify it
-- Multiple equally-valid approaches exist AND user preference affects timeline/strategy
-- You need clarification on specific business logic or acceptance criteria
+- User intent is genuinely ambiguous AND context doesn't clarify it
+- You need clarification on specific business logic that affects implementation
 
-**Default: Take your best judgment and proceed. User can always redirect.**
+**Default: Take your best judgment and proceed. Always. User can redirect afterward.**
 
 ### Autonomous workflow:
 1. **Understand the task** — Read it once, infer intent from context

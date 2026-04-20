@@ -645,3 +645,100 @@ def _coerce_for_log(value):
         except (ValueError, AttributeError):
             pass
     return value
+
+
+def standardize_phone(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    format_type: str = 'us_standard',
+) -> pd.DataFrame:
+    """Standardize phone numbers to a consistent format.
+    
+    format_type: 'us_standard' → (XXX) XXX-XXXX
+    """
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    
+    result = df.copy()
+    series = result[column]
+    non_null_mask = series.notna()
+    
+    def format_phone(val):
+        if pd.isna(val):
+            return val
+        digits = ''.join(filter(str.isdigit, str(val)))
+        if len(digits) >= 10:
+            return f"({digits[-10:-7]}) {digits[-7:-4]}-{digits[-4:]}"
+        return val
+    
+    result.loc[non_null_mask, column] = series[non_null_mask].apply(format_phone)
+    
+    standardized = int((~series.isna()).sum())
+    _log(cleaning_log, 'standardize_phone', {
+        'column': column,
+        'format_type': format_type,
+        'values_standardized': standardized,
+    })
+    return result
+
+
+def standardize_dates(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+) -> pd.DataFrame:
+    """Standardize dates to ISO format (YYYY-MM-DD)."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    
+    result = df.copy()
+    series = result[column]
+    
+    converted = pd.to_datetime(series, errors='coerce')
+    standardized_count = int((converted.notna() & series.notna()).sum())
+    
+    result[column] = converted.dt.strftime('%Y-%m-%d').where(converted.notna(), series)
+    
+    _log(cleaning_log, 'standardize_dates', {
+        'column': column,
+        'format': 'ISO 8601 (YYYY-MM-DD)',
+        'values_standardized': standardized_count,
+    })
+    return result
+
+
+def standardize_currency(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+) -> pd.DataFrame:
+    """Standardize currency values to numeric format ($X,XXX.XX)."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    
+    result = df.copy()
+    series = result[column]
+    non_null_mask = series.notna()
+    
+    def parse_currency(val):
+        if pd.isna(val):
+            return val
+        # Remove currency symbols and spaces, convert to float
+        cleaned = str(val).replace('$', '').replace('£', '').replace('€', '').strip()
+        cleaned = cleaned.replace(',', '')
+        try:
+            num = float(cleaned)
+            return f"${num:,.2f}"
+        except:
+            return val
+    
+    result.loc[non_null_mask, column] = series[non_null_mask].apply(parse_currency)
+    
+    standardized = int(non_null_mask.sum())
+    _log(cleaning_log, 'standardize_currency', {
+        'column': column,
+        'format': '$X,XXX.XX',
+        'values_standardized': standardized,
+    })
+    return result

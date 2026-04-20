@@ -1,5 +1,6 @@
 """Application configuration and settings."""
 import os
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 _DEV_SECRET = "dev-secret-key-change-in-production"
@@ -32,8 +33,7 @@ class Settings(BaseSettings):
     # File Storage
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
 
-    class Config:
-        case_sensitive = True
+    model_config = ConfigDict(case_sensitive=True)
 
     def __init__(self, **data):
         super().__init__(**data)

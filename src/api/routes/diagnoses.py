@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from io import BytesIO
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
@@ -42,8 +42,7 @@ class IssueResponse(BaseModel):
     explanation: str
     resolved_at: datetime | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DiagnosisRunResponse(BaseModel):
@@ -59,8 +58,7 @@ class DiagnosisRunResponse(BaseModel):
     column_count: int | None
     issues: List[IssueResponse]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.post("/datasets/{dataset_id}/diagnose", response_model=DiagnosisRunResponse)

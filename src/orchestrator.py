@@ -24,6 +24,7 @@ from detectors.mixed_type_detector import detect as detect_mixed_types
 from detectors.duplicate_column_detector import detect as detect_duplicate_columns
 from detectors.id_column_detector import detect as detect_id_columns
 from detectors.pii_detector import detect as detect_pii
+from detectors.data_standardizer import detect as detect_standardizer
 from detectors.date_range_validator import detect as detect_date_ranges
 from explanation_layer import explain_issues
 from context_interpreter import build_column_contexts
@@ -62,6 +63,7 @@ def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
         (detect_outliers, 'outlier_detector', 'outliers'),
         (detect_patterns, 'pattern_validator', 'pattern_mismatch'),
         (detect_pii, 'pii_detector', 'pii_detected'),
+        (detect_standardizer, 'data_standardizer', 'standardization_suggested'),
         (detect_ranges, 'range_validator', 'out_of_range'),
         (detect_near_duplicates, 'near_duplicate_detector', 'near_duplicates'),
         (detect_constant_columns, 'constant_column_detector', 'constant_column'),

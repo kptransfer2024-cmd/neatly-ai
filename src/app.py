@@ -187,6 +187,9 @@ from transformation_executor import (
     merge_near_duplicates,
     normalize_text,
     null_out_whitespace,
+    standardize_phone,
+    standardize_dates,
+    standardize_currency,
 )
 from utils import code_snippets
 from utils.diff_engine import compute_diff, render_diff
@@ -806,6 +809,15 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
             (f'Mask {pii_type}', lambda df, log: mask_pii(df, log, col, pii_type, 'partial')),
             ('Remove Column', lambda df, log: drop_column(df, col, log)),
         ]
+
+    if issue_type == 'standardization_suggested' and col:
+        std_type = issue.get('sample_data', {}).get(col, {}).get('standardization_type', 'unknown')
+        if std_type == 'phone':
+            return [('Standardize phone', lambda df, log: standardize_phone(df, log, col))]
+        elif std_type == 'date':
+            return [('Standardize dates', lambda df, log: standardize_dates(df, log, col))]
+        elif std_type == 'currency':
+            return [('Standardize currency', lambda df, log: standardize_currency(df, log, col))]
 
     if issue_type == 'out_of_range' and col:
         sample = issue.get('sample_data', {}).get(col, {})
