@@ -98,6 +98,17 @@ Every detector returns a `list[dict]` where each dict represents one detected is
 }
 ```
 
+### Issue Categories
+
+Issues are grouped into 4 semantic categories in the UI (in `render_decide()`). See `_ISSUE_CATEGORIES` dict in `src/app.py` for the authoritative mapping:
+
+- **Completeness** (🔴): Missing values (`missing_value`), whitespace-only cells (`whitespace_values`), constant columns (`constant_column`)
+- **Accuracy** (🟡): Type mismatches (`type_mismatch`), pattern violations (`pattern_mismatch`), out-of-range values (`out_of_range`), mixed types (`mixed_type`)
+- **Consistency** (🟠): Duplicate rows (`duplicates`), near-duplicates (`near_duplicates`), duplicate columns (`duplicate_column`), format inconsistencies (`inconsistent_format`)
+- **Validity** (🔵): Statistical outliers (`outliers`), ID columns (`id_column`), PII detection (`pii_detected`)
+
+When adding new detectors, assign a `type` value and update `_ISSUE_CATEGORIES` mapping in `src/app.py` to ensure proper categorization.
+
 ### Data flow
 
 1. User uploads CSV → `original_df` and `df` set, `stage = 'diagnose'`

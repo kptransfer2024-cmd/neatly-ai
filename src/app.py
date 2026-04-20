@@ -80,8 +80,10 @@ from transformation_executor import (
     drop_whitespace_rows,
     fill_missing,
     clip_to_range,
+    flag_all_near_duplicates,
     flag_invalid_patterns,
     flag_near_duplicates,
+    merge_all_near_duplicates,
     merge_near_duplicates,
     normalize_text,
     null_out_whitespace,
@@ -343,6 +345,43 @@ def render_diagnose() -> None:
 # Stage: decide
 # ---------------------------------------------------------------------------
 
+_ISSUE_CATEGORIES = {
+    'missing_value': 'Completeness',
+    'whitespace_values': 'Completeness',
+    'constant_column': 'Completeness',
+    'type_mismatch': 'Accuracy',
+    'pattern_mismatch': 'Accuracy',
+    'out_of_range': 'Accuracy',
+    'mixed_type': 'Accuracy',
+    'duplicates': 'Consistency',
+    'near_duplicates': 'Consistency',
+    'duplicate_column': 'Consistency',
+    'inconsistent_format': 'Consistency',
+    'outliers': 'Validity',
+    'id_column': 'Validity',
+    'pii_detected': 'Validity',
+}
+
+_CATEGORY_ICONS = {
+    'Completeness': '🔴',
+    'Accuracy': '🟡',
+    'Consistency': '🟠',
+    'Validity': '🔵',
+}
+
+def _group_issues_by_category(issues: list[dict]) -> dict[str, list[tuple[int, dict]]]:
+    """Group issues by category, preserving original list index.
+
+    Returns dict mapping category name → list of (original_idx, issue_dict) tuples.
+    This preserves the ability to dismiss issues by original index.
+    """
+    grouped = {cat: [] for cat in _ISSUE_CATEGORIES.values()}
+    for idx, issue in enumerate(issues):
+        issue_type = issue.get('type', 'outliers')
+        category = _ISSUE_CATEGORIES.get(issue_type, 'Validity')
+        grouped[category].append((idx, issue))
+    return grouped
+
 _STATS_HIDE_KEYS = {
     'type', 'column', 'columns', 'sub_type', 'explanation', 'summary',
     'sample_values', 'example_values', 'sample_indices', 'row_indices',
@@ -375,9 +414,29 @@ def render_decide() -> None:
                 st.session_state["stage"] = "done"
                 st.rerun()
         else:
-            st.caption(f"{len(issues)} issue(s) remaining.")
-            for i, issue in enumerate(issues):
-                _render_issue_card(i, issue)
+            grouped = _group_issues_by_category(issues)
+
+            # Build tab names with issue counts
+            tab_names = []
+            for cat in ['Completeness', 'Accuracy', 'Consistency', 'Validity']:
+                count = len(grouped[cat])
+                icon = _CATEGORY_ICONS[cat]
+                if count > 0:
+                    tab_names.append(f"{icon} {cat} ({count})")
+                else:
+                    tab_names.append(f"{icon} {cat}")
+
+            category_tabs = st.tabs(tab_names)
+
+            for tab, category in zip(category_tabs, ['Completeness', 'Accuracy', 'Consistency', 'Validity']):
+                with tab:
+                    issues_in_cat = grouped[category]
+                    if not issues_in_cat:
+                        st.info(f"✓ No {category.lower()} issues detected.")
+                    else:
+                        st.caption(f"{len(issues_in_cat)} issue(s) in this category")
+                        for orig_idx, issue in issues_in_cat:
+                            _render_issue_card(orig_idx, issue)
 
             st.divider()
             col1, col2 = st.columns(2)
@@ -391,6 +450,50 @@ def render_decide() -> None:
 
     with tab_changes:
         render_changes_tab()
+
+
+def _render_near_duplicate_quick_actions(issues: list) -> None:
+    """If ≥2 near-duplicate clusters are present, offer one-click bulk decisions.
+
+    Each cluster gets its own card, so a CSV with 10 clusters takes 10 clicks.
+    This banner lets a user resolve every near-duplicate cluster at once.
+    """
+    nd_indices = [i for i, iss in enumerate(issues) if iss.get('type') == 'near_duplicates']
+    if len(nd_indices) < 2:
+        return
+
+    clusters = [
+        {
+            'column': (issues[i].get('columns') or [issues[i].get('column')])[0],
+            'row_indices': issues[i].get('row_indices') or [],
+        }
+        for i in nd_indices
+    ]
+
+    with st.container(border=True):
+        st.markdown(f"**Quick actions — {len(nd_indices)} near-duplicate clusters detected**")
+        st.caption('Apply one decision across every cluster below.')
+        c1, c2, c3 = st.columns(3)
+        if c1.button('Merge all clusters', key='nd_bulk_merge', type='primary'):
+            st.session_state['df'] = merge_all_near_duplicates(
+                st.session_state['df'], st.session_state['cleaning_log'], clusters,
+            )
+            _dismiss_issues_by_type('near_duplicates')
+        if c2.button('Flag all clusters', key='nd_bulk_flag'):
+            st.session_state['df'] = flag_all_near_duplicates(
+                st.session_state['df'], st.session_state['cleaning_log'], clusters,
+            )
+            _dismiss_issues_by_type('near_duplicates')
+        if c3.button('Skip all', key='nd_bulk_skip'):
+            _dismiss_issues_by_type('near_duplicates')
+
+
+def _dismiss_issues_by_type(issue_type: str) -> None:
+    """Remove every issue of *issue_type* from session_state and rerun."""
+    st.session_state['issues'] = [
+        iss for iss in st.session_state['issues'] if iss.get('type') != issue_type
+    ]
+    st.rerun()
 
 
 def _render_issue_card(idx: int, issue: dict) -> None:
