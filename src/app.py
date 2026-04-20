@@ -52,7 +52,7 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.3; }
 .step.done .step-circle {
   border-color: var(--success); color: var(--success); opacity: 1;
 }
-.step-arrow { color: var(--muted); font-size: 16px; margin-top: 0.9rem; opacity: 0.25; }
+.step-arrow { color: var(--muted); font-size: 14px; margin-top: 0.65rem; opacity: 0.25; }
 .step-arrow:last-child { display: none; }
 
 .neat-card {
@@ -71,9 +71,12 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.3; }
 .sev-medium .sev-badge { background: rgba(251,191,36,0.12);  color: var(--warning); }
 .sev-low    .sev-badge { background: rgba(52,211,153,0.12);  color: var(--success); }
 
+/* Buttons always fill their column and stay consistent height */
+.stButton { width: 100%; }
 .stButton > button {
-  border-radius: 5px; font-weight: 500; font-size: 13px;
+  width: 100%; border-radius: 5px; font-weight: 500; font-size: 13px;
   transition: opacity 0.15s; border: 1px solid var(--border-strong) !important;
+  padding: 0.35rem 0.75rem;
 }
 button[kind="primary"] {
   background: var(--accent) !important; color: white !important;
@@ -85,22 +88,39 @@ button.neatly-preview {
   background: transparent !important;
 }
 button.neatly-skip {
-  border-color: #334155 !important; color: var(--muted) !important;
+  border-color: #2a3a50 !important; color: var(--muted) !important;
   background: transparent !important;
 }
 button.neatly-undo {
-  border-color: #334155 !important; color: #94a3b8 !important;
+  border-color: #2a3a50 !important; color: #94a3b8 !important;
   background: transparent !important; font-size: 12px !important;
 }
 
+/* Metric containers */
 [data-testid="metric-container"] {
   border-radius: 6px; padding: 1rem;
   border: 1px solid var(--border);
 }
 
+/* Tighter spacing inside issue cards */
+.neat-card .stMarkdown p { margin: 0.15rem 0; }
+.neat-card .stMarkdown    { margin-bottom: 0.25rem; }
+.neat-card .stCaption     { margin-top: 0.1rem; margin-bottom: 0.1rem; }
+.neat-card .stExpander    { margin-top: 0.35rem; }
+
+/* Tab content: align to top consistently */
+[data-baseweb="tab-panel"] { padding-top: 0.75rem !important; }
+
+/* Download buttons */
+.stDownloadButton { width: 100%; }
+.stDownloadButton > button { width: 100%; border-radius: 5px; font-weight: 500; }
+
 [role="tablist"] button { font-weight: 500; }
-.stDownloadButton > button { border-radius: 5px; font-weight: 500; }
 [data-testid="stAppViewContainer"] { padding-top: 0; }
+
+/* Hide the redundant st.title() h1 — each stage has its own header */
+[data-testid="stAppViewContainer"] > .main > .block-container > div:first-child h1 { display: none; }
+
 footer { display: none; }
 </style>
 <script>
@@ -1102,52 +1122,91 @@ def render_changes_tab() -> None:
 
 
 def render_custom_code_tab() -> None:
-    """Pandas code editor — lets users write arbitrary transforms against the live df.
-
-    Flow:
-      1. User writes pandas code; `df`, `pd`, `np` are pre-injected.
-      2. "Run Preview" executes on a copy — the real df is untouched.
-      3. Diff + preview are shown. User confirms with "Apply Changes".
-      4. On apply the real df is updated and the change lands in df_history /
-         undo stack / cleaning_log exactly like any other transform.
-    """
+    """Pandas code editor with column reference, snippets, stdout capture, and diff preview."""
+    import io
     import numpy as np
     import traceback as _tb
+    from contextlib import redirect_stdout
 
-    _safe_names = (
+    _builtins_src = __builtins__ if isinstance(__builtins__, dict) else vars(__builtins__)
+    _safe_builtins = {n: _builtins_src[n] for n in (
         'abs', 'all', 'any', 'bool', 'dict', 'enumerate', 'filter', 'float',
         'frozenset', 'getattr', 'hasattr', 'int', 'isinstance', 'issubclass',
         'iter', 'len', 'list', 'map', 'max', 'min', 'next', 'print', 'range',
         'repr', 'round', 'set', 'setattr', 'slice', 'sorted', 'str', 'sum',
         'tuple', 'type', 'zip',
-    )
-    _builtins_src = __builtins__ if isinstance(__builtins__, dict) else vars(__builtins__)
-    _safe_builtins = {n: _builtins_src[n] for n in _safe_names if n in _builtins_src}
+    ) if n in _builtins_src}
 
     df_current = st.session_state['df']
 
-    st.caption(
-        f"Current dataset: **{df_current.shape[0]:,} rows × {df_current.shape[1]} columns** "
-        f"— `df` is pre-loaded. Reassign it or mutate in place."
-    )
+    # ── Column reference + snippets ──────────────────────────────────────────
+    left, right = st.columns([1, 2])
 
-    _DEFAULT = '''\
-# df is your current dataset (pandas DataFrame).
-# pd and np are also available.
+    with left:
+        st.markdown('**Column reference**')
+        col_info = pd.DataFrame({
+            'column': df_current.columns,
+            'dtype':  [str(df_current[c].dtype) for c in df_current.columns],
+            'nulls':  [int(df_current[c].isna().sum()) for c in df_current.columns],
+            'sample': [
+                str(df_current[c].dropna().iloc[0]) if df_current[c].notna().any() else '—'
+                for c in df_current.columns
+            ],
+        })
+        st.dataframe(col_info, use_container_width=True, hide_index=True, height=200)
 
-# Examples:
-# df = df.dropna(subset=['age'])
-# df['price'] = df['price'].clip(lower=0)
-# df['name'] = df['name'].str.strip().str.title()
-# df = df[df['status'] != 'inactive'].reset_index(drop=True)
+    with right:
+        st.markdown('**Quick snippets** — click to insert into the editor')
+        # Pick representative column names for snippet templates
+        num_cols  = [c for c in df_current.columns if df_current[c].dtype in ('float64', 'int64', 'Int64')]
+        str_cols  = [c for c in df_current.columns if str(df_current[c].dtype) in ('object', 'str')]
+        any_col   = df_current.columns[0] if len(df_current.columns) else 'col'
+        nc = num_cols[0] if num_cols else any_col
+        sc = str_cols[0] if str_cols else any_col
+
+        snippets = [
+            ('Drop NaN rows',    f"df = df.dropna(subset=['{any_col}']).reset_index(drop=True)"),
+            ('Drop duplicates',  "df = df.drop_duplicates().reset_index(drop=True)"),
+            ('Filter rows',      f"df = df[df['{any_col}'] != ''].reset_index(drop=True)"),
+            ('Rename column',    f"df = df.rename(columns={{'{any_col}': 'new_name'}})"),
+            ('Strip whitespace', f"df['{sc}'] = df['{sc}'].str.strip()"),
+            ('Lowercase text',   f"df['{sc}'] = df['{sc}'].str.lower()"),
+            ('Clip numeric',     f"df['{nc}'] = df['{nc}'].clip(lower=0)"),
+            ('Fill NaN median',  f"df['{nc}'] = df['{nc}'].fillna(df['{nc}'].median())"),
+            ('Cast to int',      f"df['{nc}'] = df['{nc}'].astype('Int64')"),
+            ('New column',       f"df['new_col'] = df['{nc}'] * 2"),
+            ('Drop column',      f"df = df.drop(columns=['{any_col}'])"),
+            ('Sort by column',   f"df = df.sort_values('{any_col}').reset_index(drop=True)"),
+        ]
+
+        rows = [snippets[i:i+3] for i in range(0, len(snippets), 3)]
+        for row in rows:
+            cols = st.columns(len(row))
+            for col_widget, (label, snippet) in zip(cols, row):
+                if col_widget.button(label, key=f'snip_{label}', use_container_width=True):
+                    current = st.session_state.get('_custom_code_text', '')
+                    st.session_state['_custom_code_text'] = (
+                        (current.rstrip('\n') + '\n' + snippet)
+                        if current.strip() else snippet
+                    )
+                    st.rerun()
+
+    st.divider()
+
+    # ── Code editor ──────────────────────────────────────────────────────────
+    _DEFAULT = f'''\
+# df is your current dataset ({df_current.shape[0]:,} rows × {df_current.shape[1]} cols).
+# pd and np are available. Reassign df or mutate in place.
+
 '''
 
     code = st.text_area(
-        'code',
+        'Pandas code',
         value=st.session_state.get('_custom_code_text', _DEFAULT),
-        height=220,
+        height=260,
         key='_custom_code_editor',
         label_visibility='collapsed',
+        placeholder='Write pandas code here…',
     )
     st.session_state['_custom_code_text'] = code
 
@@ -1156,37 +1215,62 @@ def render_custom_code_tab() -> None:
     run_clicked   = col_run.button('▶ Run Preview', key='custom_run_btn', type='primary')
     apply_clicked = col_apply.button('✅ Apply Changes', key='custom_apply_btn', disabled=not has_preview)
     if col_clear.button('✕ Reset', key='custom_clear_btn'):
-        st.session_state.pop('_custom_preview_df', None)
-        st.session_state.pop('_custom_preview_error', None)
-        st.session_state.pop('_custom_code_text', None)
+        for k in ('_custom_preview_df', '_custom_preview_error',
+                  '_custom_stdout', '_custom_code_text'):
+            st.session_state.pop(k, None)
         st.rerun()
 
-    # ---- Run preview ---------------------------------------------------------
+    # ── Run preview ───────────────────────────────────────────────────────────
     if run_clicked:
-        st.session_state.pop('_custom_preview_df', None)
-        st.session_state.pop('_custom_preview_error', None)
+        for k in ('_custom_preview_df', '_custom_preview_error', '_custom_stdout'):
+            st.session_state.pop(k, None)
+
         stripped = code.strip()
-        if not stripped or stripped == _DEFAULT.strip():
+        if not stripped or stripped.startswith('#'):
             st.warning('Write some pandas code above first.')
         else:
             ns = {'__builtins__': _safe_builtins, 'df': df_current.copy(), 'pd': pd, 'np': np}
+            buf = io.StringIO()
             try:
-                exec(stripped, ns)  # noqa: S102
+                with redirect_stdout(buf):
+                    exec(stripped, ns)  # noqa: S102
                 result = ns['df']
                 if not isinstance(result, pd.DataFrame):
-                    st.error('`df` must remain a pandas DataFrame after execution.')
+                    st.session_state['_custom_preview_error'] = (
+                        'TypeError: `df` must remain a pandas DataFrame after execution, '
+                        f'got {type(result).__name__}.'
+                    )
                 else:
                     st.session_state['_custom_preview_df'] = result
             except Exception:
-                st.session_state['_custom_preview_error'] = _tb.format_exc()
+                tb_lines = _tb.format_exc().strip().split('\n')
+                # Find the user-code line (exec frame → last File line before error)
+                user_line = next(
+                    (l.strip() for l in reversed(tb_lines)
+                     if l.strip().startswith('File') and '<string>' in l),
+                    None,
+                )
+                error_msg = tb_lines[-1]
+                clean = error_msg
+                if user_line:
+                    clean = f"{user_line}\n{error_msg}"
+                st.session_state['_custom_preview_error'] = clean
+            finally:
+                stdout_out = buf.getvalue()
+                if stdout_out:
+                    st.session_state['_custom_stdout'] = stdout_out
         st.rerun()
 
-    # ---- Error ---------------------------------------------------------------
-    if '_custom_preview_error' in st.session_state:
-        st.error('**Execution error** — fix the code and run again.')
-        st.code(st.session_state['_custom_preview_error'], language='python')
+    # ── Stdout output ─────────────────────────────────────────────────────────
+    if st.session_state.get('_custom_stdout'):
+        with st.expander('📤 Output (print statements)', expanded=True):
+            st.code(st.session_state['_custom_stdout'], language=None)
 
-    # ---- Preview -------------------------------------------------------------
+    # ── Error display ─────────────────────────────────────────────────────────
+    if '_custom_preview_error' in st.session_state:
+        st.error('**Error** — ' + st.session_state['_custom_preview_error'])
+
+    # ── Preview ───────────────────────────────────────────────────────────────
     if '_custom_preview_df' in st.session_state:
         preview_df = st.session_state['_custom_preview_df']
         diff = compute_diff(df_current, preview_df)
@@ -1195,10 +1279,12 @@ def render_custom_code_tab() -> None:
 
         parts = []
         if r1 != r0:
-            parts.append(f"rows {r0:,} → {r1:,}  ({'−' if r1 < r0 else '+'}{abs(r1 - r0):,})")
+            arrow = '−' if r1 < r0 else '+'
+            parts.append(f"rows {r0:,} → {r1:,}  ({arrow}{abs(r1 - r0):,})")
         if c1 != c0:
-            parts.append(f"columns {c0} → {c1}  ({'−' if c1 < c0 else '+'}{abs(c1 - c0)})")
-        st.success('**Preview ready** — ' + (' · '.join(parts) if parts else 'shape unchanged'))
+            arrow = '−' if c1 < c0 else '+'
+            parts.append(f"columns {c0} → {c1}  ({arrow}{abs(c1 - c0)})")
+        st.success('**Preview ready** — ' + (' · '.join(parts) if parts else 'no shape change'))
 
         render_diff(diff)
 
@@ -1209,10 +1295,10 @@ def render_custom_code_tab() -> None:
         if removed_cols:
             st.caption('Removed columns: ' + ', '.join(f'`{c}`' for c in removed_cols))
 
-        with st.expander('🔍 Preview modified dataset (first 50 rows)'):
+        with st.expander('🔍 Preview modified dataset (first 50 rows)', expanded=True):
             st.dataframe(preview_df.head(50), use_container_width=True)
 
-    # ---- Apply ---------------------------------------------------------------
+    # ── Apply ─────────────────────────────────────────────────────────────────
     if apply_clicked and '_custom_preview_df' in st.session_state:
         preview_df = st.session_state.pop('_custom_preview_df')
         df_before  = df_current.copy()
@@ -1224,12 +1310,12 @@ def render_custom_code_tab() -> None:
         rows_affected = diff.get('rows_changed', 0) + diff.get('rows_removed', 0)
 
         log_entry = {
-            'action':          'custom_code',
-            'code':            code,
-            'rows_before':     len(df_before),
-            'rows_after':      len(preview_df),
-            'columns_before':  len(df_before.columns),
-            'columns_after':   len(preview_df.columns),
+            'action':         'custom_code',
+            'code':           code,
+            'rows_before':    len(df_before),
+            'rows_after':     len(preview_df),
+            'columns_before': len(df_before.columns),
+            'columns_after':  len(preview_df.columns),
         }
         st.session_state['cleaning_log'].append(log_entry)
         log_event('decision_made', action='custom_code', rows_affected=rows_affected)
