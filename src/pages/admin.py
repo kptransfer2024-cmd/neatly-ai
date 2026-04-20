@@ -22,7 +22,10 @@ from utils.analytics import load_logs
 # Password gate
 # ---------------------------------------------------------------------------
 
-_PASSWORD = st.secrets.get('ADMIN_PASSWORD', None)
+try:
+    _PASSWORD = st.secrets.get('ADMIN_PASSWORD', None)
+except Exception:
+    _PASSWORD = None
 
 if _PASSWORD:
     pwd = st.text_input('Admin password', type='password')
