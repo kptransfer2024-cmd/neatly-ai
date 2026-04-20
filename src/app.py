@@ -129,6 +129,7 @@ from utils.db_ingestion import (
     load_table,
     load_query,
     create_connection,
+    write_table,
 )
 from utils.analytics import init_session, log_event
 from utils.session_state import init_state
@@ -208,47 +209,49 @@ def render_upload() -> None:
 
     tab_file, tab_db = st.tabs(['📁 File Upload', '🗄️ Database'])
 
-    # --- File Upload Tab ---
     with tab_file:
-        uploaded_file = st.file_uploader(
-            'Choose a file (CSV, TSV, JSON, Excel, Parquet)',
-            type=['csv', 'tsv', 'json', 'xlsx', 'xls', 'parquet'],
-            key='file_uploader',
-        )
+        _render_file_upload()
 
-        if not uploaded_file:
-            return
-        try:
-            df = parse_uploaded_file(uploaded_file)
-        except Exception as e:
-            st.error(f'Error reading file: {e}')
-            return
-
-        _MAX_ROWS, _MAX_COLS = 500_000, 500
-        if len(df) > _MAX_ROWS:
-            st.error(f'File has {len(df):,} rows — limit is {_MAX_ROWS:,}. Upload a smaller sample.')
-            return
-        if len(df.columns) > _MAX_COLS:
-            st.error(f'File has {len(df.columns)} columns — limit is {_MAX_COLS}.')
-            return
-
-        st.success(f'Loaded {len(df):,} rows, {len(df.columns)} columns')
-        st.dataframe(df.head(10), use_container_width=True)
-
-        if st.button('Start Diagnosis', key='diagnose_file_btn', type='primary'):
-            log_event('file_uploaded', rows=len(df), columns=len(df.columns), source='file')
-            st.session_state['original_df'] = df.copy()
-            st.session_state['df'] = df
-            st.session_state['issues'] = []
-            st.session_state['cleaning_log'] = []
-            st.session_state['df_history'] = []
-            st.session_state['stage'] = 'diagnose'
-            _clear_preview()
-            st.rerun()
-
-    # --- Database Tab ---
     with tab_db:
         _render_database_loader()
+
+
+def _render_file_upload() -> None:
+    uploaded_file = st.file_uploader(
+        'Choose a file (CSV, TSV, JSON, Excel, Parquet)',
+        type=['csv', 'tsv', 'json', 'xlsx', 'xls', 'parquet'],
+        key='file_uploader',
+    )
+
+    if not uploaded_file:
+        return
+    try:
+        df = parse_uploaded_file(uploaded_file)
+    except Exception as e:
+        st.error(f'Error reading file: {e}')
+        return
+
+    _MAX_ROWS, _MAX_COLS = 500_000, 500
+    if len(df) > _MAX_ROWS:
+        st.error(f'File has {len(df):,} rows — limit is {_MAX_ROWS:,}. Upload a smaller sample.')
+        return
+    if len(df.columns) > _MAX_COLS:
+        st.error(f'File has {len(df.columns)} columns — limit is {_MAX_COLS}.')
+        return
+
+    st.success(f'Loaded {len(df):,} rows, {len(df.columns)} columns')
+    st.dataframe(df.head(10), use_container_width=True)
+
+    if st.button('Start Diagnosis', key='diagnose_file_btn', type='primary'):
+        log_event('file_uploaded', rows=len(df), columns=len(df.columns), source='file')
+        st.session_state['original_df'] = df.copy()
+        st.session_state['df'] = df
+        st.session_state['issues'] = []
+        st.session_state['cleaning_log'] = []
+        st.session_state['df_history'] = []
+        st.session_state['stage'] = 'diagnose'
+        _clear_preview()
+        st.rerun()
 
 
 def _render_database_loader() -> None:
@@ -938,6 +941,70 @@ def _humanize(s: str) -> str:
     return s.replace('_', ' ').title()
 
 # ---------------------------------------------------------------------------
+# Stage: done — helpers
+# ---------------------------------------------------------------------------
+
+_PUSH_DB_TYPES = ['PostgreSQL', 'MySQL', 'SQLite']
+_PUSH_DB_DEFAULTS = {
+    'PostgreSQL': {'host': 'localhost', 'port': 5432},
+    'MySQL': {'host': 'localhost', 'port': 3306},
+    'SQLite': {},
+}
+
+
+def _render_push_to_db(df: pd.DataFrame) -> None:
+    """Render the Push to Database form inside the done stage expander."""
+    db_type = st.selectbox('Database type', _PUSH_DB_TYPES, key='push_db_type')
+
+    if db_type == 'SQLite':
+        db_path = st.text_input('SQLite file path', placeholder='/path/to/file.db', key='push_sqlite_path')
+        host = port = user = password = database = None
+    else:
+        defaults = _PUSH_DB_DEFAULTS[db_type]
+        col1, col2 = st.columns([3, 1])
+        host = col1.text_input('Host', value=defaults['host'], key='push_host')
+        port = col2.number_input('Port', value=defaults['port'], min_value=1, max_value=65535, key='push_port')
+        database = st.text_input('Database', key='push_database')
+        col3, col4 = st.columns(2)
+        user = col3.text_input('User', key='push_user')
+        password = col4.text_input('Password', type='password', key='push_password')
+        db_path = None
+
+    table_name = st.text_input('Destination table', key='push_table_name')
+    write_mode = st.radio(
+        'If table exists',
+        ['Append', 'Replace'],
+        horizontal=True,
+        key='push_write_mode',
+    )
+
+    if st.button('Push cleaned data', key='push_db_btn', type='primary'):
+        if not table_name:
+            st.error('Enter a destination table name.')
+            return
+        try:
+            if db_type == 'SQLite':
+                if not db_path:
+                    st.error('Enter a SQLite file path.')
+                    return
+                conn_str = build_connection_string('SQLite', path=db_path)
+            else:
+                conn_str = build_connection_string(
+                    db_type,
+                    host=host,
+                    port=int(port),
+                    database=database,
+                    user=user,
+                    password=password,
+                )
+            rows_written = write_table(conn_str, df, table_name, if_exists=write_mode.lower())
+            st.success(f'{rows_written:,} rows written to `{table_name}`.')
+            log_event('export_pushed', db_type=db_type, table=table_name, rows=rows_written)
+        except Exception as exc:
+            st.error(f'Push failed: {exc}')
+
+
+# ---------------------------------------------------------------------------
 # Stage: done
 # ---------------------------------------------------------------------------
 
@@ -981,6 +1048,11 @@ def render_done() -> None:
         log_event('export_downloaded', export_type='csv', rows=len(df), columns=len(df.columns))
     if col2.download_button('📄 Download Log (JSON)', log_bytes, 'cleaning_log.json', 'application/json', use_container_width=True):
         log_event('export_downloaded', export_type='log', n_transforms=len(cleaning_log))
+
+    # Push to Database (optional)
+    st.divider()
+    with st.expander('Push to Database (optional)', expanded=False):
+        _render_push_to_db(df)
 
     # Cleaning log in expander
     if cleaning_log:

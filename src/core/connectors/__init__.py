@@ -26,6 +26,9 @@ def get_connector(source_type: str, source_config: dict) -> DataSourceConnector:
     elif source_type == "bigquery":
         from .bigquery import BigQueryConnector
         return BigQueryConnector(source_config)
+    elif source_type == "mysql":
+        from .mysql import MySQLConnector
+        return MySQLConnector(source_config)
     else:
         raise ValueError(f"Unknown source type: {source_type}")
 

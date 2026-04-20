@@ -163,6 +163,40 @@ def load_query(
         engine.dispose()
 
 
+def write_table(
+    conn_str: str,
+    df: pd.DataFrame,
+    table_name: str,
+    if_exists: str = "append",
+    chunk_size: int = 1000,
+) -> int:
+    """Write a DataFrame to a database table. Returns the number of rows written.
+
+    Args:
+        conn_str: SQLAlchemy connection URL
+        df: DataFrame to write
+        table_name: Destination table name
+        if_exists: 'append' | 'replace' | 'fail'
+        chunk_size: Rows per INSERT batch
+
+    Returns:
+        Number of rows written
+
+    Raises:
+        ValueError: If if_exists is invalid
+        Exception: If write fails
+    """
+    if if_exists not in ("append", "replace", "fail"):
+        raise ValueError(f"if_exists must be 'append', 'replace', or 'fail'; got {if_exists!r}")
+
+    engine = create_connection(conn_str)
+    try:
+        df.to_sql(table_name, engine, if_exists=if_exists, index=False, chunksize=chunk_size)
+        return len(df)
+    finally:
+        engine.dispose()
+
+
 def get_schema(engine: Engine, table_name: str) -> dict:
     """Get column names and types for a table.
 
