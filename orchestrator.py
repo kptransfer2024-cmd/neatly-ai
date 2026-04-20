@@ -15,6 +15,7 @@ from detectors.outlier_detector import detect as detect_outliers
 from detectors.pattern_validator import detect as detect_patterns
 from detectors.range_validator import detect as detect_ranges
 from detectors.near_duplicate_detector import detect as detect_near_duplicates
+from detectors.constant_column_detector import detect as detect_constant_columns
 from explanation_layer import explain_issues
 
 _REQUIRED_ISSUE_FIELDS = {
@@ -51,6 +52,7 @@ def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
         (detect_patterns, 'pattern_validator', 'pattern_mismatch'),
         (detect_ranges, 'range_validator', 'out_of_range'),
         (detect_near_duplicates, 'near_duplicate_detector', 'near_duplicates'),
+        (detect_constant_columns, 'constant_column_detector', 'constant_column'),
     ]:
         try:
             detector_issues = detector_fn(df)

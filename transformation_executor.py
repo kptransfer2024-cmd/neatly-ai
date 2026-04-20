@@ -335,6 +335,20 @@ def drop_out_of_range_rows(
     return result
 
 
+def drop_column(df: pd.DataFrame, column: str, cleaning_log: list) -> pd.DataFrame:
+    """Drop *column* entirely from the DataFrame and log the action."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+
+    result = df.drop(columns=[column])
+    _log(cleaning_log, 'drop_column', {
+        'column': column,
+        'columns_before': len(df.columns),
+        'columns_after': len(result.columns),
+    })
+    return result
+
+
 def _log(cleaning_log: list, action: str, details: dict) -> None:
     """Append one log entry to the caller's cleaning_log list."""
     cleaning_log.append({'action': action, **details})

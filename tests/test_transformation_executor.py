@@ -381,3 +381,42 @@ def test_drop_out_of_range_rows_only_upper_bound():
     result = drop_out_of_range_rows(df, log, 'score', None, 100)
     assert len(result) == 2
     assert result['score'].max() <= 100
+
+
+# --- drop_column tests ---
+
+def test_drop_column_removes_column():
+    from transformation_executor import drop_column
+    df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
+    log = []
+    result = drop_column(df, 'a', log)
+    assert list(result.columns) == ['b']
+    assert len(result) == 3
+
+
+def test_drop_column_logs():
+    from transformation_executor import drop_column
+    df = pd.DataFrame({'a': [1, 2], 'b': [3, 4]})
+    log = []
+    drop_column(df, 'a', log)
+    assert log[0]['action'] == 'drop_column'
+    assert log[0]['column'] == 'a'
+    assert log[0]['columns_before'] == 2
+    assert log[0]['columns_after'] == 1
+
+
+def test_drop_column_missing_column_raises():
+    from transformation_executor import drop_column
+    df = pd.DataFrame({'a': [1]})
+    log = []
+    with pytest.raises(KeyError):
+        drop_column(df, 'missing', log)
+
+
+def test_drop_column_preserves_input():
+    from transformation_executor import drop_column
+    df = pd.DataFrame({'a': [1], 'b': [2]})
+    log = []
+    drop_column(df, 'a', log)
+    # Original untouched
+    assert list(df.columns) == ['a', 'b']

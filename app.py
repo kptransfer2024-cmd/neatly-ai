@@ -13,6 +13,7 @@ from orchestrator import run_diagnosis
 from transformation_executor import (
     cast_column,
     clip_outliers,
+    drop_column,
     drop_duplicates,
     drop_invalid_rows,
     drop_missing,
@@ -200,6 +201,9 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
                 ('Clip to range', lambda df, log: drop_out_of_range_rows(df, log, col, lo, hi)),
                 ('Drop invalid rows', lambda df, log: drop_out_of_range_rows(df, log, col, lo, hi)),
             ]
+
+    if issue_type == 'constant_column' and col:
+        return [('Drop column', lambda df, log: drop_column(df, col, log))]
 
     return []
 
