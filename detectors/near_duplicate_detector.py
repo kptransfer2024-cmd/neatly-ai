@@ -5,7 +5,7 @@ import pandas as pd
 _SIMILARITY_THRESHOLD = 0.85   # SequenceMatcher ratio ≥ 0.85 → near-duplicate
 _MAX_ROWS_TO_SCAN = 500        # cap O(n) scan; sample first 500 rows on large dfs
 _MIN_STRING_LENGTH = 3         # strings < 3 chars too short for meaningful similarity
-_MAX_CARDINALITY_RATIO = 0.95  # skip column if nearly all unique (UUID/ID-like)
+_MAX_CARDINALITY_RATIO = 0.99  # skip column if nearly all unique (UUID/ID-like) — strict so 99/100 passes
 _MIN_CARDINALITY_RATIO = 0.01  # skip column if nearly constant
 
 
