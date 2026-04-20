@@ -24,10 +24,13 @@ from transformation_executor import (
     merge_near_duplicates,
     normalize_text,
 )
+from utils.diff_engine import compute_diff, render_diff
 from utils.file_ingestion import parse_uploaded_file
 from utils.session_state import init_state
 
 load_dotenv()
+
+_HISTORY_CAP = 20
 
 # ---------------------------------------------------------------------------
 # Session state initialisation
@@ -63,7 +66,9 @@ def render_upload() -> None:
         st.session_state['df'] = df
         st.session_state['issues'] = []
         st.session_state['cleaning_log'] = []
+        st.session_state['df_history'] = []
         st.session_state['stage'] = 'diagnose'
+        _clear_preview()
         st.rerun()
 
 # ---------------------------------------------------------------------------
@@ -92,25 +97,33 @@ _STATS_HIDE_KEYS = {
 def render_decide() -> None:
     st.header('Review & Fix Issues')
     issues = st.session_state['issues']
-    if not issues:
-        st.info('No issues found — your data looks clean.')
-        if st.button('Finish', key='finish_btn', type='primary'):
-            st.session_state['stage'] = 'done'
-            st.rerun()
-        return
+    history = st.session_state['df_history']
 
-    st.caption(f"{len(issues)} issue(s) remaining.")
-    for i, issue in enumerate(issues):
-        _render_issue_card(i, issue)
+    changes_label = f"📋 Changes ({len(history)})" if history else "📋 Changes"
+    tab_issues, tab_changes = st.tabs(['🔍 Issues', changes_label])
 
-    st.divider()
-    col1, col2 = st.columns(2)
-    if col1.button('Done Reviewing', key='done_review_btn', type='primary'):
-        st.session_state['stage'] = 'done'
-        st.rerun()
-    if col2.button('Start Over', key='restart_decide_btn'):
-        _reset_to_upload()
-        st.rerun()
+    with tab_issues:
+        if not issues:
+            st.info('No issues found — your data looks clean.')
+            if st.button('Finish', key='finish_btn', type='primary'):
+                st.session_state['stage'] = 'done'
+                st.rerun()
+        else:
+            st.caption(f"{len(issues)} issue(s) remaining.")
+            for i, issue in enumerate(issues):
+                _render_issue_card(i, issue)
+
+            st.divider()
+            col1, col2 = st.columns(2)
+            if col1.button('Done Reviewing', key='done_review_btn', type='primary'):
+                st.session_state['stage'] = 'done'
+                st.rerun()
+            if col2.button('Start Over', key='restart_decide_btn'):
+                _reset_to_upload()
+                st.rerun()
+
+    with tab_changes:
+        render_changes_tab()
 
 
 def _render_issue_card(idx: int, issue: dict) -> None:
@@ -131,12 +144,48 @@ def _render_issue_card(idx: int, issue: dict) -> None:
         if not actions:
             st.caption("_No automatic fix available for this issue._")
             return
-        cols = st.columns(len(actions) + 1)
+        # Layout: one column per action + Preview + Skip
+        cols = st.columns(len(actions) + 2)
         for btn_col, (label, handler) in zip(cols, actions):
             if btn_col.button(label, key=f'act_{idx}_{label}'):
-                _apply_action(idx, handler)
+                _apply_action(idx, handler, label)
+        if cols[-2].button('👁 Preview', key=f'prev_{idx}'):
+            # Preview the first action by default — user can click any specific
+            # action to apply it; preview gives a read-only look at #1.
+            first_label, first_handler = actions[0]
+            st.session_state['_preview_idx'] = idx
+            st.session_state['_preview_handler'] = first_handler
+            st.session_state['_preview_label'] = first_label
+            st.rerun()
         if cols[-1].button('Skip', key=f'skip_{idx}'):
+            _clear_preview()
             _dismiss_issue(idx)
+
+        if st.session_state.get('_preview_idx') == idx:
+            _render_preview_panel(idx)
+
+
+def _render_preview_panel(idx: int) -> None:
+    handler = st.session_state['_preview_handler']
+    label = st.session_state['_preview_label']
+    try:
+        df_preview = handler(st.session_state['df'].copy(), [])
+    except Exception as e:
+        st.error(f'Preview failed: {e}')
+        return
+    diff = compute_diff(st.session_state['df'], df_preview)
+    st.info(f"**Preview — `{label}`.** These changes will apply if you click the action button above.")
+    render_diff(diff)
+    c1, c2 = st.columns([1, 5])
+    if c1.button('Close preview', key=f'prev_close_{idx}'):
+        _clear_preview()
+        st.rerun()
+
+
+def _clear_preview() -> None:
+    st.session_state['_preview_idx'] = None
+    st.session_state['_preview_handler'] = None
+    st.session_state['_preview_label'] = None
 
 
 def _actions_for(issue: dict) -> list[tuple[str, callable]]:
@@ -211,9 +260,55 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
     return []
 
 
-def _apply_action(idx: int, handler) -> None:
+def _apply_action(idx: int, handler, label: str = 'Action') -> None:
+    df_before = st.session_state['df'].copy()
     st.session_state['df'] = handler(st.session_state['df'], st.session_state['cleaning_log'])
+
+    log = st.session_state['cleaning_log']
+    log_entry = log[-1] if log else {}
+    diff = compute_diff(df_before, st.session_state['df'])
+
+    history = st.session_state['df_history']
+    history.append({
+        'label': label,
+        'log_entry': dict(log_entry),
+        'df_before': df_before,
+        'diff': diff,
+        'applied_at': len(history),
+    })
+    if len(history) > _HISTORY_CAP:
+        history.pop(0)
+
+    _clear_preview()
     _dismiss_issue(idx)
+
+
+def render_changes_tab() -> None:
+    history = st.session_state['df_history']
+    if not history:
+        st.info("No changes yet. Apply a fix from the Issues tab to see it here.")
+        return
+
+    st.caption(f"{len(history)} change(s) applied.")
+
+    # Newest first — like `git log`
+    newest_idx = len(history) - 1
+    for entry in reversed(history):
+        auto_expand = entry['applied_at'] == newest_idx
+        header = f"✅ {entry['label']}"
+        if entry['log_entry']:
+            col = entry['log_entry'].get('column')
+            if col:
+                header += f" — `{col}`"
+        with st.expander(header, expanded=auto_expand):
+            render_diff(entry['diff'])
+
+    # Cumulative diff vs original
+    if st.session_state.get('original_df') is not None:
+        st.divider()
+        st.subheader("Cumulative changes vs original")
+        cumulative = compute_diff(st.session_state['original_df'], st.session_state['df'])
+        render_diff(cumulative)
 
 
 def _dismiss_issue(idx: int) -> None:
@@ -267,7 +362,9 @@ def _reset_to_upload() -> None:
     st.session_state['original_df'] = None
     st.session_state['issues'] = []
     st.session_state['cleaning_log'] = []
+    st.session_state['df_history'] = []
     st.session_state['stage'] = 'upload'
+    _clear_preview()
 
 # ---------------------------------------------------------------------------
 # Router

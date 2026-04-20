@@ -11,6 +11,10 @@ def init_state() -> None:
         'issues': [],
         'cleaning_log': [],
         'stage': 'upload',
+        'df_history': [],         # list of snapshot dicts for the Changes tab
+        '_preview_idx': None,     # index of the issue currently being previewed
+        '_preview_handler': None, # callable to run for the preview diff
+        '_preview_label': None,   # label of the previewed action
     }
     for key, value in INITIAL_STATE.items():
         if key not in st.session_state:
