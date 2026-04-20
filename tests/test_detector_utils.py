@@ -1,5 +1,5 @@
 import pandas as pd
-from detectors.utils import severity_from_pct, get_string_columns
+from src.detectors.utils import severity_from_pct, get_string_columns
 
 
 def test_severity_from_pct_high():
