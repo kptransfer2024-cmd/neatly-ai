@@ -231,7 +231,7 @@ def _render_file_upload() -> None:
         st.error(f'Error reading file: {e}')
         return
 
-    _MAX_ROWS, _MAX_COLS = 500_000, 500
+    _MAX_ROWS, _MAX_COLS = 2_000_000, 500
     if len(df) > _MAX_ROWS:
         st.error(f'File has {len(df):,} rows — limit is {_MAX_ROWS:,}. Upload a smaller sample.')
         return
@@ -275,6 +275,7 @@ def _render_database_loader() -> None:
         st.session_state.pop('_db_conn_str', None)
         st.session_state.pop('_db_tables', None)
         st.session_state.pop('_db_connected_type', None)
+        st.session_state.pop('_db_loaded_df', None)
 
     # ---- type-specific help ----
     if db_type == 'MySQL Workbench (Local)':
@@ -384,7 +385,7 @@ def _render_database_loader() -> None:
         return
 
     st.success(f'Connected — {len(tables)} table(s) found')
-    row_limit = st.slider('Row Limit', 100, 100_000, 10_000, step=1_000, key='db_row_limit')
+    row_limit = st.slider('Row Limit', 1_000, 2_000_000, 500_000, step=10_000, key='db_row_limit')
     load_mode = st.radio('Load Mode', ['Select Table', 'Custom Query'], horizontal=True, key='db_load_mode')
 
     if load_mode == 'Select Table':
@@ -392,7 +393,8 @@ def _render_database_loader() -> None:
         if st.button('Load Table', key='db_load_table_btn', type='primary'):
             try:
                 df = load_table(conn_str, table_name, limit=row_limit)
-                _finalize_database_load(df)
+                st.session_state['_db_loaded_df'] = df
+                st.rerun()
             except Exception as e:
                 st.error(f'Load failed: {e}')
     else:
@@ -403,9 +405,14 @@ def _render_database_loader() -> None:
             else:
                 try:
                     df = load_query(conn_str, sql_query, limit=row_limit)
-                    _finalize_database_load(df)
+                    st.session_state['_db_loaded_df'] = df
+                    st.rerun()
                 except Exception as e:
                     st.error(f'Query failed: {e}')
+
+    loaded_df = st.session_state.get('_db_loaded_df')
+    if loaded_df is not None:
+        _finalize_database_load(loaded_df)
 
 
 def _finalize_database_load(df: pd.DataFrame) -> None:
@@ -420,6 +427,7 @@ def _finalize_database_load(df: pd.DataFrame) -> None:
         st.session_state['issues'] = []
         st.session_state['cleaning_log'] = []
         st.session_state['df_history'] = []
+        st.session_state.pop('_db_loaded_df', None)
         st.session_state['stage'] = 'diagnose'
         _clear_preview()
         st.rerun()
