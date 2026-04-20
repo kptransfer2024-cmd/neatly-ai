@@ -166,6 +166,9 @@ from transformation_executor import (
     standardize_phone,
     standardize_dates,
     standardize_currency,
+    find_replace,
+    fill_with_constant,
+    apply_custom_regex,
 )
 from utils import code_snippets
 from utils.diff_engine import compute_diff, render_diff
@@ -178,6 +181,7 @@ from utils.db_ingestion import (
     create_connection,
     write_table,
 )
+from streamlit_ace import st_ace
 from utils.analytics import init_session, log_event
 from utils.session_state import init_state
 
@@ -309,6 +313,7 @@ def _render_file_upload() -> None:
         st.session_state['cleaning_log'] = []
         st.session_state['df_history'] = []
         st.session_state['_undo_stack'] = []
+        st.session_state['_custom_rules'] = []
         st.session_state['_input_source'] = 'file'
         st.session_state.pop('_db_source_config', None)
         st.session_state.pop('_db_source_table', None)
@@ -497,6 +502,7 @@ def _finalize_database_load(df: pd.DataFrame) -> None:
         st.session_state['cleaning_log'] = []
         st.session_state['df_history'] = []
         st.session_state['_undo_stack'] = []
+        st.session_state['_custom_rules'] = []
         st.session_state['_input_source'] = 'database'
         st.session_state.pop('_db_loaded_df', None)
         st.session_state['stage'] = 'diagnose'
@@ -627,7 +633,11 @@ def render_decide() -> None:
         )
 
     changes_label = f"📋 Changes ({len(history)})" if history else "📋 Changes"
-    tab_issues, tab_changes, tab_code = st.tabs(['🔍 Issues', changes_label, '🧪 Custom Code'])
+    custom_rules = st.session_state.get('_custom_rules', [])
+    rules_label = f"✏️ Custom Rules ({len(custom_rules)})" if custom_rules else "✏️ Custom Rules"
+    tab_issues, tab_changes, tab_code, tab_rules = st.tabs(
+        ['🔍 Issues', changes_label, '🧪 Custom Code', rules_label]
+    )
 
     with tab_issues:
         _render_column_context_panel()
@@ -663,12 +673,12 @@ def render_decide() -> None:
                             _render_issue_card(orig_idx, issue)
 
             st.divider()
-            col1, col2 = st.columns(2)
-            if col1.button('Done Reviewing', key='done_review_btn', type='primary'):
+            col1, col2 = st.columns([3, 1])
+            if col1.button('Done Reviewing', key='done_review_btn', type='primary', use_container_width=True):
                 log_event("session_completed", n_actions=len(st.session_state["cleaning_log"]), issues_remaining=len(issues))
                 st.session_state["stage"] = "done"
                 st.rerun()
-            if col2.button('Start Over', key='restart_decide_btn'):
+            if col2.button('Start Over', key='restart_decide_btn', use_container_width=True):
                 _reset_to_upload()
                 st.rerun()
 
@@ -677,6 +687,9 @@ def render_decide() -> None:
 
     with tab_code:
         render_custom_code_tab()
+
+    with tab_rules:
+        render_custom_rules_tab()
 
 
 def _render_near_duplicate_quick_actions(issues: list) -> None:
@@ -1344,6 +1357,171 @@ def render_custom_code_tab() -> None:
         st.session_state['_highlight_cols'] = diff.get('columns_affected', [])
         st.session_state['_last_action_feedback'] = ' — '.join(feedback_parts)
         st.rerun()
+
+
+def render_custom_rules_tab() -> None:
+    """UI for defining, managing, and applying custom cleaning rules."""
+    import uuid
+
+    df = st.session_state['df']
+    rules: list[dict] = st.session_state.setdefault('_custom_rules', [])
+    columns = df.columns.tolist()
+
+    st.subheader('Add a Rule')
+
+    _RULE_TYPES = ['Find & Replace', 'Fill Missing with Value', 'Clamp to Range', 'Custom Regex']
+
+    with st.form('custom_rule_form', clear_on_submit=True):
+        col_type, col_col = st.columns([2, 2])
+        rule_type = col_type.selectbox('Rule type', _RULE_TYPES)
+        column = col_col.selectbox('Column', columns)
+
+        # Dynamic param fields — Streamlit always renders all; show guidance per type
+        if rule_type == 'Find & Replace':
+            c1, c2, c3 = st.columns([2, 2, 1])
+            find_val    = c1.text_input('Find value', placeholder='e.g. N/A')
+            replace_val = c2.text_input('Replace with', placeholder='leave blank to replace with empty')
+            case_sens   = c3.checkbox('Case-sensitive', value=False)
+            num_min = num_max = fill_val = regex_pat = None
+            regex_action = 'null_out'
+
+        elif rule_type == 'Fill Missing with Value':
+            fill_val = st.text_input('Fill value', placeholder='e.g. Unknown')
+            find_val = replace_val = num_min = num_max = regex_pat = None
+            case_sens = False
+            regex_action = 'null_out'
+
+        elif rule_type == 'Clamp to Range':
+            c1, c2 = st.columns(2)
+            num_min = c1.number_input('Min value', value=0.0)
+            num_max = c2.number_input('Max value', value=100.0)
+            find_val = replace_val = fill_val = regex_pat = None
+            case_sens = False
+            regex_action = 'null_out'
+
+        else:  # Custom Regex
+            regex_pat = st.text_input('Regex pattern', placeholder=r'e.g. ^\d{4}-\d{2}-\d{2}$')
+            regex_action = st.radio(
+                'Action for non-matching values',
+                ['null_out', 'drop_rows'],
+                format_func=lambda x: 'Null out' if x == 'null_out' else 'Drop rows',
+                horizontal=True,
+            )
+            find_val = replace_val = fill_val = num_min = num_max = None
+            case_sens = False
+
+        submitted = st.form_submit_button('+ Add Rule', type='primary')
+
+    if submitted:
+        error = None
+        if rule_type == 'Find & Replace' and not find_val:
+            error = 'Find value cannot be empty.'
+        elif rule_type == 'Fill Missing with Value' and fill_val is None:
+            error = 'Fill value cannot be empty.'
+        elif rule_type == 'Clamp to Range' and num_min >= num_max:
+            error = 'Min value must be less than Max value.'
+        elif rule_type == 'Custom Regex':
+            if not regex_pat:
+                error = 'Regex pattern cannot be empty.'
+            else:
+                import re as _re
+                try:
+                    _re.compile(regex_pat)
+                except _re.error as exc:
+                    error = f'Invalid regex: {exc}'
+
+        if error:
+            st.error(error)
+        else:
+            if rule_type == 'Find & Replace':
+                label = f'Find & Replace — **{column}**: "{find_val}" → "{replace_val}"'
+                params = {'find_value': find_val, 'replace_value': replace_val or '', 'case_sensitive': case_sens}
+            elif rule_type == 'Fill Missing with Value':
+                label = f'Fill Missing — **{column}**: → "{fill_val}"'
+                params = {'fill_value': fill_val}
+            elif rule_type == 'Clamp to Range':
+                label = f'Clamp — **{column}**: [{num_min}, {num_max}]'
+                params = {'lo': float(num_min), 'hi': float(num_max)}
+            else:
+                action_lbl = 'Null out' if regex_action == 'null_out' else 'Drop rows'
+                label = f'Custom Regex — **{column}**: `{regex_pat}` ({action_lbl})'
+                params = {'pattern': regex_pat, 'action': regex_action}
+
+            rules.append({
+                'id': str(uuid.uuid4())[:8],
+                'type': rule_type,
+                'column': column,
+                'params': params,
+                'label': label,
+            })
+            st.session_state['_custom_rules'] = rules
+            st.rerun()
+
+    # ── Active rules list ────────────────────────────────────────────────────
+    st.divider()
+    if not rules:
+        st.info('No custom rules yet. Add one above.')
+        return
+
+    st.subheader(f'Active Rules ({len(rules)})')
+    for i, rule in enumerate(rules):
+        c_lbl, c_rm = st.columns([5, 1])
+        c_lbl.markdown(rule['label'])
+        if c_rm.button('✕ Remove', key=f'rm_rule_{rule["id"]}', use_container_width=True):
+            rules.pop(i)
+            st.session_state['_custom_rules'] = rules
+            st.rerun()
+
+    st.divider()
+    if st.button('▶ Apply All Rules', type='primary', use_container_width=True):
+        df_before = df.copy()
+        current_df = df.copy()
+        log = st.session_state['cleaning_log']
+        errors = []
+
+        for rule in rules:
+            col = rule['column']
+            params = rule['params']
+            try:
+                if rule['type'] == 'Find & Replace':
+                    current_df = find_replace(current_df, log, col, **params)
+                elif rule['type'] == 'Fill Missing with Value':
+                    current_df = fill_with_constant(current_df, log, col, **params)
+                elif rule['type'] == 'Clamp to Range':
+                    current_df = clip_to_range(current_df, log, col, **params)
+                else:
+                    current_df = apply_custom_regex(current_df, log, col, **params)
+            except Exception as exc:
+                errors.append(f'{rule["label"]}: {exc}')
+
+        if errors:
+            st.error('Some rules failed:\n' + '\n'.join(errors))
+        else:
+            diff = compute_diff(df_before, current_df)
+            history = st.session_state['df_history']
+            history.append({
+                'label': f'Custom Rules ({len(rules)})',
+                'log_entry': {'action': 'custom_rules', 'rules_applied': len(rules)},
+                'df_before': df_before,
+                'diff': diff,
+                'applied_at': len(history),
+            })
+            if len(history) > _HISTORY_CAP:
+                history.pop(0)
+
+            undo_stack = st.session_state.setdefault('_undo_stack', [])
+            undo_stack.append({'df': df_before, 'issue': {}, 'label': f'Custom Rules ({len(rules)})'})
+            if len(undo_stack) > _UNDO_CAP:
+                undo_stack.pop(0)
+
+            st.session_state['df'] = current_df
+            st.session_state['_custom_rules'] = []
+            rows_affected = diff.get('rows_changed', 0) + diff.get('rows_removed', 0)
+            log_event('decision_made', action='custom_rules', rows_affected=rows_affected)
+            st.session_state['_last_action_feedback'] = (
+                f'**{len(rules)} custom rule(s) applied** — {rows_affected} rows affected'
+            )
+            st.rerun()
 
 
 def _dismiss_issue(idx: int) -> None:
