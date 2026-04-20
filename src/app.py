@@ -183,6 +183,7 @@ from utils.db_ingestion import (
 )
 from streamlit_ace import st_ace
 from utils.analytics import init_session, log_event
+from utils.context_summary import summarize_data_context
 from utils.session_state import init_state
 
 load_dotenv()
@@ -303,6 +304,7 @@ def _render_file_upload() -> None:
         return
 
     st.success(f'Loaded {len(df):,} rows, {len(df.columns)} columns')
+    _render_context_summary(df, source_name=uploaded_file.name)
     st.dataframe(df.head(10), use_container_width=True)
 
     if st.button('Start Diagnosis', key='diagnose_file_btn', type='primary'):
@@ -1134,90 +1136,6 @@ def render_changes_tab() -> None:
         render_diff(cumulative)
 
 
-def _build_completions(df: pd.DataFrame) -> list:
-    completions: list = []
-
-    for col in df.columns:
-        safe = col.replace("'", "\\'")
-        completions.append({
-            'caption': col,
-            'value':   f"df['{safe}']",
-            'meta':    f"col · {df[col].dtype}",
-            'score':   1000,
-        })
-
-    _PD = [
-        ('df.shape',             'df.shape',                                            'pd · property'),
-        ('df.dtypes',            'df.dtypes',                                           'pd · property'),
-        ('df.columns',           'df.columns.tolist()',                                 'pd · property'),
-        ('df.head()',            'df.head(10)',                                         'pd · inspect'),
-        ('df.describe()',        'df.describe()',                                       'pd · inspect'),
-        ('df.value_counts()',    "df['col'].value_counts()",                            'pd · inspect'),
-        ('df.nunique()',         'df.nunique()',                                        'pd · inspect'),
-        ('df.isna()',            'df.isna().sum()',                                     'pd · null'),
-        ('df.dropna()',          "df.dropna(subset=['col'])",                           'pd · null'),
-        ('df.fillna()',          "df['col'].fillna(0)",                                 'pd · null'),
-        ('df.loc[]',             "df.loc[df['col'] == val]",                            'pd · select'),
-        ('df.query()',           'df.query("col == \'val\'")',                          'pd · select'),
-        ('df.isin()',            "df[df['col'].isin(['a','b'])]",                       'pd · select'),
-        ('df.assign()',          "df.assign(new_col=df['col'] * 2)",                    'pd · mutate'),
-        ('df.rename()',          "df.rename(columns={'old': 'new'})",                   'pd · mutate'),
-        ('df.drop()',            "df.drop(columns=['col'])",                            'pd · mutate'),
-        ('df.astype()',          "df['col'].astype('Int64')",                           'pd · cast'),
-        ('pd.to_datetime()',     "pd.to_datetime(df['col'], errors='coerce')",          'pd · cast'),
-        ('str.strip()',          "df['col'].str.strip()",                               'pd · str'),
-        ('str.lower()',          "df['col'].str.lower()",                               'pd · str'),
-        ('str.upper()',          "df['col'].str.upper()",                               'pd · str'),
-        ('str.replace()',        "df['col'].str.replace('a', 'b', regex=False)",        'pd · str'),
-        ('str.contains()',       "df['col'].str.contains('pat', na=False)",             'pd · str'),
-        ('str.extract()',        r"df['col'].str.extract(r'(\d+)')",                    'pd · str'),
-        ('str.split()',          "df['col'].str.split(',', expand=True)",               'pd · str'),
-        ('df.clip()',            "df['col'].clip(lower=0, upper=100)",                  'pd · numeric'),
-        ('df.round()',           "df['col'].round(2)",                                  'pd · numeric'),
-        ('df.abs()',             "df['col'].abs()",                                     'pd · numeric'),
-        ('df.median()',          "df['col'].median()",                                  'pd · numeric'),
-        ('df.mean()',            "df['col'].mean()",                                    'pd · numeric'),
-        ('df.cumsum()',          "df['col'].cumsum()",                                  'pd · numeric'),
-        ('dt.year',              "df['col'].dt.year",                                   'pd · datetime'),
-        ('dt.month',             "df['col'].dt.month",                                  'pd · datetime'),
-        ('dt.day',               "df['col'].dt.day",                                    'pd · datetime'),
-        ('dt.strftime()',        "df['col'].dt.strftime('%Y-%m-%d')",                   'pd · datetime'),
-        ('df.sort_values()',     "df.sort_values('col', ascending=True).reset_index(drop=True)", 'pd · reshape'),
-        ('df.reset_index()',     'df.reset_index(drop=True)',                           'pd · reshape'),
-        ('df.drop_duplicates()', "df.drop_duplicates(subset=['col']).reset_index(drop=True)", 'pd · reshape'),
-        ('df.groupby()',         "df.groupby('col').agg({'val': 'sum'}).reset_index()", 'pd · reshape'),
-        ('df.merge()',           "df.merge(other, on='key', how='left')",               'pd · reshape'),
-        ('df.melt()',            "df.melt(id_vars=['id'], value_vars=['a','b'])",       'pd · reshape'),
-        ('df.pivot_table()',     "df.pivot_table(index='a', columns='b', values='c', aggfunc='sum')", 'pd · reshape'),
-        ('df.explode()',         "df.explode('list_col').reset_index(drop=True)",       'pd · reshape'),
-        ('pd.cut()',             "pd.cut(df['col'], bins=5, labels=False)",             'pd · bin'),
-        ('pd.qcut()',            "pd.qcut(df['col'], q=4, labels=['Q1','Q2','Q3','Q4'])", 'pd · bin'),
-    ]
-    for caption, value, meta in _PD:
-        completions.append({'caption': caption, 'value': value, 'meta': meta, 'score': 500})
-
-    _NP = [
-        ('np.nan',           'np.nan',                                     'np · constant'),
-        ('np.inf',           'np.inf',                                     'np · constant'),
-        ('np.where()',       "np.where(df['col'] > 0, 1, 0)",              'np · conditional'),
-        ('np.select()',      'np.select([cond1, cond2], [v1, v2], default=0)', 'np · conditional'),
-        ('np.isnan()',       "np.isnan(df['col'])",                        'np · null'),
-        ('np.log()',         "np.log(df['col'])",                          'np · math'),
-        ('np.sqrt()',        "np.sqrt(df['col'])",                         'np · math'),
-        ('np.abs()',         "np.abs(df['col'])",                          'np · math'),
-        ('np.floor()',       "np.floor(df['col'])",                        'np · math'),
-        ('np.ceil()',        "np.ceil(df['col'])",                         'np · math'),
-        ('np.round()',       "np.round(df['col'], 2)",                     'np · math'),
-        ('np.clip()',        "np.clip(df['col'], 0, 100)",                 'np · math'),
-        ('np.percentile()',  "np.percentile(df['col'].dropna(), 95)",      'np · stats'),
-        ('np.mean()',        "np.mean(df['col'])",                         'np · stats'),
-        ('np.median()',      "np.median(df['col'].dropna())",              'np · stats'),
-        ('np.std()',         "np.std(df['col'].dropna())",                 'np · stats'),
-    ]
-    for caption, value, meta in _NP:
-        completions.append({'caption': caption, 'value': value, 'meta': meta, 'score': 300})
-
-    return completions
 
 
 def render_custom_code_tab() -> None:
@@ -1496,7 +1414,6 @@ def render_custom_code_tab() -> None:
             show_print_margin=False,
             wrap=False,
             auto_update=True,
-            completions=_build_completions(df_current),
             height=340,
             key='_custom_code_editor',
         )
