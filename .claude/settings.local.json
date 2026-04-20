@@ -4,7 +4,26 @@
       "Bash(git init *)",
       "Bash(git checkout *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(python3 -m pytest tests/ -v --tb=short)",
+      "Bash(python3 -m pytest tests/ -q)",
+      "Bash(python3 -m pytest tests/ -v)",
+      "Bash(python3 -m pip install streamlit python-dotenv)",
+      "Bash(git push *)",
+      "Bash(python3 -m pytest tests/ -v --tb=short -k \"\")",
+      "Bash(python3 -c \"import app\")",
+      "Bash(python3 -m pytest tests/ -xvs)",
+      "Bash(python3 -m pytest tests/test_e2e_schema.py -v -s)",
+      "Bash(python3 -m pytest tests/test_app.py -v)",
+      "Bash(python3 -m pytest)",
+      "Bash(python3 -m pytest tests/ -v --co -q)",
+      "Bash(python3 -m pytest tests/test_missing_value_detector.py::test_all_null_column -v)",
+      "Bash(python3 -m pytest tests/test_schema_compliance.py -v)",
+      "Bash(python3 -m pytest tests/test_missing_value_detector.py -v)",
+      "Bash(python3 -m pytest tests/ -x --tb=short)",
+      "Bash(python3 -m pytest tests/test_app_render_failures.py -v -s)",
+      "Bash(python3 -m pytest tests/test_e2e_schema.py::test_missing_value_detector_has_required_fields -v)"
     ]
   }
 }

@@ -40,6 +40,9 @@ def run_diagnosis(df: pd.DataFrame) -> None:
     df_stats = _collect_df_stats(df)
     explained_issues = explain_issues(issues, df_stats)
 
+    for issue in explained_issues:
+        issue['summary'] = issue.pop('explanation', issue.get('summary', ''))
+
     st.session_state['issues'] = explained_issues
     st.session_state['stage'] = 'decide'
 
