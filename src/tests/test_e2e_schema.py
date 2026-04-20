@@ -4,15 +4,14 @@ import pytest
 from unittest.mock import patch, MagicMock
 import streamlit as st
 
-if 'issues' not in st.session_state:
-    st.session_state['issues'] = []
-
 from detectors.missing_value_detector import detect_missing
 from detectors.duplicate_detector import detect as detect_duplicates
 from detectors.outlier_detector import detect as detect_outliers
 from detectors.schema_analyzer import detect as detect_schema
 from detectors.consistency_cleaner import detect as detect_consistency
 from orchestrator import run_diagnosis
+
+_REQUIRED_FIELDS = ('detector', 'severity', 'row_indices', 'actions')
 
 
 def test_missing_value_detector_has_required_fields():
@@ -50,19 +49,10 @@ def test_duplicate_detector_has_required_fields():
     df = pd.DataFrame({'a': [1, 1, 2], 'b': [1, 1, 3]})
     issues = detect_duplicates(df)
 
-    if issues:
-        issue = issues[0]
-        # Check what's actually returned
-        print(f"\nDuplicate detector output: {issue.keys()}")
-
-        # These are currently missing
-        missing_fields = []
-        for field in ['detector', 'severity', 'row_indices', 'actions']:
-            if field not in issue:
-                missing_fields.append(field)
-
-        if missing_fields:
-            pytest.skip(f"duplicate_detector missing fields: {missing_fields}")
+    assert issues, 'duplicate_detector should return an issue for this input'
+    issue = issues[0]
+    missing = [f for f in _REQUIRED_FIELDS if f not in issue]
+    assert not missing, f'duplicate_detector is missing fields: {missing}'
 
 
 def test_outlier_detector_has_required_fields():
@@ -70,17 +60,10 @@ def test_outlier_detector_has_required_fields():
     df = pd.DataFrame({'values': [1, 2, 3, 4, 100]})
     issues = detect_outliers(df)
 
-    if issues:
-        issue = issues[0]
-        print(f"\nOutlier detector output: {issue.keys()}")
-
-        missing_fields = []
-        for field in ['detector', 'severity', 'row_indices', 'actions']:
-            if field not in issue:
-                missing_fields.append(field)
-
-        if missing_fields:
-            pytest.skip(f"outlier_detector missing fields: {missing_fields}")
+    assert issues, 'outlier_detector should return an issue for this input'
+    issue = issues[0]
+    missing = [f for f in _REQUIRED_FIELDS if f not in issue]
+    assert not missing, f'outlier_detector is missing fields: {missing}'
 
 
 def test_schema_analyzer_has_required_fields():
@@ -88,34 +71,22 @@ def test_schema_analyzer_has_required_fields():
     df = pd.DataFrame({'age': ['25', '30', '35']})
     issues = detect_schema(df)
 
-    if issues:
-        issue = issues[0]
-        print(f"\nSchema analyzer output: {issue.keys()}")
-
-        missing_fields = []
-        for field in ['detector', 'severity', 'row_indices', 'actions']:
-            if field not in issue:
-                missing_fields.append(field)
-
-        if missing_fields:
-            pytest.skip(f"schema_analyzer missing fields: {missing_fields}")
+    assert issues, 'schema_analyzer should return an issue for this input'
+    issue = issues[0]
+    missing = [f for f in _REQUIRED_FIELDS if f not in issue]
+    assert not missing, f'schema_analyzer is missing fields: {missing}'
 
 
 def test_app_expects_columns_as_list():
-    """Verify app expects 'columns' (list) not 'column' (str)."""
-    # App line 98: st.text(f"Columns: {', '.join(issue['columns'])}")
-    # This requires 'columns' to be a list
+    """Verify detectors provide 'columns' (list) as app.py requires."""
     df = pd.DataFrame({'age': [25, None, 35]})
     issues = detect_missing(df)
 
-    if issues:
-        issue = issues[0]
-        # Current detector returns 'column' (singular)
-        has_column = 'column' in issue
-        has_columns = 'columns' in issue
-
-        if has_column and not has_columns:
-            pytest.skip("Detector uses 'column' but app expects 'columns' (list)")
+    assert issues, 'missing_value_detector should return an issue for this input'
+    issue = issues[0]
+    assert 'columns' in issue, "detector must provide 'columns' (list)"
+    assert isinstance(issue['columns'], list), "'columns' must be a list"
+    assert 'column' not in issue, "detector should not expose the legacy 'column' (str) field"
 
 
 def test_end_to_end_with_missing_value():

@@ -31,7 +31,7 @@ def detect(df: pd.DataFrame) -> list[dict]:
         if dirty_count < _MIN_DIRTY_COUNT:
             continue
 
-        dirty_pct = round(dirty_count / len(df) * 100, 2)
+        dirty_pct = round(dirty_count / len(non_null) * 100, 2)
         severity = 'high' if dirty_pct > 10 else 'medium' if dirty_pct > 2 else 'low'
 
         df_positions = df.index[df[col].notna()]
