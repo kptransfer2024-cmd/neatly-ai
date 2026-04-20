@@ -122,7 +122,7 @@ def _build_single_context(col_name: str, series: pd.Series, n_rows: int) -> dict
 
 def _infer_role(col_name: str, series: pd.Series, cardinality: int, unique_pct: float) -> str:
     """Infer column role with priority: contact > datetime > flag > id > metric > category > text."""
-    col_lower = col_name.lower()
+    col_lower = str(col_name).lower() if col_name else ''
     dtype_str = str(series.dtype)
 
     # 1. Contact
@@ -192,6 +192,8 @@ def _is_string(dtype_str: str) -> bool:
 
 def _infer_domain(col_name: str) -> str | None:
     """Infer domain from column name using fuzzy keyword matching."""
+    if not isinstance(col_name, str):
+        return None
     col_lower = col_name.lower()
 
     for domain_keyword in _DOMAIN_BOUNDS.keys():

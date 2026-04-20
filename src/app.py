@@ -16,152 +16,81 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Custom theme CSS with dark/light mode support
+# Custom theme CSS — works reliably with Streamlit's theme toggle
 st.markdown("""
 <style>
-/* Theme Variables */
 :root {
-  --bg-primary: #0f0f11;
-  --bg-secondary: #18181b;
-  --text-primary: #f4f4f5;
-  --text-muted: #71717a;
-  --border: #27272a;
   --accent: #7c3aed;
-  --accent-hover: #6d28d9;
+  --accent-dark: #6d28d9;
   --success: #34d399;
-  --danger: #f87171;
-  --warning: #fbbf24;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --muted: #6b7280;
 }
 
-[data-theme="light"] {
-  --bg-primary: #fafafa;
-  --bg-secondary: #ffffff;
-  --text-primary: #1a1a1a;
-  --text-muted: #71717a;
-  --border: #e5e5e7;
-  --accent: #6d28d9;
-  --accent-hover: #5b21b6;
-  --success: #059669;
-  --danger: #dc2626;
-  --warning: #d97706;
-}
-
-/* OS-level light mode preference */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg-primary: #fafafa;
-    --bg-secondary: #ffffff;
-    --text-primary: #1a1a1a;
-    --text-muted: #71717a;
-    --border: #e5e5e7;
-    --accent: #6d28d9;
-    --accent-hover: #5b21b6;
-    --success: #059669;
-    --danger: #dc2626;
-    --warning: #d97706;
-  }
-}
-
-/* Layout & Typography */
 .block-container { max-width: 900px; padding: 2rem 1rem; }
-body { background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; transition: background 0.3s, color 0.3s; }
 h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.3; }
 
-/* Progress Stepper */
-.stepper { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 2rem; }
-.step { display: flex; flex-direction: column; align-items: center; color: var(--text-muted); font-size: 14px; }
-.step-circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border);
-               display: flex; align-items: center; justify-content: center; font-weight: 600; margin-bottom: 0.5rem; transition: all 0.3s; }
-.step.active .step-circle { background: var(--accent); border-color: var(--accent); color: var(--text-primary); }
-.step.done .step-circle { background: transparent; border-color: var(--success); color: var(--success); }
-.step-arrow { color: var(--border); font-size: 20px; margin-top: 1rem; }
+.stepper {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1rem; margin-bottom: 2rem;
+}
+.step {
+  display: flex; flex-direction: column; align-items: center;
+  color: var(--muted); font-size: 14px;
+}
+.step-circle {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid currentColor; opacity: 0.4;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; margin-bottom: 0.5rem; transition: all 0.3s;
+}
+.step.active .step-circle {
+  background: var(--accent); border-color: var(--accent);
+  color: white; opacity: 1;
+}
+.step.done .step-circle {
+  border-color: var(--success); color: var(--success); opacity: 1;
+}
+.step-arrow { color: var(--muted); font-size: 20px; margin-top: 1rem; opacity: 0.3; }
 .step-arrow:last-child { display: none; }
 
-/* Cards & Containers */
-.neat-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; transition: all 0.3s; }
+.neat-card {
+  border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;
+  border: 1px solid rgba(0,0,0,0.1); transition: all 0.3s;
+  background: rgba(0,0,0,0.02);
+}
+@media (prefers-color-scheme: dark) {
+  .neat-card { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+}
 .neat-card.sev-high { border-left: 4px solid var(--danger); }
 .neat-card.sev-medium { border-left: 4px solid var(--warning); }
 .neat-card.sev-low { border-left: 4px solid var(--success); }
 
-/* Severity badges */
 .sev-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-.sev-high .sev-badge { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
-.sev-medium .sev-badge { background: rgba(217, 119, 6, 0.1); color: var(--warning); }
-.sev-low .sev-badge { background: rgba(5, 150, 105, 0.1); color: var(--success); }
+.sev-high .sev-badge { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+.sev-medium .sev-badge { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.sev-low .sev-badge { background: rgba(52, 211, 153, 0.15); color: var(--success); }
 
-/* Buttons */
-.stButton > button { border-radius: 6px; font-weight: 600; transition: all 0.2s; }
-button[kind="primary"] { background: var(--accent) !important; border: none !important; }
-button[kind="primary"]:hover { background: var(--accent-hover) !important; }
+.stButton > button { border-radius: 6px; font-weight: 600; transition: all 0.2s; border: none !important; }
+button[kind="primary"] { background: var(--accent) !important; color: white !important; }
+button[kind="primary"]:hover { background: var(--accent-dark) !important; opacity: 0.9; }
 
-/* Metrics */
-[data-testid="metric-container"] { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; transition: all 0.3s; }
+[data-testid="metric-container"] {
+  border-radius: 8px; padding: 1.25rem;
+  border: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.02);
+  transition: all 0.3s;
+}
+@media (prefers-color-scheme: dark) {
+  [data-testid="metric-container"] { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+}
 
-/* Tabs */
 [role="tablist"] button { font-weight: 600; }
-
-/* Download buttons */
 .stDownloadButton > button { border-radius: 6px; font-weight: 600; }
 
-/* Theme toggle button */
-.theme-toggle { position: fixed; top: 1rem; right: 1rem; z-index: 999; }
-.theme-toggle button { padding: 0.5rem 1rem; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-.theme-toggle button:hover { background: var(--bg-primary); }
-
-/* Remove Streamlit defaults */
 [data-testid="stAppViewContainer"] { padding-top: 0; }
 footer { display: none; }
 </style>
-""", unsafe_allow_html=True)
-
-# Inject JavaScript to detect and respond to Streamlit theme changes
-st.markdown("""
-<script>
-  function detectTheme() {
-    // Get current computed background color
-    const bgColor = window.getComputedStyle(document.body).backgroundColor;
-    const isDark = bgColor.includes('15') || bgColor.includes('rgb(15') || bgColor === 'rgb(15, 15, 17)' || bgColor.includes('rgb(240');
-
-    // Check for Streamlit's internal theme indicator
-    const htmlAttrs = document.documentElement.getAttribute('data-theme') || '';
-    let theme = htmlAttrs.includes('light') ? 'light' : 'dark';
-
-    // Fallback: detect based on background luminance
-    if (bgColor.startsWith('rgb')) {
-      const match = bgColor.match(/\\d+/g);
-      if (match && match.length >= 3) {
-        const r = parseInt(match[0]);
-        const g = parseInt(match[1]);
-        const b = parseInt(match[2]);
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        theme = luminance > 0.5 ? 'light' : 'dark';
-      }
-    }
-
-    document.documentElement.setAttribute('data-theme', theme);
-  }
-
-  // Detect on load
-  detectTheme();
-
-  // Watch for theme changes
-  const observer = new MutationObserver(() => {
-    // Debounce with timeout
-    clearTimeout(window.themeCheckTimeout);
-    window.themeCheckTimeout = setTimeout(detectTheme, 100);
-  });
-
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme', 'style'],
-    subtree: false
-  });
-
-  // Also listen for visibility changes (Streamlit reruns)
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) setTimeout(detectTheme, 200);
-  });
-</script>
 """, unsafe_allow_html=True)
 
 from orchestrator import run_diagnosis

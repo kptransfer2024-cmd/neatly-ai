@@ -1,0 +1,7 @@
+id,email,age,name
+1.0,user1@example.com,25,Alice
+2.0,user2@example.com,30,Bob
+3.0,invalid-email,150,Charlie
+4.0,user4@example.com,28,
+5.0,user5@example.com,32,Eve
+,user6@example.com,45,Frank

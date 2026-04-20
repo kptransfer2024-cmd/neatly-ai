@@ -57,6 +57,8 @@ def detect(df: pd.DataFrame) -> list[dict]:
 
 def _infer_domain(col_name: str) -> tuple[str, float | None, float | None] | None:
     """Return (keyword, lo, hi) for the first domain keyword found in col_name, else None."""
+    if not isinstance(col_name, str):
+        return None
     lower = col_name.lower()
     for keyword, (lo, hi) in _DOMAIN_BOUNDS.items():
         if keyword in lower:
