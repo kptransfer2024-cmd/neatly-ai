@@ -61,6 +61,7 @@ def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
         (detect_consistency, 'consistency_cleaner', 'inconsistent_format'),
         (detect_outliers, 'outlier_detector', 'outliers'),
         (detect_patterns, 'pattern_validator', 'pattern_mismatch'),
+        (detect_pii, 'pii_detector', 'pii_detected'),
         (detect_ranges, 'range_validator', 'out_of_range'),
         (detect_near_duplicates, 'near_duplicate_detector', 'near_duplicates'),
         (detect_constant_columns, 'constant_column_detector', 'constant_column'),
@@ -68,6 +69,7 @@ def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
         (detect_mixed_types, 'mixed_type_detector', 'mixed_type'),
         (detect_duplicate_columns, 'duplicate_column_detector', 'duplicate_column'),
         (detect_id_columns, 'id_column_detector', 'id_column'),
+        (detect_date_ranges, 'date_range_validator', 'date_out_of_range'),
     ]:
         try:
             detector_issues = detector_fn(df)
