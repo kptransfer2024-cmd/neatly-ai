@@ -46,6 +46,22 @@ st.markdown("""
   --warning: #d97706;
 }
 
+/* OS-level light mode preference */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg-primary: #fafafa;
+    --bg-secondary: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-muted: #71717a;
+    --border: #e5e5e7;
+    --accent: #6d28d9;
+    --accent-hover: #5b21b6;
+    --success: #059669;
+    --danger: #dc2626;
+    --warning: #d97706;
+  }
+}
+
 /* Layout & Typography */
 .block-container { max-width: 900px; padding: 2rem 1rem; }
 body { background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; transition: background 0.3s, color 0.3s; }
@@ -98,11 +114,53 @@ footer { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# Inject JavaScript to set theme attribute on page load
+# Inject JavaScript to detect and respond to Streamlit theme changes
 st.markdown("""
 <script>
-  const theme = window.sessionStorage.getItem('neatly_theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', theme);
+  function detectTheme() {
+    // Get current computed background color
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const isDark = bgColor.includes('15') || bgColor.includes('rgb(15') || bgColor === 'rgb(15, 15, 17)' || bgColor.includes('rgb(240');
+
+    // Check for Streamlit's internal theme indicator
+    const htmlAttrs = document.documentElement.getAttribute('data-theme') || '';
+    let theme = htmlAttrs.includes('light') ? 'light' : 'dark';
+
+    // Fallback: detect based on background luminance
+    if (bgColor.startsWith('rgb')) {
+      const match = bgColor.match(/\\d+/g);
+      if (match && match.length >= 3) {
+        const r = parseInt(match[0]);
+        const g = parseInt(match[1]);
+        const b = parseInt(match[2]);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        theme = luminance > 0.5 ? 'light' : 'dark';
+      }
+    }
+
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+
+  // Detect on load
+  detectTheme();
+
+  // Watch for theme changes
+  const observer = new MutationObserver(() => {
+    // Debounce with timeout
+    clearTimeout(window.themeCheckTimeout);
+    window.themeCheckTimeout = setTimeout(detectTheme, 100);
+  });
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme', 'style'],
+    subtree: false
+  });
+
+  // Also listen for visibility changes (Streamlit reruns)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) setTimeout(detectTheme, 200);
+  });
 </script>
 """, unsafe_allow_html=True)
 
