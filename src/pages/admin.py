@@ -1,9 +1,15 @@
 """Internal analytics dashboard for Neatly AI.
 
 Access: /admin via Streamlit multipage navigation.
-Password gate: set ADMIN_PASSWORD in Streamlit secrets to require a password.
-If secret is not set, the page is open (fine for local dev / solo founder).
+
+Password gate:
+  - Set ADMIN_PASSWORD in Streamlit secrets (Manage app → Settings → Secrets)
+    to require a password. Without the secret, the page is open (OK for
+    local dev / solo founder).
+  - Once authenticated in a browser session, credentials are cached in
+    session_state so widget interactions don't re-prompt.
 """
+import hmac
 import json
 from collections import Counter
 from datetime import datetime
@@ -18,26 +24,49 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.analytics import load_logs
 
+st.set_page_config(page_title='Neatly Admin', page_icon='📊', layout='wide')
+
 # ---------------------------------------------------------------------------
 # Password gate
 # ---------------------------------------------------------------------------
 
-try:
-    _PASSWORD = st.secrets.get('ADMIN_PASSWORD', None)
-except Exception:
-    _PASSWORD = None
+def _check_password() -> bool:
+    """Return True if the user is authenticated (or no password is required).
 
-if _PASSWORD:
-    pwd = st.text_input('Admin password', type='password')
-    if pwd != _PASSWORD:
-        st.warning('Enter the admin password to continue.')
-        st.stop()
+    If ADMIN_PASSWORD secret is not set, the page is open. Otherwise show a
+    sign-in form and cache success in session_state for the session.
+    """
+    try:
+        expected = st.secrets.get('ADMIN_PASSWORD')
+    except Exception:
+        expected = None
 
-# ---------------------------------------------------------------------------
-# Load & parse
-# ---------------------------------------------------------------------------
+    if not expected:
+        return True
 
-st.set_page_config(page_title='Neatly Admin', page_icon='📊', layout='wide')
+    if st.session_state.get('_admin_authed'):
+        return True
+
+    st.title('📊 Neatly Admin — Sign in')
+    with st.form('admin_signin', clear_on_submit=False):
+        pwd = st.text_input('Password', type='password', key='_admin_pwd_input')
+        submitted = st.form_submit_button('Sign in')
+
+    if not submitted:
+        return False
+
+    # Constant-time comparison — avoids leaking length via response time
+    if hmac.compare_digest(pwd or '', expected):
+        st.session_state['_admin_authed'] = True
+        st.rerun()
+    else:
+        st.error('Incorrect password.')
+    return False
+
+
+if not _check_password():
+    st.stop()
+
 st.title('📊 Neatly Analytics')
 
 @st.cache_data(ttl=10)
