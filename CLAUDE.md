@@ -1,0 +1,92 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Product
+
+AI data cleaning copilot. Users upload a CSV, the app detects data quality issues, explains them in plain English, lets users choose actions via buttons, applies deterministic transforms, and exports a cleaned CSV + cleaning log.
+
+## Stack
+
+- Streamlit frontend (`app.py`)
+- pandas for all data operations
+- Claude API (`claude-sonnet-4-6`) for natural-language explanations only
+- Python 3.12
+- pytest
+
+## Commands
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the app
+streamlit run app.py
+
+# Run all tests
+pytest
+
+# Run a single test file
+pytest tests/test_missing_value_detector.py
+
+# Run a single test by name
+pytest tests/test_missing_value_detector.py::test_name -v
+```
+
+## Architecture
+
+All logic lives in `detectors/` and is called by `orchestrator.py`, which feeds `app.py`.
+
+```
+product/
+  app.py                        # Streamlit UI — reads/writes session_state only
+  orchestrator.py               # Wires detectors → explanation_layer → transformation_executor
+  explanation_layer.py          # Claude API calls — summaries/stats only, never raw rows
+  transformation_executor.py    # Applies transforms deterministically; appends to cleaning_log
+  detectors/
+    missing_value_detector.py
+    duplicate_detector.py
+    schema_analyzer.py
+    consistency_cleaner.py
+    outlier_detector.py
+  tests/
+```
+
+### Session state schema (do not change)
+
+```python
+st.session_state = {
+    'df': DataFrame,          # working copy, mutated by transforms
+    'original_df': DataFrame, # immutable snapshot on upload
+    'issues': [],             # list of issue dicts from detectors
+    'cleaning_log': [],       # every transform appended here
+    'stage': str              # 'upload' | 'diagnose' | 'decide' | 'done'
+}
+```
+
+### Data flow
+
+1. User uploads CSV → `original_df` and `df` set, `stage = 'diagnose'`
+2. Each detector runs on `df`, returns issue dicts appended to `issues`
+3. `explanation_layer.py` calls Claude with column-level stats (no raw rows) to produce plain-English summaries
+4. UI renders issue cards with action buttons → `stage = 'decide'`
+5. Button click calls `transformation_executor.py`, which mutates `df` and appends to `cleaning_log`
+6. Export writes cleaned CSV + log → `stage = 'done'`
+
+## Hard rules
+
+- **Deterministic transforms only.** All data mutations are Python/pandas — never LLM-generated code.
+- **LLM for explanation only.** Never send raw data rows to the Claude API — summaries and column stats only.
+- **Every transform appends to `st.session_state['cleaning_log']`.**
+- Never modify working code unless fixing a confirmed bug.
+- No broad refactors unless explicitly asked.
+
+## Git workflow
+
+- Feature branches only — never commit to main.
+- Commit message format: `feat: [what]` or `fix: [what]`
+- After each module: run tests, then commit and push to current branch.
+
+## Lessons learned
+
+_(Update this section when mistakes happen — record what went wrong and the rule that prevents it.)_
