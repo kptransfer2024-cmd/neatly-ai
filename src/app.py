@@ -98,6 +98,14 @@ footer { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
+# Inject JavaScript to set theme attribute on page load
+st.markdown("""
+<script>
+  const theme = window.sessionStorage.getItem('neatly_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+</script>
+""", unsafe_allow_html=True)
+
 from orchestrator import run_diagnosis
 from transformation_executor import (
     cast_column,
@@ -145,6 +153,26 @@ _HISTORY_CAP = 20
 
 init_state()
 init_session()   # generates session_id and fires session_started once per browser session
+
+# Apply theme from session state
+theme = st.session_state.get('theme', 'dark')
+st.markdown(f"<script>document.documentElement.setAttribute('data-theme', '{theme}');</script>", unsafe_allow_html=True)
+
+# Render theme toggle
+def _render_theme_toggle() -> None:
+    """Render theme toggle button in top-right corner."""
+    theme = st.session_state.get('theme', 'dark')
+    icon = '☀️' if theme == 'dark' else '🌙'
+    label = 'Light' if theme == 'dark' else 'Dark'
+
+    col1, col2 = st.columns([10, 1])
+    with col2:
+        if st.button(f'{icon} {label}', key='theme_toggle_btn', use_container_width=False):
+            st.session_state['theme'] = 'light' if theme == 'dark' else 'dark'
+            st.rerun()
+
+# Call toggle on every render
+_render_theme_toggle()
 
 # ---------------------------------------------------------------------------
 # Stage: upload
