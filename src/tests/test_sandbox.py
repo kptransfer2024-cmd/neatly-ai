@@ -405,3 +405,10 @@ class TestStAceCompatibility:
         from streamlit_ace import st_ace
         sig = inspect.signature(st_ace)
         assert 'completions' not in sig.parameters
+
+    def test_app_does_not_call_completions(self):
+        """Guard: app.py must not pass completions= to st_ace (was the TypeError root cause)."""
+        from pathlib import Path
+        app_src = (Path(__file__).parent.parent / 'app.py').read_text(encoding='utf-8')
+        assert 'completions=_build_completions' not in app_src
+        assert 'def _build_completions' not in app_src
