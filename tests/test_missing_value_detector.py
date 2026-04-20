@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 from detectors.missing_value_detector import detect_missing, suggest_strategy
 
 
@@ -49,3 +48,27 @@ def test_all_null_column():
     assert issue['missing_pct'] == 100.0
     assert issue['sample_values'] == []
     assert suggest_strategy(issue) == 'drop_column'
+
+
+def test_empty_dataframe_returns_empty():
+    df = pd.DataFrame({'a': pd.Series([], dtype=float)})
+    assert detect_missing(df) == []
+
+
+def test_symmetric_distribution_suggests_fill_mean():
+    # skew([1,2,3,4,5]) ≈ 0 → symmetric → fill_mean
+    series = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
+    issue = {'column': 'x', 'missing_count': 1, 'missing_pct': 20.0, 'dtype': 'float64', 'sample_values': []}
+    assert suggest_strategy(issue, series=series) == 'fill_mean'
+
+
+def test_skewed_distribution_suggests_fill_median():
+    # right-skewed: outlier at 1000 → median is robust
+    series = pd.Series([1.0, 1.0, 1.0, 1.0, 1000.0])
+    issue = {'column': 'x', 'missing_count': 1, 'missing_pct': 20.0, 'dtype': 'float64', 'sample_values': []}
+    assert suggest_strategy(issue, series=series) == 'fill_median'
+
+
+def test_no_series_falls_back_to_fill_median():
+    issue = {'column': 'x', 'missing_count': 1, 'missing_pct': 20.0, 'dtype': 'float64', 'sample_values': []}
+    assert suggest_strategy(issue) == 'fill_median'

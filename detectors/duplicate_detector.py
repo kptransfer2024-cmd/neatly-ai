@@ -19,10 +19,12 @@ def detect(df: pd.DataFrame) -> list[dict]:
     if dup_count == 0:
         return []
     total = len(df)
+    # numpy nonzero avoids materializing a filtered pandas Series for index lookup
+    sample_indices = dup_mask.to_numpy().nonzero()[0][:5].tolist()
     return [{
         'type': 'duplicates',
         'duplicate_count': dup_count,
         'total_rows': total,
         'duplicate_pct': round(dup_count / total * 100, 2),
-        'sample_indices': dup_mask[dup_mask].index.tolist()[:5],
+        'sample_indices': sample_indices,
     }]
