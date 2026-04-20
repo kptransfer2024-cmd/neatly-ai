@@ -388,6 +388,21 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
     if issue_type == 'constant_column' and col:
         return [('Drop column', lambda df, log: drop_column(df, col, log))]
 
+    if issue_type == 'whitespace_values' and col:
+        return [
+            ('Null out', lambda df, log: null_out_whitespace(df, log, col)),
+            ('Drop rows', lambda df, log: drop_whitespace_rows(df, log, col)),
+        ]
+
+    if issue_type == 'mixed_type' and col:
+        return [
+            ('Coerce to numeric', lambda df, log: coerce_to_numeric(df, log, col)),
+            ('Drop non-numeric rows', lambda df, log: drop_non_numeric_rows(df, log, col)),
+        ]
+
+    if issue_type == 'duplicate_column' and col:
+        return [('Drop column', lambda df, log: drop_column(df, col, log))]
+
     return []
 
 
