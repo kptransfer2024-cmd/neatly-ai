@@ -272,6 +272,13 @@ def render_upload() -> None:
         _render_database_loader()
 
 
+def _render_context_summary(df: pd.DataFrame, source_name: str | None = None) -> None:
+    """Render the brief data-context intro above the preview table."""
+    summary = summarize_data_context(df, source_name=source_name)
+    if summary:
+        st.info(summary)
+
+
 def _render_file_upload() -> None:
     uploaded_file = st.file_uploader(
         'Choose a file (CSV, TSV, JSON, Excel, Parquet)',
@@ -494,6 +501,8 @@ def _render_database_loader() -> None:
 def _finalize_database_load(df: pd.DataFrame) -> None:
     """Show preview and start diagnosis for database-loaded data."""
     st.success(f'Loaded {len(df):,} rows, {len(df.columns)} columns')
+    table_name = st.session_state.get('_db_source_table')
+    _render_context_summary(df, source_name=table_name)
     st.dataframe(df.head(10), use_container_width=True)
 
     if st.button('Start Diagnosis', key='diagnose_db_btn', type='primary'):
