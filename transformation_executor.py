@@ -349,6 +349,77 @@ def drop_column(df: pd.DataFrame, column: str, cleaning_log: list) -> pd.DataFra
     return result
 
 
+def null_out_whitespace(df: pd.DataFrame, cleaning_log: list, column: str) -> pd.DataFrame:
+    """Replace whitespace-only cells in column with NaN and log the action."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    result = df.copy()
+    ws_mask = result[column].astype(str).str.strip() == ''
+    # Only apply to non-null rows (avoid turning real NaN into NaN redundantly)
+    ws_mask = ws_mask & result[column].notna()
+    count = int(ws_mask.sum())
+    result.loc[ws_mask, column] = None
+    if count > 0:
+        _log(cleaning_log, 'null_out_whitespace', {'column': column, 'nulled_count': count})
+    return result
+
+
+def drop_whitespace_rows(df: pd.DataFrame, cleaning_log: list, column: str) -> pd.DataFrame:
+    """Drop rows where column is whitespace-only and log the action."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    before = len(df)
+    ws_mask = df[column].notna() & (df[column].astype(str).str.strip() == '')
+    result = df[~ws_mask].reset_index(drop=True)
+    dropped = before - len(result)
+    if dropped > 0:
+        _log(cleaning_log, 'drop_whitespace_rows', {'column': column, 'rows_dropped': dropped})
+    return result
+
+
+def coerce_to_numeric(df: pd.DataFrame, cleaning_log: list, column: str) -> pd.DataFrame:
+    """Cast column to float via pd.to_numeric(errors='coerce') and log the action."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    result = df.copy()
+    before_nulls = int(result[column].isna().sum())
+    result[column] = pd.to_numeric(result[column], errors='coerce')
+    coerced_to_null = int(result[column].isna().sum()) - before_nulls
+    _log(cleaning_log, 'coerce_to_numeric', {
+        'column': column,
+        'values_coerced_to_null': coerced_to_null,
+    })
+    return result
+
+
+def drop_non_numeric_rows(df: pd.DataFrame, cleaning_log: list, column: str) -> pd.DataFrame:
+    """Drop rows where column cannot be parsed as numeric and log the action."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    before = len(df)
+    numeric_mask = pd.to_numeric(df[column], errors='coerce').notna() | df[column].isna()
+    result = df[numeric_mask].reset_index(drop=True)
+    dropped = before - len(result)
+    if dropped > 0:
+        _log(cleaning_log, 'drop_non_numeric_rows', {'column': column, 'rows_dropped': dropped})
+    return result
+
+
+def drop_column(df: pd.DataFrame, column: str, cleaning_log: list) -> pd.DataFrame:
+    """Drop a column entirely and log the action."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    columns_before = len(df.columns)
+    result = df.drop(columns=[column]).reset_index(drop=True)
+    columns_after = len(result.columns)
+    _log(cleaning_log, 'drop_column', {
+        'column': column,
+        'columns_before': columns_before,
+        'columns_after': columns_after,
+    })
+    return result
+
+
 def _log(cleaning_log: list, action: str, details: dict) -> None:
     """Append one log entry to the caller's cleaning_log list."""
     cleaning_log.append({'action': action, **details})

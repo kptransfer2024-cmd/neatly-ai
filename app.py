@@ -13,19 +13,31 @@ from orchestrator import run_diagnosis
 from transformation_executor import (
     cast_column,
     clip_outliers,
+    coerce_to_numeric,
     drop_column,
     drop_duplicates,
     drop_invalid_rows,
     drop_missing,
+    drop_non_numeric_rows,
     drop_out_of_range_rows,
+    drop_whitespace_rows,
     fill_missing,
     flag_invalid_patterns,
     flag_near_duplicates,
     merge_near_duplicates,
     normalize_text,
+    null_out_whitespace,
 )
+from utils import code_snippets
 from utils.diff_engine import compute_diff, render_diff
 from utils.file_ingestion import parse_uploaded_file
+from utils.db_ingestion import (
+    build_connection_string,
+    list_tables,
+    load_table,
+    load_query,
+    create_connection,
+)
 from utils.session_state import init_state
 
 load_dotenv()
@@ -43,25 +55,132 @@ init_state()
 # ---------------------------------------------------------------------------
 
 def render_upload() -> None:
-    st.header('Upload your data file')
-    st.write("Neatly will find data-quality issues, explain them in plain English, and let you clean the file with a few clicks.")
-    uploaded_file = st.file_uploader(
-        'Choose a file (CSV, TSV, JSON, Excel, Parquet)',
-        type=['csv', 'tsv', 'json', 'xlsx', 'xls', 'parquet'],
-    )
+    st.header('Load your data')
+    st.write("Neatly will find data-quality issues, explain them in plain English, and let you clean the data with a few clicks.")
 
-    if not uploaded_file:
-        return
-    try:
-        df = parse_uploaded_file(uploaded_file)
-    except Exception as e:
-        st.error(f'Error reading file: {e}')
-        return
+    tab_file, tab_db = st.tabs(['📁 File Upload', '🗄️ Database'])
 
+    # --- File Upload Tab ---
+    with tab_file:
+        uploaded_file = st.file_uploader(
+            'Choose a file (CSV, TSV, JSON, Excel, Parquet)',
+            type=['csv', 'tsv', 'json', 'xlsx', 'xls', 'parquet'],
+            key='file_uploader',
+        )
+
+        if not uploaded_file:
+            return
+        try:
+            df = parse_uploaded_file(uploaded_file)
+        except Exception as e:
+            st.error(f'Error reading file: {e}')
+            return
+
+        st.success(f'Loaded {len(df):,} rows, {len(df.columns)} columns')
+        st.dataframe(df.head(10), use_container_width=True)
+
+        if st.button('Start Diagnosis', key='diagnose_file_btn', type='primary'):
+            st.session_state['original_df'] = df.copy()
+            st.session_state['df'] = df
+            st.session_state['issues'] = []
+            st.session_state['cleaning_log'] = []
+            st.session_state['df_history'] = []
+            st.session_state['stage'] = 'diagnose'
+            _clear_preview()
+            st.rerun()
+
+    # --- Database Tab ---
+    with tab_db:
+        _render_database_loader()
+
+
+def _render_database_loader() -> None:
+    """Render the database connection UI."""
+    st.subheader('Connect to Database')
+
+    col1, col2 = st.columns(2)
+    with col1:
+        db_type = st.selectbox(
+            'Database Type',
+            ['PostgreSQL', 'MySQL', 'SQLite', 'SQL Server'],
+            key='db_type_select',
+        )
+
+    # Connection parameters based on DB type
+    if db_type == 'SQLite':
+        db_path = st.text_input('Database File Path', key='sqlite_path')
+        if not st.button('Connect & Load', key='connect_sqlite_btn'):
+            return
+        try:
+            conn_str = build_connection_string('SQLite', path=db_path)
+            engine = create_connection(conn_str)
+            tables = list_tables(engine)
+            if not tables:
+                st.warning('No tables found in database')
+                return
+            table_name = st.selectbox('Select Table', tables, key='sqlite_table')
+            df = load_table(conn_str, table_name)
+            _finalize_database_load(df)
+        except Exception as e:
+            st.error(f'Connection failed: {e}')
+    else:
+        # Network databases
+        col1, col2 = st.columns(2)
+        with col1:
+            host = st.text_input('Host', key=f'{db_type}_host')
+            port = st.number_input('Port', value=_get_default_port(db_type), key=f'{db_type}_port')
+        with col2:
+            database = st.text_input('Database', key=f'{db_type}_database')
+
+        col1, col2 = st.columns(2)
+        with col1:
+            user = st.text_input('Username', key=f'{db_type}_user')
+        with col2:
+            password = st.text_input('Password', type='password', key=f'{db_type}_password')
+
+        row_limit = st.slider('Row Limit', 100, 100000, 10000, step=1000)
+
+        if st.button('Connect & Load', key=f'connect_{db_type}_btn'):
+            try:
+                conn_str = build_connection_string(
+                    db_type,
+                    host=host,
+                    port=int(port),
+                    database=database,
+                    user=user,
+                    password=password,
+                )
+                engine = create_connection(conn_str)
+                tables = list_tables(engine)
+
+                if not tables:
+                    st.warning('No tables found in database')
+                    return
+
+                # Let user choose between table or custom query
+                load_mode = st.radio('Load Mode', ['Select Table', 'Custom Query'], horizontal=True)
+
+                if load_mode == 'Select Table':
+                    table_name = st.selectbox('Select Table', tables)
+                    df = load_table(conn_str, table_name, limit=row_limit)
+                else:
+                    sql_query = st.text_area('SQL Query', height=100)
+                    if not sql_query.strip():
+                        st.info('Enter a SQL SELECT query')
+                        return
+                    df = load_query(conn_str, sql_query, limit=row_limit)
+
+                _finalize_database_load(df)
+            except Exception as e:
+                st.error(f'Connection failed: {e}')
+
+
+def _finalize_database_load(df: pd.DataFrame) -> None:
+    """Show preview and start diagnosis for database-loaded data."""
     st.success(f'Loaded {len(df):,} rows, {len(df.columns)} columns')
     st.dataframe(df.head(10), use_container_width=True)
 
-    if st.button('Start Diagnosis', key='diagnose_btn', type='primary'):
+    if st.button('Start Diagnosis', key='diagnose_db_btn', type='primary'):
         st.session_state['original_df'] = df.copy()
         st.session_state['df'] = df
         st.session_state['issues'] = []
@@ -70,6 +189,12 @@ def render_upload() -> None:
         st.session_state['stage'] = 'diagnose'
         _clear_preview()
         st.rerun()
+
+
+def _get_default_port(db_type: str) -> int:
+    """Get the default port for a database type."""
+    ports = {'PostgreSQL': 5432, 'MySQL': 3306, 'SQL Server': 1433}
+    return ports.get(db_type, 5432)
 
 # ---------------------------------------------------------------------------
 # Stage: diagnose
@@ -139,6 +264,12 @@ def _render_issue_card(idx: int, issue: dict) -> None:
         stats = {k: v for k, v in issue.items() if k not in _STATS_HIDE_KEYS}
         if stats:
             st.caption(" • ".join(f"{k}: {v}" for k, v in stats.items()))
+
+        snippet = code_snippets.DETECTION_SNIPPETS.get(issue_type)
+        if snippet:
+            with st.expander('🔍 How was this detected?'):
+                formatted_snippet = snippet.format(col=column) if column else snippet
+                st.code(formatted_snippet, language='python')
 
         actions = _actions_for(issue)
         if not actions:
@@ -302,6 +433,10 @@ def render_changes_tab() -> None:
                 header += f" — `{col}`"
         with st.expander(header, expanded=auto_expand):
             render_diff(entry['diff'])
+            code = code_snippets.transform_code(entry['label'], entry.get('log_entry', {}))
+            if code:
+                with st.expander('📜 View pandas code'):
+                    st.code(code, language='python')
 
     # Cumulative diff vs original
     if st.session_state.get('original_df') is not None:
