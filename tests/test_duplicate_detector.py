@@ -24,10 +24,10 @@ def test_multiple_duplicates():
     assert issues[0]['duplicate_count'] == 2
 
 
-def test_sample_indices_capped_at_five():
+def test_row_indices_capped_at_five():
     df = pd.DataFrame({'a': [1] * 10})
     issues = detect(df)
-    assert len(issues[0]['sample_indices']) <= 5
+    assert len(issues[0]['row_indices']) <= 5
 
 
 def test_all_duplicates():
@@ -41,5 +41,5 @@ def test_original_row_not_flagged():
     # keep='first': row 0 kept, row 1 flagged
     df = pd.DataFrame({'a': [5, 5]})
     issues = detect(df)
-    assert 0 not in issues[0]['sample_indices']
-    assert 1 in issues[0]['sample_indices']
+    assert 0 not in issues[0]['row_indices']
+    assert 1 in issues[0]['row_indices']

@@ -27,7 +27,7 @@ def test_numeric_columns_ignored():
         'name': ['  apple', 'banana', 'cherry'],
     })
     issues = detect(df)
-    assert all(i['column'] == 'name' for i in issues)
+    assert all(i['columns'][0] == 'name' for i in issues)
 
 
 # --- mixed_case ---
@@ -37,7 +37,7 @@ def test_mixed_case_detected():
     issues = [i for i in detect(df) if i['sub_type'] == 'mixed_case']
     assert len(issues) == 1
     assert issues[0]['type'] == 'inconsistent_format'
-    assert issues[0]['column'] == 'fruit'
+    assert issues[0]['columns'][0] == 'fruit'
     assert set(issues[0]['example_values']) == {'apple', 'Apple', 'APPLE'}
 
 
@@ -98,7 +98,7 @@ def test_mixed_date_format_detected():
     ]})
     issues = [i for i in detect(df) if i['sub_type'] == 'mixed_date_format']
     assert len(issues) == 1
-    assert issues[0]['column'] == 'd'
+    assert issues[0]['columns'][0] == 'd'
 
 
 def test_consistent_date_format_not_flagged():
@@ -139,7 +139,7 @@ def test_multiple_columns_each_flagged_independently():
         'b': [' hello', 'world', 'foo'],
         'c': ['clean', 'values', 'here'],
     })
-    cols_flagged = {i['column'] for i in detect(df)}
+    cols_flagged = {i['columns'][0] for i in detect(df)}
     assert cols_flagged == {'a', 'b'}
 
 
@@ -148,9 +148,16 @@ def test_issue_shape():
     issues = detect(df)
     assert len(issues) == 1
     issue = issues[0]
-    assert set(issue.keys()) == {'type', 'column', 'sub_type', 'example_values'}
+    required_keys = {
+        'detector', 'type', 'columns', 'severity', 'row_indices',
+        'summary', 'sample_data', 'actions', 'sub_type', 'example_values',
+    }
+    assert required_keys <= set(issue.keys())
+    assert issue['detector'] == 'consistency_cleaner'
     assert issue['type'] == 'inconsistent_format'
+    assert issue['columns'] == ['x']
     assert isinstance(issue['example_values'], list)
+    assert isinstance(issue['actions'], list)
 
 
 def test_nan_values_ignored():

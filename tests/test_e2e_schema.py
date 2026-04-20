@@ -24,13 +24,13 @@ def test_missing_value_detector_has_required_fields():
     issue = issues[0]
 
     # Detector-level required fields (type is added by orchestrator)
-    required = {'detector', 'column', 'severity', 'row_indices',
+    required = {'detector', 'columns', 'severity', 'row_indices',
                 'summary', 'sample_data', 'actions'}
     assert required.issubset(set(issue.keys())), f"Missing: {required - set(issue.keys())}"
 
     # Validate field types
     assert isinstance(issue['detector'], str)
-    assert isinstance(issue['column'], str)
+    assert isinstance(issue['columns'], list)
     assert issue['severity'] in ('low', 'medium', 'high')
     assert isinstance(issue['row_indices'], list)
     assert isinstance(issue['summary'], str)

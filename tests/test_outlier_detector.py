@@ -12,7 +12,7 @@ def test_detects_outlier():
     issues = detect(df)
     assert len(issues) == 1
     assert issues[0]['type'] == 'outliers'
-    assert issues[0]['column'] == 'val'
+    assert issues[0]['columns'] == ['val']
     assert issues[0]['outlier_count'] >= 1
 
 
@@ -65,7 +65,7 @@ def test_ignores_non_numeric_columns():
     })
     issues = detect(df)
     assert len(issues) == 1
-    assert issues[0]['column'] == 'val'
+    assert issues[0]['columns'] == ['val']
 
 
 def test_multiple_numeric_columns_with_outliers():
@@ -75,7 +75,7 @@ def test_multiple_numeric_columns_with_outliers():
     })
     issues = detect(df)
     assert len(issues) == 2
-    assert {i['column'] for i in issues} == {'a', 'b'}
+    assert {i['columns'][0] for i in issues} == {'a', 'b'}
 
 
 def test_sample_indices_capped_at_five():
@@ -83,7 +83,7 @@ def test_sample_indices_capped_at_five():
     df = pd.DataFrame({'x': [1] * 20 + [100, 200, 300, 400, 500, 600, 700]})
     issues = detect(df)
     assert issues[0]['outlier_count'] > 5  # more than 5 outliers exist
-    assert len(issues[0]['sample_indices']) == 5  # sample is capped at 5
+    assert len(issues[0]['row_indices']) == 5  # sample is capped at 5
 
 
 def test_outlier_pct_correct():

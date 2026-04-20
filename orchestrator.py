@@ -1,9 +1,11 @@
-"""Wires detectors → explanation_layer → session_state.
+"""Wires detectors → explanation_layer → returns diagnosis result.
 
-Called once per CSV upload to populate st.session_state['issues'].
+Pure function: takes DataFrame, returns DiagnosisResult dict.
 """
+import traceback
+from datetime import datetime, timezone
+from typing import Any
 import pandas as pd
-import streamlit as st
 
 from detectors.missing_value_detector import detect_missing
 from detectors.duplicate_detector import detect as detect_duplicates
@@ -12,30 +14,45 @@ from detectors.consistency_cleaner import detect as detect_consistency
 from detectors.outlier_detector import detect as detect_outliers
 from explanation_layer import explain_issues
 
+_REQUIRED_ISSUE_FIELDS = {
+    'detector': '',
+    'type': '',
+    'columns': list,
+    'severity': 'medium',
+    'row_indices': list,
+    'summary': '',
+    'sample_data': dict,
+    'actions': list,
+}
 
-def run_diagnosis(df: pd.DataFrame) -> None:
-    """Run all detectors, attach explanations, and write results to session_state.
 
-    Sets st.session_state['issues'] and advances stage to 'decide'.
+def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
+    """Run all detectors and attach explanations.
+
+    Returns a DiagnosisResult dict with keys:
+      - issues: list of issue dicts with explanations
+      - quality_score: float 0.0–100.0
+      - column_profiles: dict of schema info
+      - diagnosed_at: datetime ISO string
+      - row_count: int
+      - column_count: int
     """
     issues = []
 
-    for detector_fn, detector_name in [
-        (detect_missing, 'missing_value'),
-        (detect_duplicates, 'duplicates'),
-        (detect_schema, 'type_mismatch'),
-        (detect_consistency, 'inconsistent_format'),
-        (detect_outliers, 'outliers'),
+    for detector_fn, detector_name, issue_type in [
+        (detect_missing, 'missing_value_detector', 'missing_value'),
+        (detect_duplicates, 'duplicate_detector', 'duplicates'),
+        (detect_schema, 'schema_analyzer', 'type_mismatch'),
+        (detect_consistency, 'consistency_cleaner', 'inconsistent_format'),
+        (detect_outliers, 'outlier_detector', 'outliers'),
     ]:
         try:
             detector_issues = detector_fn(df)
-            if detector_issues:
-                for issue in detector_issues:
-                    if 'type' not in issue:
-                        issue['type'] = detector_name
-                    issues.append(issue)
-        except Exception:
-            pass
+            for issue in detector_issues or []:
+                _normalize_issue(issue, detector_name, issue_type)
+                issues.append(issue)
+        except Exception as e:
+            print(f"[orchestrator] {detector_name} failed: {e}\n{traceback.format_exc()}")
 
     df_stats = _collect_df_stats(df)
     explained_issues = explain_issues(issues, df_stats)
@@ -43,8 +60,27 @@ def run_diagnosis(df: pd.DataFrame) -> None:
     for issue in explained_issues:
         issue['summary'] = issue.pop('explanation', issue.get('summary', ''))
 
-    st.session_state['issues'] = explained_issues
-    st.session_state['stage'] = 'decide'
+    quality_score = _compute_quality_score(issues, df)
+    column_profiles = _extract_column_profiles(df_stats)
+
+    return {
+        'issues': explained_issues,
+        'quality_score': quality_score,
+        'column_profiles': column_profiles,
+        'diagnosed_at': datetime.now(timezone.utc).isoformat(),
+        'row_count': len(df),
+        'column_count': len(df.columns),
+    }
+
+
+def _normalize_issue(issue: dict, detector_name: str, issue_type: str) -> None:
+    """Backfill any missing schema fields so app.py never KeyErrors on an issue."""
+    issue.setdefault('detector', detector_name)
+    issue.setdefault('type', issue_type)
+    for field, default in _REQUIRED_ISSUE_FIELDS.items():
+        if field in issue:
+            continue
+        issue[field] = default() if isinstance(default, type) else default
 
 
 def _collect_df_stats(df: pd.DataFrame) -> dict:
@@ -83,3 +119,29 @@ def _collect_df_stats(df: pd.DataFrame) -> dict:
         stats[f'{col}_stats'] = col_stats
 
     return stats
+
+
+def _compute_quality_score(issues: list[dict], df: pd.DataFrame) -> float:
+    """Compute data quality score 0–100 based on issue count and severity.
+
+    High severity issues reduce score more than low severity.
+    """
+    if df.empty:
+        return 0.0
+
+    high_severity = sum(1 for i in issues if i.get('severity') == 'high')
+    medium_severity = sum(1 for i in issues if i.get('severity') == 'medium')
+    low_severity = sum(1 for i in issues if i.get('severity') == 'low')
+
+    deduction = high_severity * 15 + medium_severity * 8 + low_severity * 3
+    return max(0.0, min(100.0, 100.0 - deduction))
+
+
+def _extract_column_profiles(df_stats: dict) -> dict[str, Any]:
+    """Extract per-column dtype and null info from df_stats."""
+    profiles = {}
+    for key in df_stats:
+        if key.endswith('_stats') and key != 'rows' and key != 'columns':
+            col_name = key.replace('_stats', '')
+            profiles[col_name] = df_stats[key]
+    return profiles

@@ -18,6 +18,8 @@ from transformation_executor import (
     fill_missing,
     normalize_text,
 )
+from utils.file_ingestion import parse_uploaded_file
+from utils.session_state import init_state
 
 load_dotenv()
 
@@ -25,17 +27,7 @@ load_dotenv()
 # Session state initialisation
 # ---------------------------------------------------------------------------
 
-INITIAL_STATE = {
-    'df': None,
-    'original_df': None,
-    'issues': [],
-    'cleaning_log': [],
-    'stage': 'upload',
-}
-
-for key, value in INITIAL_STATE.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
+init_state()
 
 # ---------------------------------------------------------------------------
 # Stage: upload
@@ -49,7 +41,7 @@ def render_upload() -> None:
     if not uploaded_file:
         return
     try:
-        df = pd.read_csv(uploaded_file)
+        df = parse_uploaded_file(uploaded_file)
     except Exception as e:
         st.error(f'Error reading file: {e}')
         return
@@ -72,7 +64,9 @@ def render_upload() -> None:
 def render_diagnose() -> None:
     st.header('Diagnosing your data…')
     with st.spinner('Running detectors and generating explanations…'):
-        run_diagnosis(st.session_state['df'])
+        result = run_diagnosis(st.session_state['df'])
+        st.session_state['issues'] = result['issues']
+        st.session_state['stage'] = 'decide'
     st.rerun()
 
 # ---------------------------------------------------------------------------
@@ -80,9 +74,9 @@ def render_diagnose() -> None:
 # ---------------------------------------------------------------------------
 
 _STATS_HIDE_KEYS = {
-    'type', 'column', 'sub_type', 'explanation', 'summary',
+    'type', 'column', 'columns', 'sub_type', 'explanation', 'summary',
     'sample_values', 'example_values', 'sample_indices', 'row_indices',
-    'dtype',
+    'dtype', 'detector', 'severity', 'sample_data', 'actions',
 }
 
 
@@ -112,8 +106,9 @@ def render_decide() -> None:
 
 def _render_issue_card(idx: int, issue: dict) -> None:
     issue_type = issue.get('type', 'issue')
-    column = issue.get('column')
-    title = _humanize(issue_type) + (f" — `{column}`" if column else "")
+    columns = issue.get('columns') or ([issue['column']] if issue.get('column') else [])
+    column = columns[0] if columns else None
+    title = _humanize(issue_type) + (f" — `{', '.join(columns)}`" if columns else "")
     with st.container(border=True):
         st.subheader(title)
         explanation = issue.get('explanation') or issue.get('summary')
@@ -138,7 +133,8 @@ def _render_issue_card(idx: int, issue: dict) -> None:
 def _actions_for(issue: dict) -> list[tuple[str, callable]]:
     """Map an issue to (button_label, handler(df, log) -> df) pairs."""
     issue_type = issue.get('type')
-    col = issue.get('column')
+    cols = issue.get('columns') or ([issue['column']] if issue.get('column') else [])
+    col = cols[0] if cols else None
 
     if issue_type == 'missing_value' and col:
         dtype = issue.get('dtype', '')

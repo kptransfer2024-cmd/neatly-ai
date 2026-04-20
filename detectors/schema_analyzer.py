@@ -24,12 +24,31 @@ def detect(df: pd.DataFrame) -> list[dict]:
         if suggested is None:
             continue
 
+        current_dtype = str(dtype)
         issues.append({
+            'detector': 'schema_analyzer',
             'type': 'type_mismatch',
-            'column': col,
-            'current_dtype': str(dtype),
+            'columns': [col],
+            'severity': 'medium',
+            'row_indices': [],
+            'summary': '',
+            'current_dtype': current_dtype,
             'suggested_dtype': suggested,
             'sample_values': non_null.head(5).tolist(),
+            'sample_data': {
+                col: {
+                    'current_dtype': current_dtype,
+                    'suggested_dtype': suggested,
+                },
+            },
+            'actions': [
+                {
+                    'id': 'cast_column',
+                    'label': f'Cast to {suggested}',
+                    'description': f'Convert "{col}" from {current_dtype} to {suggested}.',
+                    'params': {'column': col, 'target_dtype': suggested},
+                },
+            ],
         })
     return issues
 

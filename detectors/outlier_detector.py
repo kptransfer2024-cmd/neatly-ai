@@ -3,6 +3,8 @@ import pandas as pd
 
 _IQR_MULTIPLIER = 1.5  # Tukey's standard: 1.5 = moderate, 3.0 = extreme
 _MIN_ROWS_FOR_QUARTILES = 4  # Below this, quartiles are too unstable to trust
+_SEVERITY_HIGH_PCT = 10.0
+_SEVERITY_MED_PCT = 2.0
 
 
 def detect(df: pd.DataFrame) -> list[dict]:
@@ -42,15 +44,56 @@ def detect(df: pd.DataFrame) -> list[dict]:
             continue
 
         total = len(series)
+        outlier_pct = round(outlier_count / total * 100, 2)
+        row_indices = outlier_mask.nonzero()[0][:5].tolist()
+        lower_r = round(lower, 4)
+        upper_r = round(upper, 4)
+        min_v = float(series.min())
+        max_v = float(series.max())
+
+        if outlier_pct > _SEVERITY_HIGH_PCT:
+            severity = 'high'
+        elif outlier_pct > _SEVERITY_MED_PCT:
+            severity = 'medium'
+        else:
+            severity = 'low'
+
         issues.append({
+            'detector': 'outlier_detector',
             'type': 'outliers',
-            'column': col,
+            'columns': [col],
+            'severity': severity,
+            'row_indices': row_indices,
+            'summary': '',
             'outlier_count': outlier_count,
-            'outlier_pct': round(outlier_count / total * 100, 2),
-            'lower_fence': round(lower, 4),
-            'upper_fence': round(upper, 4),
-            'min_val': float(series.min()),
-            'max_val': float(series.max()),
-            'sample_indices': outlier_mask.nonzero()[0][:5].tolist(),
+            'outlier_pct': outlier_pct,
+            'lower_fence': lower_r,
+            'upper_fence': upper_r,
+            'min_val': min_v,
+            'max_val': max_v,
+            'sample_data': {
+                col: {
+                    'outlier_count': outlier_count,
+                    'outlier_pct': outlier_pct,
+                    'lower_fence': lower_r,
+                    'upper_fence': upper_r,
+                    'min_val': min_v,
+                    'max_val': max_v,
+                },
+            },
+            'actions': [
+                {
+                    'id': 'clip_outliers',
+                    'label': 'Clip to Fence',
+                    'description': f'Clip values outside [{lower_r}, {upper_r}] to the fence bounds.',
+                    'params': {'column': col, 'lower': lower_r, 'upper': upper_r},
+                },
+                {
+                    'id': 'drop_rows',
+                    'label': 'Drop Outlier Rows',
+                    'description': f'Remove {outlier_count} row(s) with outlier values.',
+                    'params': {'column': col, 'row_indices': row_indices},
+                },
+            ],
         })
     return issues

@@ -43,35 +43,60 @@ def detect(df: pd.DataFrame) -> list[dict]:
     return issues
 
 
+def _build_issue(col: str, sub_type: str, examples: list, severity: str, actions: list) -> dict:
+    return {
+        'detector': 'consistency_cleaner',
+        'type': 'inconsistent_format',
+        'columns': [col],
+        'severity': severity,
+        'row_indices': [],
+        'summary': '',
+        'sub_type': sub_type,
+        'example_values': examples,
+        'sample_data': {col: {'sub_type': sub_type, 'examples': examples}},
+        'actions': actions,
+    }
+
+
 def _check_extra_whitespace(col: str, as_str: pd.Series, stripped: pd.Series, issues: list) -> None:
     """Flag values with leading/trailing whitespace or internal multi-space runs."""
     ws_mask = (as_str != stripped) | as_str.str.contains(_INTERNAL_WS, regex=True, na=False)
     if not ws_mask.any():
         return
-    issues.append({
-        'type': 'inconsistent_format',
-        'column': col,
-        'sub_type': 'extra_whitespace',
-        'example_values': as_str[ws_mask].head(_EXAMPLE_CAP).tolist(),
-    })
+    examples = as_str[ws_mask].head(_EXAMPLE_CAP).tolist()
+    actions = [{
+        'id': 'normalize_text',
+        'label': 'Strip Whitespace',
+        'description': f'Strip leading, trailing, and collapsed internal whitespace in "{col}".',
+        'params': {'column': col, 'operation': 'strip_whitespace'},
+    }]
+    issues.append(_build_issue(col, 'extra_whitespace', examples, 'low', actions))
 
 
 def _check_mixed_case(col: str, stripped: pd.Series, issues: list) -> None:
     """Flag values that collide with each other only when case-normalized."""
     lowered = stripped.str.lower()
-    # Values whose lowercased form has >1 distinct original casing = collision
     collisions_per_key = stripped.groupby(lowered).nunique()
     colliding_keys = collisions_per_key[collisions_per_key > 1].index
     if len(colliding_keys) == 0:
         return
     collision_mask = lowered.isin(colliding_keys)
     examples = stripped[collision_mask].unique().tolist()[:_EXAMPLE_CAP]
-    issues.append({
-        'type': 'inconsistent_format',
-        'column': col,
-        'sub_type': 'mixed_case',
-        'example_values': examples,
-    })
+    actions = [
+        {
+            'id': 'normalize_text',
+            'label': 'Lowercase',
+            'description': f'Normalize "{col}" to lowercase.',
+            'params': {'column': col, 'operation': 'lowercase'},
+        },
+        {
+            'id': 'normalize_text',
+            'label': 'Title Case',
+            'description': f'Normalize "{col}" to Title Case.',
+            'params': {'column': col, 'operation': 'titlecase'},
+        },
+    ]
+    issues.append(_build_issue(col, 'mixed_case', examples, 'low', actions))
 
 
 def _check_mixed_date_format(col: str, stripped: pd.Series, issues: list) -> None:
@@ -91,9 +116,11 @@ def _check_mixed_date_format(col: str, stripped: pd.Series, issues: list) -> Non
     examples: list[str] = []
     for mask in format_hits.values():
         examples.extend(stripped[mask].head(2).tolist())
-    issues.append({
-        'type': 'inconsistent_format',
-        'column': col,
-        'sub_type': 'mixed_date_format',
-        'example_values': examples[:_EXAMPLE_CAP],
-    })
+    examples = examples[:_EXAMPLE_CAP]
+    actions = [{
+        'id': 'cast_column',
+        'label': 'Parse as Date',
+        'description': f'Parse "{col}" values as datetime to unify all formats.',
+        'params': {'column': col, 'target_dtype': 'datetime'},
+    }]
+    issues.append(_build_issue(col, 'mixed_date_format', examples, 'medium', actions))

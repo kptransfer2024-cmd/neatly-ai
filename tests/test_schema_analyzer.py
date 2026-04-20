@@ -12,7 +12,7 @@ def test_numeric_stored_as_text():
     issues = detect(df)
     assert len(issues) == 1
     assert issues[0]['type'] == 'type_mismatch'
-    assert issues[0]['column'] == 'price'
+    assert issues[0]['columns'] == ['price']
     assert issues[0]['suggested_dtype'] == 'numeric'
 
 
@@ -108,7 +108,7 @@ def test_multiple_columns_different_types():
         'text': ['hello', 'world', 'foo', 'bar'],
     })
     issues = detect(df)
-    by_col = {i['column']: i['suggested_dtype'] for i in issues}
+    by_col = {i['columns'][0]: i['suggested_dtype'] for i in issues}
     assert by_col == {'n': 'numeric', 'd': 'datetime', 'b': 'boolean'}
 
 

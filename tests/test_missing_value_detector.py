@@ -13,7 +13,7 @@ def test_numeric_30pct_suggests_fill_median():
     issues = detect_missing(df)
     assert len(issues) == 1
     issue = issues[0]
-    assert issue['column'] == 'score'
+    assert issue['columns'] == ['score']
     assert issue['missing_count'] == 1
     assert issue['missing_pct'] == 25.0
     assert 'dtype' in issue

@@ -24,7 +24,8 @@ def detect_missing(df: pd.DataFrame) -> list[dict]:
 
         issues.append({
             'detector': 'missing_value_detector',
-            'column': col,
+            'type': 'missing_value',
+            'columns': [col],
             'missing_count': missing_count,
             'missing_pct': missing_pct,
             'dtype': str(dtypes[col]),
