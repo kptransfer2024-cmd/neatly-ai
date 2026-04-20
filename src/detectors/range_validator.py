@@ -1,7 +1,7 @@
 """Detects numeric values outside physically/logically valid bounds for known domains."""
 import numpy as np
 import pandas as pd
-from detectors.utils import severity_from_pct
+from .utils import severity_from_pct
 
 _DOMAIN_BOUNDS: dict[str, tuple[float | None, float | None]] = {
     'age': (0.0, 150.0),        # human lifespan upper bound

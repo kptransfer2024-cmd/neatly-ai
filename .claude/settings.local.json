@@ -13,7 +13,13 @@
       "Glob",
       "Grep",
       "Agent",
-      "Skill"
+      "Skill",
+      "Bash(/c/Users/KPdesktop/AppData/Local/Programs/Python/Python313/python3 -m pytest /c/Users/KPdesktop/Desktop/neatly_ai/product/tests/test_api_multitenancy.py::test_user_can_only_see_own_datasets -v)",
+      "Bash(/c/Users/KPdesktop/AppData/Local/Programs/Python/Python313/python3 -m pytest \"C:\\\\Users\\\\KPdesktop\\\\Desktop\\\\neatly_ai\\\\product\\\\tests\\\\test_api_multitenancy.py::test_user_can_only_see_own_datasets\" -v)",
+      "Bash(/c/Users/KPdesktop/AppData/Local/Programs/Python/Python313/python3 -m pytest \"C:\\\\Users\\\\KPdesktop\\\\Desktop\\\\neatly_ai\\\\product\\\\tests\\\\test_api_multitenancy.py::test_user_can_only_see_own_datasets\" -xvs)",
+      "Bash(/c/Users/KPdesktop/AppData/Local/Programs/Python/Python313/python3 -c ' *)",
+      "Bash(/c/Users/KPdesktop/AppData/Local/Programs/Python/Python313/python3 -m pytest \"C:\\\\Users\\\\KPdesktop\\\\Desktop\\\\neatly_ai\\\\product\\\\tests\\\\test_api_multitenancy.py\" -v)",
+      "Bash(awk '{print $2}')"
     ],
     "defaultMode": "auto"
   }

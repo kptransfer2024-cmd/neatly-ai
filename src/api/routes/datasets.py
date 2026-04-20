@@ -1,6 +1,7 @@
 """Dataset management routes: CRUD for data sources."""
 from typing import List
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict, field_serializer
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -36,10 +37,14 @@ class DatasetResponse(BaseModel):
     source_type: str
     schedule_cron: str | None
     alert_threshold: float
-    created_at: str
+    created_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('created_at')
+    def serialize_created_at(self, value: datetime | None) -> str | None:
+        """Serialize datetime to ISO string."""
+        return value.isoformat() if value else None
 
 
 @router.get("/datasets", response_model=List[DatasetResponse])

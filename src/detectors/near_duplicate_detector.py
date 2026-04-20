@@ -1,7 +1,7 @@
 """Detects near-duplicate rows using normalized string comparison and adjacent similarity scanning."""
 import difflib
 import pandas as pd
-from detectors.utils import get_string_columns, _WS_PATTERN
+from .utils import get_string_columns, _WS_PATTERN
 
 _SIMILARITY_THRESHOLD = 0.85   # SequenceMatcher ratio ≥ 0.85 → near-duplicate
 _MAX_ROWS_TO_SCAN = 500        # cap O(n) scan; sample first 500 rows on large dfs

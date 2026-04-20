@@ -1,7 +1,7 @@
 """Detects string columns typed as email/phone/URL/zip and flags malformed values."""
 import re
 import pandas as pd
-from detectors.utils import severity_from_pct, get_string_columns
+from .utils import severity_from_pct, get_string_columns
 
 _MIN_COLUMN_MATCH_RATE = 0.6  # ≥60% of non-null values must match a pattern to "type" the column
 _MIN_INVALID_COUNT = 2        # suppress single-value noise; require ≥2 bad values
