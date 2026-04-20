@@ -165,3 +165,32 @@ def test_nan_values_ignored():
     issues = detect(df)
     # Should still detect mixed_case on the non-null values; not crash on NaN
     assert any(i['sub_type'] == 'mixed_case' for i in issues)
+
+
+def test_mixed_date_format_at_80_percent_threshold():
+    """Verify date format detection works at the minimum 80% threshold."""
+    df = pd.DataFrame({'date': [
+        # 4 ISO format dates (80% of 5 values)
+        '2024-01-15', '2024-02-16', '2024-03-17', '2024-04-18',
+        # 1 slash format (still mixed)
+        '15/01/2024',
+    ]})
+    issues = [i for i in detect(df) if i.get('sub_type') == 'mixed_date_format']
+    # Should detect at exactly 80% threshold (4 of one format, 1 of another)
+    assert len(issues) == 1
+    assert issues[0]['columns'] == ['date']
+
+
+def test_mixed_date_format_below_80_percent_threshold():
+    """Verify mixed date format NOT detected when below 80% threshold."""
+    df = pd.DataFrame({'date': [
+        # 4 ISO format dates
+        '2024-01-15', '2024-02-16', '2024-03-17', '2024-04-18',
+        # 1 slash format date
+        '15/01/2024',
+        # 5 non-date values (text) - brings total matched to 5/10 = 50%
+        'notadate1', 'notadate2', 'notadate3', 'notadate4', 'notadate5',
+    ]})
+    issues = [i for i in detect(df) if i.get('sub_type') == 'mixed_date_format']
+    # Should NOT detect since only 50% of values match date formats (below 80% threshold)
+    assert len(issues) == 0

@@ -190,3 +190,19 @@ def test_email_match_rate_in_sample_data():
     match_rate = issues[0]['sample_data']['email']['match_rate']
     # 7 valid out of 9 = 77.78%
     assert match_rate == 77.77 or abs(match_rate - 77.78) < 0.1
+
+
+def test_pattern_detected_at_exact_60_percent_threshold():
+    """Verify pattern detection works at the minimum 60% match rate threshold."""
+    df = pd.DataFrame({
+        # 6 valid emails + 4 invalid = 60% valid (exactly at threshold)
+        'email': ['valid1@test.com', 'valid2@test.com', 'valid3@test.com',
+                  'valid4@test.com', 'valid5@test.com', 'valid6@test.com',
+                  'invalid1', 'invalid2', 'invalid3', 'invalid4']
+    })
+    issues = detect(df)
+    # Should detect exactly at 60% threshold with 4 invalid values
+    assert len(issues) == 1
+    assert issues[0]['type'] == 'pattern_mismatch'
+    assert issues[0]['sample_data']['email']['pattern'] == 'email'
+    assert issues[0]['sample_data']['email']['invalid_count'] == 4
