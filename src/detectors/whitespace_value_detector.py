@@ -24,7 +24,7 @@ def detect(df: pd.DataFrame) -> list[dict]:
             continue
 
         total_non_null = len(series)
-        ws_pct = round(ws_count / len(df) * 100, 2)
+        ws_pct = round(ws_count / total_non_null * 100, 2)
         severity = 'high' if ws_pct > 20 else 'medium' if ws_pct > 5 else 'low'
         row_indices = [int(i) for i in series.index[ws_mask].tolist()[:100]]
 
