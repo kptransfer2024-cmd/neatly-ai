@@ -78,6 +78,14 @@ def render_upload() -> None:
             st.error(f'Error reading file: {e}')
             return
 
+        _MAX_ROWS, _MAX_COLS = 500_000, 500
+        if len(df) > _MAX_ROWS:
+            st.error(f'File has {len(df):,} rows — limit is {_MAX_ROWS:,}. Upload a smaller sample.')
+            return
+        if len(df.columns) > _MAX_COLS:
+            st.error(f'File has {len(df.columns)} columns — limit is {_MAX_COLS}.')
+            return
+
         st.success(f'Loaded {len(df):,} rows, {len(df.columns)} columns')
         st.dataframe(df.head(10), use_container_width=True)
 
@@ -207,10 +215,23 @@ def _get_default_port(db_type: str) -> int:
 def render_diagnose() -> None:
     st.header('Diagnosing your data…')
     with st.spinner('Running detectors and generating explanations…'):
-        result = run_diagnosis(st.session_state['df'])
+        try:
+            result = run_diagnosis(st.session_state['df'])
+        except Exception as exc:
+            st.session_state['stage'] = 'upload'
+            st.error(f'Diagnosis failed: {exc}. Please try re-uploading your file.')
+            st.rerun()
+            return
+
         issues = result['issues']
         st.session_state['issues'] = issues
+        st.session_state['column_contexts'] = result.get('column_contexts', [])
         st.session_state['stage'] = 'decide'
+
+        failed = result.get('failed_detectors', [])
+        if failed:
+            st.session_state['_failed_detectors'] = failed
+
         log_event(
             'diagnosis_completed',
             n_issues=len(issues),
@@ -234,14 +255,23 @@ def render_decide() -> None:
     issues = st.session_state['issues']
     history = st.session_state['df_history']
 
+    failed = st.session_state.pop('_failed_detectors', None)
+    if failed:
+        st.warning(
+            f"⚠️ {len(failed)} detector(s) could not run and were skipped: "
+            f"`{'`, `'.join(failed)}`. Results may be incomplete."
+        )
+
     changes_label = f"📋 Changes ({len(history)})" if history else "📋 Changes"
     tab_issues, tab_changes = st.tabs(['🔍 Issues', changes_label])
 
     with tab_issues:
+        _render_column_context_panel()
         if not issues:
             st.info('No issues found — your data looks clean.')
             if st.button('Finish', key='finish_btn', type='primary'):
-                st.session_state['stage'] = 'done'
+                log_event("session_completed", n_actions=len(st.session_state["cleaning_log"]), issues_remaining=0)
+                st.session_state["stage"] = "done"
                 st.rerun()
         else:
             st.caption(f"{len(issues)} issue(s) remaining.")
@@ -251,7 +281,8 @@ def render_decide() -> None:
             st.divider()
             col1, col2 = st.columns(2)
             if col1.button('Done Reviewing', key='done_review_btn', type='primary'):
-                st.session_state['stage'] = 'done'
+                log_event("session_completed", n_actions=len(st.session_state["cleaning_log"]), issues_remaining=len(issues))
+                st.session_state["stage"] = "done"
                 st.rerun()
             if col2.button('Start Over', key='restart_decide_btn'):
                 _reset_to_upload()
@@ -329,6 +360,49 @@ def _clear_preview() -> None:
     st.session_state['_preview_idx'] = None
     st.session_state['_preview_handler'] = None
     st.session_state['_preview_label'] = None
+
+
+_HEALTH_ICON = {'good': '🟢', 'warn': '🟡', 'bad': '🔴'}
+_ROLE_LABEL = {
+    'id': 'ID', 'metric': 'Metric', 'category': 'Category',
+    'datetime': 'Date/Time', 'flag': 'Flag', 'contact': 'Contact', 'text': 'Text',
+}
+
+
+def _render_column_context_panel() -> None:
+    contexts = st.session_state.get('column_contexts', [])
+    if not contexts:
+        return
+    good = sum(1 for c in contexts if c['health'] == 'good')
+    warn = sum(1 for c in contexts if c['health'] == 'warn')
+    bad = sum(1 for c in contexts if c['health'] == 'bad')
+    with st.expander(f"📊 Column Profiles ({len(contexts)} columns)", expanded=False):
+        st.caption(f"🟢 {good} good  •  🟡 {warn} warning  •  🔴 {bad} needs attention")
+        pairs = [contexts[i:i+2] for i in range(0, len(contexts), 2)]
+        for pair in pairs:
+            grid = st.columns(len(pair))
+            for g_col, ctx in zip(grid, pair):
+                _render_column_card(g_col, ctx)
+
+
+def _render_column_card(col_widget, ctx: dict) -> None:
+    icon = _HEALTH_ICON.get(ctx['health'], '⚪')
+    role = _ROLE_LABEL.get(ctx['inferred_role'], ctx['inferred_role'].title())
+    domain_tag = f"  `{ctx['domain']}`" if ctx['domain'] else ''
+    stats = ctx.get('stats', {})
+    null_str = f"{ctx['null_pct']:.1f}% null"
+    with col_widget.container(border=True):
+        st.markdown(f"**{icon} {ctx['column']}**")
+        st.caption(f"{role}{domain_tag}  •  `{ctx['dtype']}`")
+        if ctx['inferred_role'] == 'metric' and 'min' in stats:
+            st.caption(f"{stats['min']} – {stats['max']}  •  mean {stats['mean']}  •  {null_str}")
+        elif ctx['inferred_role'] == 'datetime' and 'min' in stats:
+            st.caption(f"{stats['min']} → {stats['max']}  •  {null_str}")
+        elif ctx['inferred_role'] == 'flag' and 'true_pct' in stats:
+            st.caption(f"true: {stats['true_pct']:.1f}%  •  {null_str}")
+        else:
+            mode_part = f"  •  top: {stats['mode']!r}" if stats.get('mode') else ''
+            st.caption(f"{ctx['cardinality']} unique{mode_part}  •  {null_str}")
 
 
 def _actions_for(issue: dict) -> list[tuple[str, callable]]:
@@ -421,7 +495,12 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
 def _apply_action(idx: int, handler, label: str = 'Action') -> None:
     issue = st.session_state['issues'][idx] if idx < len(st.session_state['issues']) else {}
     df_before = st.session_state['df'].copy()
-    st.session_state['df'] = handler(st.session_state['df'], st.session_state['cleaning_log'])
+    try:
+        st.session_state['df'] = handler(st.session_state['df'], st.session_state['cleaning_log'])
+    except Exception as exc:
+        st.session_state['df'] = df_before  # rollback — state is never half-mutated
+        st.error(f'Could not apply "{label}": {exc}')
+        return
 
     log = st.session_state['cleaning_log']
     log_entry = log[-1] if log else {}
@@ -514,8 +593,10 @@ def render_done() -> None:
     log_bytes = json.dumps(cleaning_log, indent=2, default=str).encode('utf-8')
 
     col1, col2 = st.columns(2)
-    col1.download_button('Download cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv')
-    col2.download_button('Download cleaning log (JSON)', log_bytes, 'cleaning_log.json', 'application/json')
+    if col1.download_button('Download cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv'):
+        log_event('export_downloaded', export_type='csv', rows=len(df), columns=len(df.columns))
+    if col2.download_button('Download cleaning log (JSON)', log_bytes, 'cleaning_log.json', 'application/json'):
+        log_event('export_downloaded', export_type='log', n_transforms=len(cleaning_log))
 
     if cleaning_log:
         st.subheader('Cleaning log')
@@ -523,6 +604,7 @@ def render_done() -> None:
 
     st.divider()
     if st.button('Start Over', key='restart_btn'):
+        log_event('session_abandoned', n_actions=len(cleaning_log))
         _reset_to_upload()
         st.rerun()
 
@@ -533,6 +615,7 @@ def _reset_to_upload() -> None:
     st.session_state['issues'] = []
     st.session_state['cleaning_log'] = []
     st.session_state['df_history'] = []
+    st.session_state['column_contexts'] = []
     st.session_state['stage'] = 'upload'
     _clear_preview()
 
