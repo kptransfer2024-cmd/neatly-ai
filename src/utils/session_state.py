@@ -17,6 +17,7 @@ def init_state() -> None:
         '_preview_handler': None, # callable to run for the preview diff
         '_preview_label': None,   # label of the previewed action
         'theme': 'dark',          # 'dark' or 'light' theme preference
+        '_custom_rules': [],      # user-defined custom cleaning rules
     }
     for key, value in INITIAL_STATE.items():
         if key not in st.session_state:

@@ -24,7 +24,7 @@ class MySQLConnector(DataSourceConnector):
           - database: database name
           - table_name: (optional) table to query
           - query: (optional) raw SQL SELECT query
-          - row_limit: max rows to fetch (default 100 000)
+          - row_limit: max rows to fetch (default 1 000 000)
         """
         self.config = config
 
@@ -42,7 +42,7 @@ class MySQLConnector(DataSourceConnector):
             database=config['database'],
         )
 
-        row_limit = int(config.get('row_limit', 100_000))
+        row_limit = int(config.get('row_limit', 1_000_000))
         engine = create_connection(conn_str)
 
         try:

@@ -722,11 +722,98 @@ def standardize_currency(
             return val
     
     result.loc[non_null_mask, column] = series[non_null_mask].apply(parse_currency)
-    
+
     standardized = int(non_null_mask.sum())
     _log(cleaning_log, 'standardize_currency', {
         'column': column,
         'format': '$X,XXX.XX',
         'values_standardized': standardized,
+    })
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Custom user-defined rules
+# ---------------------------------------------------------------------------
+
+def find_replace(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    find_value: str,
+    replace_value: str,
+    case_sensitive: bool = False,
+) -> pd.DataFrame:
+    """Replace all occurrences of find_value with replace_value in column."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    result = df.copy()
+    series_str = result[column].astype(str)
+    if case_sensitive:
+        mask = series_str == find_value
+    else:
+        mask = series_str.str.lower() == find_value.lower()
+    replaced_count = int(mask.sum())
+    result.loc[mask, column] = replace_value
+    _log(cleaning_log, 'find_replace', {
+        'column': column,
+        'find_value': find_value,
+        'replace_value': replace_value,
+        'case_sensitive': case_sensitive,
+        'values_replaced': replaced_count,
+    })
+    return result
+
+
+def fill_with_constant(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    fill_value: str,
+) -> pd.DataFrame:
+    """Fill null/NaN cells in column with a user-specified constant value."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    result = df.copy()
+    null_count = int(result[column].isna().sum())
+    result[column] = result[column].fillna(fill_value)
+    _log(cleaning_log, 'fill_with_constant', {
+        'column': column,
+        'fill_value': fill_value,
+        'values_filled': null_count,
+    })
+    return result
+
+
+def apply_custom_regex(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    pattern: str,
+    action: str = 'null_out',
+) -> pd.DataFrame:
+    """Apply a user-defined regex; null out or drop rows that don't match.
+
+    action: 'null_out' | 'drop_rows'
+    Raises ValueError if pattern is not valid regex.
+    """
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        raise ValueError(f"Invalid regex pattern: {exc}") from exc
+    result = df.copy()
+    mask = result[column].astype(str).str.match(compiled, na=False)
+    affected = int((~mask).sum())
+    if action == 'drop_rows':
+        result = result[mask].reset_index(drop=True)
+    else:
+        result.loc[~mask, column] = None
+    _log(cleaning_log, 'apply_custom_regex', {
+        'column': column,
+        'pattern': pattern,
+        'action': action,
+        'values_affected': affected,
     })
     return result
