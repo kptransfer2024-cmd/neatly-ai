@@ -26,9 +26,9 @@ neatly_ai/product/
 │   ├── transformation_executor.py # Transform application
 │   ├── context_interpreter.py     # Context parsing
 │   │
+│   ├── admin_app.py               # Standalone analytics dashboard (local only — NOT deployed with public app)
 │   ├── detectors/                 # Data quality detectors (12+)
 │   ├── utils/                     # Utilities: db_ingestion, file_ingestion, diff_engine, etc.
-│   ├── pages/                     # Streamlit pages (admin.py)
 │   ├── tests/                     # Test suite (23+ test files)
 │   │
 │   ├── api/                       # API backend (FastAPI, optional)
@@ -70,6 +70,18 @@ pytest src/tests/test_missing_value_detector.py -v
 # With coverage
 pytest src/tests --cov=src --cov-report=html
 ```
+
+## Admin Dashboard (internal only)
+
+The analytics dashboard is **not** bundled with the public app — it's a standalone Streamlit script at `src/admin_app.py` that you run locally when you want to review usage events.
+
+```bash
+streamlit run src/admin_app.py --server.port 8502
+```
+
+- Optional password gate: set `ADMIN_PASSWORD` in `.streamlit/secrets.toml`.
+- Reads `neatly_logs.jsonl` (local dev) or `/tmp/neatly_logs.jsonl` (cloud).
+- Local runs currently see **only local dev sessions** — cloud logs are not synced back. If you want to review production analytics, download the cloud log file manually or add external log storage (future work).
 
 ## Key Features
 
