@@ -7,14 +7,21 @@ def detect(df: pd.DataFrame) -> list[dict]:
     if df.empty or len(df.columns) < 2:
         return []
 
-    # Build a fingerprint per column using a tuple of values (NaN-safe)
+    # Build a fingerprint per column using vectorized hashing (memory-efficient)
     fingerprints: dict[tuple, str] = {}
     issues = []
 
     for col in df.columns:
-        # Use a hashable fingerprint: tuple of (value, isna) pairs
         series = df[col]
-        key = (str(series.dtype),) + tuple(zip(series.fillna('__NA__').astype(str), series.isna()))
+
+        # Compute hash of the series values and null mask combined.
+        # pd.util.hash_pandas_object is much faster and uses less memory than tuple(zip(...))
+        value_hash = pd.util.hash_pandas_object(series, index=False).sum()
+        null_mask_hash = pd.util.hash_pandas_object(series.isna(), index=False).sum()
+
+        # Combine dtype, value hash, and null hash into a single key
+        # (dtype is included to prevent false positives from different types)
+        key = (str(series.dtype), value_hash, null_mask_hash)
 
         if key in fingerprints:
             original = fingerprints[key]
