@@ -20,7 +20,7 @@ class PostgresConnector(DataSourceConnector):
           - connection_string: psycopg2 connection string or SQLAlchemy URL
           - table_name: (optional) table to query
           - query: (optional) SQL SELECT query
-          - row_limit: max rows to fetch (default 100000)
+          - row_limit: max rows to fetch (default 1000000)
         """
         self.config = config
 
@@ -50,11 +50,11 @@ class PostgresConnector(DataSourceConnector):
                 table = self.config["table_name"]
                 if not _TABLE_RE.match(table):
                     raise ValueError(f"Invalid table name: {table!r}")
-                row_limit = int(self.config.get("row_limit", 100000))
+                row_limit = int(self.config.get("row_limit", 1_000_000))
                 query = f"SELECT * FROM {table} LIMIT {row_limit}"
             elif "query" in self.config:
                 inner = self.config["query"]
-                row_limit = int(self.config.get("row_limit", 100000))
+                row_limit = int(self.config.get("row_limit", 1_000_000))
                 query = f"SELECT * FROM ({inner}) AS _q LIMIT {row_limit}"
             else:
                 raise ValueError("PostgresConnector requires 'table_name' or 'query' in config")

@@ -1,9 +1,20 @@
 """File parsing utilities for data ingestion."""
 import pandas as pd
 
+
+def _read_csv(f, sep: str = ',') -> pd.DataFrame:
+    # pyarrow engine is 3-10x faster than C for large files; fall back if unavailable.
+    try:
+        return pd.read_csv(f, sep=sep, encoding='utf-8', engine='pyarrow')
+    except Exception:
+        if hasattr(f, 'seek'):
+            f.seek(0)
+        return pd.read_csv(f, sep=sep, encoding='utf-8', low_memory=False)
+
+
 _PARSERS = {
-    '.csv': lambda f: pd.read_csv(f, encoding='utf-8'),
-    '.tsv': lambda f: pd.read_csv(f, sep='\t', encoding='utf-8'),
+    '.csv': lambda f: _read_csv(f),
+    '.tsv': lambda f: _read_csv(f, sep='\t'),
     '.json': lambda f: pd.read_json(f),
     '.xlsx': lambda f: pd.read_excel(f, engine='openpyxl'),
     '.xls': lambda f: pd.read_excel(f, engine='xlrd'),
