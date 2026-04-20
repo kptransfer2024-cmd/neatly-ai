@@ -9,6 +9,34 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
+st.set_page_config(
+    page_title="Neatly — AI Data Cleaning",
+    page_icon="✦",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+# Custom theme CSS
+st.markdown("""
+<style>
+.block-container { max-width: 900px; padding-top: 2rem; }
+.stage-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.sev-high   { background: #3f1212; color: #f87171; }
+.sev-medium { background: #3a2600; color: #fbbf24; }
+.sev-low    { background: #0a2a1a; color: #34d399; }
+.stDownloadButton > button { border-radius: 8px; font-weight: 600; }
+[data-testid="metric-container"] { background: #1a1a1a; border-radius: 10px; padding: 1rem; }
+</style>
+""", unsafe_allow_html=True)
+
 from orchestrator import run_diagnosis
 from transformation_executor import (
     cast_column,
@@ -57,9 +85,27 @@ init_session()   # generates session_id and fires session_started once per brows
 # Stage: upload
 # ---------------------------------------------------------------------------
 
+def _render_stage_bar(current: str) -> None:
+    """Render progress indicator across stages."""
+    stages = ['upload', 'diagnose', 'decide', 'done']
+    labels = ['Upload', 'Diagnose', 'Review', 'Done']
+    cols = st.columns(len(stages))
+    for col, stage, label in zip(cols, stages, labels):
+        active = stage == current
+        done = stages.index(stage) < stages.index(current)
+        icon = '✦' if active else ('✓' if done else '○')
+        col.markdown(
+            f"<p style='text-align:center;opacity:{'1' if active else '0.4'};font-weight:{'700' if active else '400'}'>"
+            f"{icon} {label}</p>",
+            unsafe_allow_html=True
+        )
+    st.divider()
+
+
 def render_upload() -> None:
-    st.header('Load your data')
-    st.write("Neatly will find data-quality issues, explain them in plain English, and let you clean the data with a few clicks.")
+    st.markdown("## ✦ Neatly")
+    st.markdown("##### Upload a file. Get a clean dataset in minutes.")
+    st.markdown("---")
 
     tab_file, tab_db = st.tabs(['📁 File Upload', '🗄️ Database'])
 
@@ -252,6 +298,7 @@ _STATS_HIDE_KEYS = {
 
 
 def render_decide() -> None:
+    _render_stage_bar('decide')
     st.header('Review & Fix Issues')
     issues = st.session_state['issues']
     history = st.session_state['df_history']
@@ -299,7 +346,9 @@ def _render_issue_card(idx: int, issue: dict) -> None:
     column = columns[0] if columns else None
     title = _humanize(issue_type) + (f" — `{', '.join(columns)}`" if columns else "")
     with st.container(border=True):
-        st.subheader(title)
+        sev = issue.get('severity', 'low')
+        sev_html = f"<span class='stage-pill sev-{sev}'>{sev}</span>"
+        st.markdown(f"**{title}** &nbsp; {sev_html}", unsafe_allow_html=True)
         explanation = issue.get('explanation') or issue.get('summary')
         if explanation:
             st.write(explanation)
@@ -577,6 +626,7 @@ def _humanize(s: str) -> str:
 # ---------------------------------------------------------------------------
 
 def render_done() -> None:
+    _render_stage_bar('done')
     st.header('Cleaning Complete')
     df = st.session_state['df']
     original_df = st.session_state['original_df']
@@ -584,7 +634,8 @@ def render_done() -> None:
 
     col1, col2, col3 = st.columns(3)
     col1.metric('Original Rows', f'{len(original_df):,}')
-    col2.metric('Cleaned Rows', f'{len(df):,}')
+    removed = len(original_df) - len(df)
+    col2.metric('Cleaned Rows', f'{len(df):,}', delta=f'-{removed:,} rows removed' if removed else None)
     col3.metric('Transforms Applied', len(cleaning_log))
 
     st.divider()
