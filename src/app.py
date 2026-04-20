@@ -16,34 +16,34 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Custom theme CSS — works reliably with Streamlit's theme toggle
 st.markdown("""
 <style>
 :root {
-  --accent: #7c3aed;
-  --accent-dark: #6d28d9;
+  --accent: #3b82f6;
   --success: #34d399;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --muted: #6b7280;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --muted: #64748b;
+  --border: #1e2d40;
+  --border-strong: #2a3f58;
 }
 
-.block-container { max-width: 900px; padding: 2rem 1rem; }
+.block-container { max-width: 920px; padding: 1.5rem 1rem; }
 h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.3; }
 
 .stepper {
   display: flex; align-items: center; justify-content: center;
-  gap: 1rem; margin-bottom: 2rem;
+  gap: 0.75rem; margin-bottom: 1.75rem;
 }
 .step {
   display: flex; flex-direction: column; align-items: center;
-  color: var(--muted); font-size: 14px;
+  color: var(--muted); font-size: 13px;
 }
 .step-circle {
-  width: 40px; height: 40px; border-radius: 50%;
-  border: 2px solid currentColor; opacity: 0.4;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid currentColor; opacity: 0.35;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 600; margin-bottom: 0.5rem; transition: all 0.3s;
+  font-weight: 600; margin-bottom: 0.4rem;
 }
 .step.active .step-circle {
   background: var(--accent); border-color: var(--accent);
@@ -52,45 +52,72 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.3; }
 .step.done .step-circle {
   border-color: var(--success); color: var(--success); opacity: 1;
 }
-.step-arrow { color: var(--muted); font-size: 20px; margin-top: 1rem; opacity: 0.3; }
+.step-arrow { color: var(--muted); font-size: 16px; margin-top: 0.9rem; opacity: 0.25; }
 .step-arrow:last-child { display: none; }
 
 .neat-card {
-  border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;
-  border: 1px solid rgba(0,0,0,0.1); transition: all 0.3s;
-  background: rgba(0,0,0,0.02);
+  border-radius: 6px; padding: 1rem 1.125rem; margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
 }
-@media (prefers-color-scheme: dark) {
-  .neat-card { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+.neat-card.sev-high   { border-left: 3px solid var(--danger); }
+.neat-card.sev-medium { border-left: 3px solid var(--warning); }
+.neat-card.sev-low    { border-left: 3px solid var(--success); }
+
+.sev-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 3px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
 }
-.neat-card.sev-high { border-left: 4px solid var(--danger); }
-.neat-card.sev-medium { border-left: 4px solid var(--warning); }
-.neat-card.sev-low { border-left: 4px solid var(--success); }
+.sev-high   .sev-badge { background: rgba(248,113,113,0.12); color: var(--danger); }
+.sev-medium .sev-badge { background: rgba(251,191,36,0.12);  color: var(--warning); }
+.sev-low    .sev-badge { background: rgba(52,211,153,0.12);  color: var(--success); }
 
-.sev-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-.sev-high .sev-badge { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-.sev-medium .sev-badge { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-.sev-low .sev-badge { background: rgba(52, 211, 153, 0.15); color: var(--success); }
-
-.stButton > button { border-radius: 6px; font-weight: 600; transition: all 0.2s; border: none !important; }
-button[kind="primary"] { background: var(--accent) !important; color: white !important; }
-button[kind="primary"]:hover { background: var(--accent-dark) !important; opacity: 0.9; }
+.stButton > button {
+  border-radius: 5px; font-weight: 500; font-size: 13px;
+  transition: opacity 0.15s; border: 1px solid var(--border-strong) !important;
+}
+button[kind="primary"] {
+  background: var(--accent) !important; color: white !important;
+  border-color: var(--accent) !important;
+}
+button[kind="primary"]:hover { opacity: 0.88; }
+button.neatly-preview {
+  border-color: #38bdf8 !important; color: #38bdf8 !important;
+  background: transparent !important;
+}
+button.neatly-skip {
+  border-color: #334155 !important; color: var(--muted) !important;
+  background: transparent !important;
+}
+button.neatly-undo {
+  border-color: #334155 !important; color: #94a3b8 !important;
+  background: transparent !important; font-size: 12px !important;
+}
 
 [data-testid="metric-container"] {
-  border-radius: 8px; padding: 1.25rem;
-  border: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.02);
-  transition: all 0.3s;
-}
-@media (prefers-color-scheme: dark) {
-  [data-testid="metric-container"] { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+  border-radius: 6px; padding: 1rem;
+  border: 1px solid var(--border);
 }
 
-[role="tablist"] button { font-weight: 600; }
-.stDownloadButton > button { border-radius: 6px; font-weight: 600; }
-
+[role="tablist"] button { font-weight: 500; }
+.stDownloadButton > button { border-radius: 5px; font-weight: 500; }
 [data-testid="stAppViewContainer"] { padding-top: 0; }
 footer { display: none; }
 </style>
+<script>
+(function() {
+    function tag() {
+        document.querySelectorAll('.stButton > button').forEach(function(btn) {
+            var t = (btn.querySelector('p') || btn).textContent.trim();
+            if (t.indexOf('Preview') !== -1) btn.classList.add('neatly-preview');
+            else if (t === 'Skip') btn.classList.add('neatly-skip');
+            else if (t.indexOf('Undo') !== -1) btn.classList.add('neatly-undo');
+        });
+    }
+    var obs = new MutationObserver(tag);
+    obs.observe(document.body, {childList: true, subtree: true});
+    tag();
+})();
+</script>
 """, unsafe_allow_html=True)
 
 from orchestrator import run_diagnosis
@@ -137,6 +164,7 @@ from utils.session_state import init_state
 load_dotenv()
 
 _HISTORY_CAP = 20
+_UNDO_CAP = 10
 
 # ---------------------------------------------------------------------------
 # Session state initialisation
@@ -144,26 +172,6 @@ _HISTORY_CAP = 20
 
 init_state()
 init_session()   # generates session_id and fires session_started once per browser session
-
-# Apply theme from session state
-theme = st.session_state.get('theme', 'dark')
-st.markdown(f"<script>document.documentElement.setAttribute('data-theme', '{theme}');</script>", unsafe_allow_html=True)
-
-# Render theme toggle
-def _render_theme_toggle() -> None:
-    """Render theme toggle button in top-right corner."""
-    theme = st.session_state.get('theme', 'dark')
-    icon = '☀️' if theme == 'dark' else '🌙'
-    label = 'Light' if theme == 'dark' else 'Dark'
-
-    col1, col2 = st.columns([10, 1])
-    with col2:
-        if st.button(f'{icon} {label}', key='theme_toggle_btn', use_container_width=False):
-            st.session_state['theme'] = 'light' if theme == 'dark' else 'dark'
-            st.rerun()
-
-# Call toggle on every render
-_render_theme_toggle()
 
 # ---------------------------------------------------------------------------
 # Stage: upload
@@ -225,11 +233,19 @@ def _render_file_upload() -> None:
 
     if not uploaded_file:
         return
-    try:
-        df = parse_uploaded_file(uploaded_file)
-    except Exception as e:
-        st.error(f'Error reading file: {e}')
-        return
+
+    # Cache the parsed DataFrame by (name, size) so re-renders don't re-parse the file.
+    _cache_key = (uploaded_file.name, uploaded_file.size)
+    if st.session_state.get('_upload_cache_key') != _cache_key:
+        try:
+            df = parse_uploaded_file(uploaded_file)
+        except Exception as e:
+            st.error(f'Error reading file: {e}')
+            return
+        st.session_state['_upload_cache_key'] = _cache_key
+        st.session_state['_upload_cached_df'] = df
+    else:
+        df = st.session_state['_upload_cached_df']
 
     _MAX_ROWS, _MAX_COLS = 2_000_000, 500
     if len(df) > _MAX_ROWS:
@@ -249,6 +265,10 @@ def _render_file_upload() -> None:
         st.session_state['issues'] = []
         st.session_state['cleaning_log'] = []
         st.session_state['df_history'] = []
+        st.session_state['_undo_stack'] = []
+        st.session_state['_input_source'] = 'file'
+        st.session_state.pop('_db_source_config', None)
+        st.session_state.pop('_db_source_table', None)
         st.session_state['stage'] = 'diagnose'
         _clear_preview()
         st.rerun()
@@ -327,6 +347,7 @@ def _render_database_loader() -> None:
                     st.session_state['_db_conn_str'] = conn_str
                     st.session_state['_db_tables'] = tables
                     st.session_state['_db_connected_type'] = db_type
+                    st.session_state['_db_source_config'] = {'db_type': 'SQLite', 'path': db_path}
                     st.rerun()
             except Exception as e:
                 st.error(f'Connection failed: {e}')
@@ -369,6 +390,12 @@ def _render_database_loader() -> None:
                         st.session_state['_db_conn_str'] = conn_str
                         st.session_state['_db_tables'] = tables
                         st.session_state['_db_connected_type'] = db_type
+                        st.session_state['_db_source_config'] = {
+                            'db_type': db_type,
+                            'host': host, 'port': int(port),
+                            'user': user, 'password': password,
+                            'database': database,
+                        }
                         st.rerun()
                 except Exception as e:
                     st.error(f'Connection failed: {e}')
@@ -385,7 +412,7 @@ def _render_database_loader() -> None:
         return
 
     st.success(f'Connected — {len(tables)} table(s) found')
-    row_limit = st.slider('Row Limit', 1_000, 2_000_000, 500_000, step=10_000, key='db_row_limit')
+    row_limit = st.slider('Row Limit', 1_000, 2_000_000, 1_000_000, step=10_000, key='db_row_limit')
     load_mode = st.radio('Load Mode', ['Select Table', 'Custom Query'], horizontal=True, key='db_load_mode')
 
     if load_mode == 'Select Table':
@@ -394,6 +421,7 @@ def _render_database_loader() -> None:
             try:
                 df = load_table(conn_str, table_name, limit=row_limit)
                 st.session_state['_db_loaded_df'] = df
+                st.session_state['_db_source_table'] = table_name
                 st.rerun()
             except Exception as e:
                 st.error(f'Load failed: {e}')
@@ -427,6 +455,8 @@ def _finalize_database_load(df: pd.DataFrame) -> None:
         st.session_state['issues'] = []
         st.session_state['cleaning_log'] = []
         st.session_state['df_history'] = []
+        st.session_state['_undo_stack'] = []
+        st.session_state['_input_source'] = 'database'
         st.session_state.pop('_db_loaded_df', None)
         st.session_state['stage'] = 'diagnose'
         _clear_preview()
@@ -527,6 +557,14 @@ _STATS_HIDE_KEYS = {
 
 def render_decide() -> None:
     _render_stage_bar('decide')
+
+    # Undo button — top right, only when stack has entries
+    undo_stack = st.session_state.get('_undo_stack', [])
+    if undo_stack:
+        _, undo_col = st.columns([8, 2])
+        if undo_col.button(f'↩ Undo: {undo_stack[-1]["label"]}', key='undo_btn', use_container_width=True):
+            _undo_last_action()
+
     st.header('Review & Fix Issues')
     issues = st.session_state['issues']
     history = st.session_state['df_history']
@@ -668,17 +706,17 @@ def _render_issue_card(idx: int, issue: dict) -> None:
     if not actions:
         st.caption("_No automatic fix available for this issue._")
     else:
-        # Layout: one column per action + Preview + Skip
+        # Layout: Preview | actions... | Skip
         cols = st.columns(len(actions) + 2)
-        for btn_col, (label, handler) in zip(cols, actions):
-            if btn_col.button(label, key=f'act_{idx}_{label}'):
-                _apply_action(idx, handler, label)
-        if cols[-2].button('Preview', key=f'prev_{idx}'):
+        if cols[0].button('▸ Preview', key=f'prev_{idx}'):
             first_label, first_handler = actions[0]
             st.session_state['_preview_idx'] = idx
             st.session_state['_preview_handler'] = first_handler
             st.session_state['_preview_label'] = first_label
             st.rerun()
+        for btn_col, (label, handler) in zip(cols[1:-1], actions):
+            if btn_col.button(label, key=f'act_{idx}_{label}', type='primary'):
+                _apply_action(idx, handler, label)
         if cols[-1].button('Skip', key=f'skip_{idx}'):
             _clear_preview()
             issue = st.session_state['issues'][idx] if idx < len(st.session_state['issues']) else {}
@@ -872,6 +910,20 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
     return []
 
 
+def _undo_last_action() -> None:
+    stack = st.session_state.get('_undo_stack', [])
+    if not stack:
+        return
+    entry = stack.pop()
+    st.session_state['df'] = entry['df']
+    st.session_state['issues'].insert(0, entry['issue'])
+    if st.session_state['cleaning_log']:
+        st.session_state['cleaning_log'].pop()
+    if st.session_state['df_history']:
+        st.session_state['df_history'].pop()
+    st.rerun()
+
+
 def _apply_action(idx: int, handler, label: str = 'Action') -> None:
     issue = st.session_state['issues'][idx] if idx < len(st.session_state['issues']) else {}
     df_before = st.session_state['df'].copy()
@@ -903,6 +955,11 @@ def _apply_action(idx: int, handler, label: str = 'Action') -> None:
     })
     if len(history) > _HISTORY_CAP:
         history.pop(0)
+
+    undo_stack = st.session_state.setdefault('_undo_stack', [])
+    undo_stack.append({'df': df_before, 'issue': issue, 'label': label})
+    if len(undo_stack) > _UNDO_CAP:
+        undo_stack.pop(0)
 
     _clear_preview()
     _dismiss_issue(idx)
@@ -952,33 +1009,45 @@ def _humanize(s: str) -> str:
 # Stage: done — helpers
 # ---------------------------------------------------------------------------
 
-_PUSH_DB_TYPES = ['PostgreSQL', 'MySQL', 'SQLite']
+_PUSH_DB_TYPES = ['PostgreSQL', 'MySQL', 'MySQL Workbench (Local)', 'SQLite']
 _PUSH_DB_DEFAULTS = {
     'PostgreSQL': {'host': 'localhost', 'port': 5432},
     'MySQL': {'host': 'localhost', 'port': 3306},
+    'MySQL Workbench (Local)': {'host': 'localhost', 'port': 3306},
     'SQLite': {},
 }
 
 
-def _render_push_to_db(df: pd.DataFrame) -> None:
-    """Render the Push to Database form inside the done stage expander."""
-    db_type = st.selectbox('Database type', _PUSH_DB_TYPES, key='push_db_type')
+def _render_push_to_db(df: pd.DataFrame, prefill: dict | None = None) -> None:
+    """Render the Push to Database form.
+
+    prefill: optional dict (db_type, host, port, user, password, database, or path for SQLite)
+             sourced from the original connection so fields are pre-populated.
+    """
+    p = prefill or {}
+    prefill_type = p.get('db_type', 'MySQL')
+    type_index = _PUSH_DB_TYPES.index(prefill_type) if prefill_type in _PUSH_DB_TYPES else 0
+
+    db_type = st.selectbox('Database type', _PUSH_DB_TYPES, index=type_index, key='push_db_type')
+    _dialect = 'MySQL' if db_type == 'MySQL Workbench (Local)' else db_type
 
     if db_type == 'SQLite':
-        db_path = st.text_input('SQLite file path', placeholder='/path/to/file.db', key='push_sqlite_path')
+        db_path = st.text_input('SQLite file path', value=p.get('path', ''), placeholder='/path/to/file.db', key='push_sqlite_path')
         host = port = user = password = database = None
     else:
         defaults = _PUSH_DB_DEFAULTS[db_type]
         col1, col2 = st.columns([3, 1])
-        host = col1.text_input('Host', value=defaults['host'], key='push_host')
-        port = col2.number_input('Port', value=defaults['port'], min_value=1, max_value=65535, key='push_port')
-        database = st.text_input('Database', key='push_database')
+        host = col1.text_input('Host', value=p.get('host', defaults.get('host', '')), key='push_host')
+        port = col2.number_input('Port', value=int(p.get('port', defaults.get('port', 5432))), min_value=1, max_value=65535, key='push_port')
+        database = st.text_input('Database', value=p.get('database', ''), key='push_database')
         col3, col4 = st.columns(2)
-        user = col3.text_input('User', key='push_user')
-        password = col4.text_input('Password', type='password', key='push_password')
+        user = col3.text_input('User', value=p.get('user', ''), key='push_user')
+        password = col4.text_input('Password', value=p.get('password', ''), type='password', key='push_password')
         db_path = None
 
-    table_name = st.text_input('Destination table', key='push_table_name')
+    source_table = st.session_state.get('_db_source_table', '')
+    default_table = f'{source_table}_cleaned' if source_table else ''
+    table_name = st.text_input('Destination table name', value=default_table, key='push_table_name')
     write_mode = st.radio(
         'If table exists',
         ['Append', 'Replace'],
@@ -998,7 +1067,7 @@ def _render_push_to_db(df: pd.DataFrame) -> None:
                 conn_str = build_connection_string('SQLite', path=db_path)
             else:
                 conn_str = build_connection_string(
-                    db_type,
+                    _dialect,
                     host=host,
                     port=int(port),
                     database=database,
@@ -1047,20 +1116,36 @@ def render_done() -> None:
     st.dataframe(df.head(20), use_container_width=True)
 
     st.divider()
-    st.subheader('Downloads')
     csv_bytes = df.to_csv(index=False).encode('utf-8')
     log_bytes = json.dumps(cleaning_log, indent=2, default=str).encode('utf-8')
 
-    col1, col2 = st.columns(2)
-    if col1.download_button('📥 Download Cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv', use_container_width=True):
-        log_event('export_downloaded', export_type='csv', rows=len(df), columns=len(df.columns))
-    if col2.download_button('📄 Download Log (JSON)', log_bytes, 'cleaning_log.json', 'application/json', use_container_width=True):
-        log_event('export_downloaded', export_type='log', n_transforms=len(cleaning_log))
+    input_source = st.session_state.get('_input_source', 'file')
+    source_config = st.session_state.get('_db_source_config')
 
-    # Push to Database (optional)
-    st.divider()
-    with st.expander('Push to Database (optional)', expanded=False):
-        _render_push_to_db(df)
+    if input_source == 'database' and source_config:
+        # DB source: lead with save-back tab, downloads secondary
+        st.subheader('Export')
+        tab_db, tab_dl = st.tabs(['💾 Save to Database', '📥 Download Files'])
+        with tab_db:
+            _render_push_to_db(df, prefill=source_config)
+        with tab_dl:
+            col1, col2 = st.columns(2)
+            if col1.download_button('📥 Download Cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv', use_container_width=True):
+                log_event('export_downloaded', export_type='csv', rows=len(df), columns=len(df.columns))
+            if col2.download_button('📄 Download Log (JSON)', log_bytes, 'cleaning_log.json', 'application/json', use_container_width=True):
+                log_event('export_downloaded', export_type='log', n_transforms=len(cleaning_log))
+    else:
+        # File source: downloads first, DB push optional
+        st.subheader('Downloads')
+        col1, col2 = st.columns(2)
+        if col1.download_button('📥 Download Cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv', use_container_width=True):
+            log_event('export_downloaded', export_type='csv', rows=len(df), columns=len(df.columns))
+        if col2.download_button('📄 Download Log (JSON)', log_bytes, 'cleaning_log.json', 'application/json', use_container_width=True):
+            log_event('export_downloaded', export_type='log', n_transforms=len(cleaning_log))
+
+        st.divider()
+        with st.expander('Save to Database (optional)', expanded=False):
+            _render_push_to_db(df)
 
     # Cleaning log in expander
     if cleaning_log:
@@ -1085,6 +1170,9 @@ def _reset_to_upload() -> None:
     st.session_state['cleaning_log'] = []
     st.session_state['df_history'] = []
     st.session_state['column_contexts'] = []
+    st.session_state['_undo_stack'] = []
+    st.session_state.pop('_upload_cache_key', None)
+    st.session_state.pop('_upload_cached_df', None)
     st.session_state['stage'] = 'upload'
     _clear_preview()
 
