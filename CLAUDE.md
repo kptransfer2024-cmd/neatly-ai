@@ -87,6 +87,15 @@ st.session_state = {
 - Commit message format: `feat: [what]` or `fix: [what]`
 - After each module: run tests, then commit and push to current branch.
 
+## Development standards
+
+When implementing or modifying a detector/module:
+
+- **Efficiency (time + space).** Prefer vectorized pandas/numpy operations over per-row or per-column Python loops. Avoid materializing large intermediate structures (full boolean DataFrames on wide data) — process column-by-column when per-column stats are needed.
+- **Empirical statistical methods.** Use established techniques (Tukey's IQR fence for outliers, skewness-based mean-vs-median imputation, mode for categorical fills). Hoist all thresholds to named module-level constants at the top of the file (e.g. `_IQR_MULTIPLIER`, `_DROP_THRESHOLD`).
+- **Edge case test coverage.** Every detector ships with tests for at minimum: empty DataFrame, no matching columns, constant / degenerate columns, NaN handling, both tails (where relevant), non-matching dtypes ignored, and sample-index capping.
+- **Workflow.** Feature branch → implement → `pytest tests/` green → commit with `feat:` or `fix:` → push to current branch. Every module push before moving to the next.
+
 ## Lessons learned
 
 **2026-04-19 — pandas dtype 'str' vs 'object'**
