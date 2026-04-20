@@ -89,4 +89,5 @@ st.session_state = {
 
 ## Lessons learned
 
-_(Update this section when mistakes happen — record what went wrong and the rule that prevents it.)_
+**2026-04-19 — pandas dtype 'str' vs 'object'**
+Python 3.13 + pandas 2.x infers string columns as `dtype='str'` instead of `dtype='object'`. Any dtype check for string columns must use `dtype in ('object', 'str')`, not `== 'object'`. Same applies to tests asserting column dtypes.
