@@ -16,24 +16,53 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Custom theme CSS
+# Custom theme CSS — Clean, minimal dark design
 st.markdown("""
 <style>
-.block-container { max-width: 900px; padding-top: 2rem; }
-.stage-pill {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-.sev-high   { background: #3f1212; color: #f87171; }
-.sev-medium { background: #3a2600; color: #fbbf24; }
-.sev-low    { background: #0a2a1a; color: #34d399; }
-.stDownloadButton > button { border-radius: 8px; font-weight: 600; }
-[data-testid="metric-container"] { background: #1a1a1a; border-radius: 10px; padding: 1rem; }
+/* Layout & Typography */
+.block-container { max-width: 900px; padding: 2rem 1rem; }
+body { background: #0f0f11; color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.3; }
+
+/* Progress Stepper */
+.stepper { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 2rem; }
+.step { display: flex; flex-direction: column; align-items: center; color: #71717a; font-size: 14px; }
+.step-circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #27272a;
+               display: flex; align-items: center; justify-content: center; font-weight: 600; margin-bottom: 0.5rem; }
+.step.active .step-circle { background: #7c3aed; border-color: #7c3aed; color: #f4f4f5; }
+.step.done .step-circle { background: transparent; border-color: #34d399; color: #34d399; }
+.step-arrow { color: #27272a; font-size: 20px; margin-top: 1rem; }
+.step-arrow:last-child { display: none; }
+
+/* Cards & Containers */
+.neat-card { background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+.neat-card.sev-high { border-left: 4px solid #f87171; }
+.neat-card.sev-medium { border-left: 4px solid #fbbf24; }
+.neat-card.sev-low { border-left: 4px solid #34d399; }
+
+/* Severity badges */
+.sev-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+.sev-high .sev-badge { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+.sev-medium .sev-badge { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+.sev-low .sev-badge { background: rgba(52, 211, 153, 0.1); color: #34d399; }
+
+/* Buttons */
+.stButton > button { border-radius: 6px; font-weight: 600; transition: all 0.2s; }
+button[kind="primary"] { background: #7c3aed !important; border: none !important; }
+button[kind="primary"]:hover { background: #6d28d9 !important; }
+
+/* Metrics */
+[data-testid="metric-container"] { background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 1.25rem; }
+
+/* Tabs */
+[role="tablist"] button { font-weight: 600; }
+
+/* Download buttons */
+.stDownloadButton > button { border-radius: 6px; font-weight: 600; }
+
+/* Remove Streamlit defaults */
+[data-testid="stAppViewContainer"] { padding-top: 0; }
+footer { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -86,26 +115,42 @@ init_session()   # generates session_id and fires session_started once per brows
 # ---------------------------------------------------------------------------
 
 def _render_stage_bar(current: str) -> None:
-    """Render progress indicator across stages."""
+    """Render numbered progress stepper across all stages."""
     stages = ['upload', 'diagnose', 'decide', 'done']
     labels = ['Upload', 'Diagnose', 'Review', 'Done']
-    cols = st.columns(len(stages))
-    for col, stage, label in zip(cols, stages, labels):
-        active = stage == current
-        done = stages.index(stage) < stages.index(current)
-        icon = '✦' if active else ('✓' if done else '○')
-        col.markdown(
-            f"<p style='text-align:center;opacity:{'1' if active else '0.4'};font-weight:{'700' if active else '400'}'>"
-            f"{icon} {label}</p>",
-            unsafe_allow_html=True
-        )
-    st.divider()
+    current_idx = stages.index(current)
+
+    steps_html = '<div class="stepper">'
+    for i, (stage, label) in enumerate(zip(stages, labels)):
+        step_class = 'active' if stage == current else ('done' if i < current_idx else '')
+        symbol = i + 1
+        steps_html += f'''
+        <div class="step {step_class}">
+            <div class="step-circle">{symbol if i >= current_idx else '✓'}</div>
+            <div style="font-size: 12px; font-weight: 500;">{label}</div>
+        </div>
+        '''
+        if i < len(stages) - 1:
+            steps_html += '<div class="step-arrow">→</div>'
+
+    steps_html += '</div>'
+    st.markdown(steps_html, unsafe_allow_html=True)
 
 
 def render_upload() -> None:
-    st.markdown("## ✦ Neatly")
-    st.markdown("##### Upload a file. Get a clean dataset in minutes.")
-    st.markdown("---")
+    _render_stage_bar('upload')
+
+    # Hero section
+    st.markdown(
+        """
+        <div style="text-align: center; margin: 2rem 0 3rem 0;">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">✦</div>
+            <h1 style="margin: 0; font-size: 2.5rem; color: #f4f4f5;">Neatly</h1>
+            <p style="margin: 0.5rem 0 0 0; font-size: 1.1rem; color: #71717a;">Upload data. Get results. No headaches.</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     tab_file, tab_db = st.tabs(['📁 File Upload', '🗄️ Database'])
 
@@ -260,7 +305,15 @@ def _get_default_port(db_type: str) -> int:
 # ---------------------------------------------------------------------------
 
 def render_diagnose() -> None:
-    st.header('Diagnosing your data…')
+    st.markdown(
+        """
+        <div style="text-align: center; margin: 4rem 0;">
+            <div style="font-size: 2rem; margin-bottom: 1rem;">✓</div>
+            <p style="font-size: 1.1rem; color: #71717a;">Analyzing your data…</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
     with st.spinner('Running detectors and generating explanations…'):
         try:
             result = run_diagnosis(st.session_state['df'])
@@ -345,35 +398,43 @@ def _render_issue_card(idx: int, issue: dict) -> None:
     columns = issue.get('columns') or ([issue['column']] if issue.get('column') else [])
     column = columns[0] if columns else None
     title = _humanize(issue_type) + (f" — `{', '.join(columns)}`" if columns else "")
-    with st.container(border=True):
-        sev = issue.get('severity', 'low')
-        sev_html = f"<span class='stage-pill sev-{sev}'>{sev}</span>"
-        st.markdown(f"**{title}** &nbsp; {sev_html}", unsafe_allow_html=True)
-        explanation = issue.get('explanation') or issue.get('summary')
-        if explanation:
-            st.write(explanation)
-        stats = {k: v for k, v in issue.items() if k not in _STATS_HIDE_KEYS}
-        if stats:
-            st.caption(" • ".join(f"{k}: {v}" for k, v in stats.items()))
+    sev = issue.get('severity', 'low')
 
-        snippet = code_snippets.DETECTION_SNIPPETS.get(issue_type)
-        if snippet:
-            with st.expander('🔍 How was this detected?'):
-                formatted_snippet = snippet.format(col=column) if column else snippet
-                st.code(formatted_snippet, language='python')
+    # Start the card div with severity class for left-border color
+    st.markdown(f'<div class="neat-card sev-{sev}">', unsafe_allow_html=True)
 
-        actions = _actions_for(issue)
-        if not actions:
-            st.caption("_No automatic fix available for this issue._")
-            return
+    # Title with severity badge
+    sev_badge = f'<span class="sev-badge">{sev}</span>'
+    st.markdown(f"**{title}** &nbsp; {sev_badge}", unsafe_allow_html=True)
+
+    # Explanation
+    explanation = issue.get('explanation') or issue.get('summary')
+    if explanation:
+        st.write(explanation)
+
+    # Stats
+    stats = {k: v for k, v in issue.items() if k not in _STATS_HIDE_KEYS}
+    if stats:
+        st.caption(" • ".join(f"{k}: {v}" for k, v in stats.items()))
+
+    # Detection snippet
+    snippet = code_snippets.DETECTION_SNIPPETS.get(issue_type)
+    if snippet:
+        with st.expander('🔍 How was this detected?'):
+            formatted_snippet = snippet.format(col=column) if column else snippet
+            st.code(formatted_snippet, language='python')
+
+    # Actions
+    actions = _actions_for(issue)
+    if not actions:
+        st.caption("_No automatic fix available for this issue._")
+    else:
         # Layout: one column per action + Preview + Skip
         cols = st.columns(len(actions) + 2)
         for btn_col, (label, handler) in zip(cols, actions):
             if btn_col.button(label, key=f'act_{idx}_{label}'):
                 _apply_action(idx, handler, label)
-        if cols[-2].button('👁 Preview', key=f'prev_{idx}'):
-            # Preview the first action by default — user can click any specific
-            # action to apply it; preview gives a read-only look at #1.
+        if cols[-2].button('Preview', key=f'prev_{idx}'):
             first_label, first_handler = actions[0]
             st.session_state['_preview_idx'] = idx
             st.session_state['_preview_handler'] = first_handler
@@ -385,8 +446,12 @@ def _render_issue_card(idx: int, issue: dict) -> None:
             log_event('issue_skipped', issue_type=issue.get('type'), column=(issue.get('columns') or [None])[0])
             _dismiss_issue(idx)
 
-        if st.session_state.get('_preview_idx') == idx:
-            _render_preview_panel(idx)
+    # End card div
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Preview panel (outside the card)
+    if st.session_state.get('_preview_idx') == idx:
+        _render_preview_panel(idx)
 
 
 def _render_preview_panel(idx: int) -> None:
@@ -627,11 +692,24 @@ def _humanize(s: str) -> str:
 
 def render_done() -> None:
     _render_stage_bar('done')
-    st.header('Cleaning Complete')
+
+    # Success state hero
+    st.markdown(
+        """
+        <div style="text-align: center; margin: 2rem 0 3rem 0;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">✓</div>
+            <h1 style="margin: 0; font-size: 2.5rem; color: #34d399;">All clean.</h1>
+            <p style="margin: 0.5rem 0 0 0; font-size: 1.1rem; color: #71717a;">Your dataset is ready to use.</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     df = st.session_state['df']
     original_df = st.session_state['original_df']
     cleaning_log = st.session_state['cleaning_log']
 
+    # Metrics
     col1, col2, col3 = st.columns(3)
     col1.metric('Original Rows', f'{len(original_df):,}')
     removed = len(original_df) - len(df)
@@ -648,10 +726,15 @@ def render_done() -> None:
     log_bytes = json.dumps(cleaning_log, indent=2, default=str).encode('utf-8')
 
     col1, col2 = st.columns(2)
-    if col1.download_button('Download cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv'):
+    if col1.download_button('📥 Download Cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv', use_container_width=True):
         log_event('export_downloaded', export_type='csv', rows=len(df), columns=len(df.columns))
-    if col2.download_button('Download cleaning log (JSON)', log_bytes, 'cleaning_log.json', 'application/json'):
+    if col2.download_button('📄 Download Log (JSON)', log_bytes, 'cleaning_log.json', 'application/json', use_container_width=True):
         log_event('export_downloaded', export_type='log', n_transforms=len(cleaning_log))
+
+    # Cleaning log in expander
+    if cleaning_log:
+        with st.expander('View cleaning log', expanded=False):
+            st.json(cleaning_log)
 
     if cleaning_log:
         st.subheader('Cleaning log')
