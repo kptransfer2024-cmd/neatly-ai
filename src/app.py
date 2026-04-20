@@ -108,7 +108,7 @@ footer { display: none; }
     function tag() {
         document.querySelectorAll('.stButton > button').forEach(function(btn) {
             var t = (btn.querySelector('p') || btn).textContent.trim();
-            if (t.indexOf('Preview') !== -1) btn.classList.add('neatly-preview');
+            if (t === 'View') btn.classList.add('neatly-preview');
             else if (t === 'Skip') btn.classList.add('neatly-skip');
             else if (t.indexOf('Undo') !== -1) btn.classList.add('neatly-undo');
         });
@@ -1101,6 +1101,165 @@ def render_changes_tab() -> None:
         render_diff(cumulative)
 
 
+def render_custom_code_tab() -> None:
+    """Pandas code editor — lets users write arbitrary transforms against the live df.
+
+    Flow:
+      1. User writes pandas code; `df`, `pd`, `np` are pre-injected.
+      2. "Run Preview" executes on a copy — the real df is untouched.
+      3. Diff + preview are shown. User confirms with "Apply Changes".
+      4. On apply the real df is updated and the change lands in df_history /
+         undo stack / cleaning_log exactly like any other transform.
+    """
+    import numpy as np
+    import traceback as _tb
+
+    _safe_names = (
+        'abs', 'all', 'any', 'bool', 'dict', 'enumerate', 'filter', 'float',
+        'frozenset', 'getattr', 'hasattr', 'int', 'isinstance', 'issubclass',
+        'iter', 'len', 'list', 'map', 'max', 'min', 'next', 'print', 'range',
+        'repr', 'round', 'set', 'setattr', 'slice', 'sorted', 'str', 'sum',
+        'tuple', 'type', 'zip',
+    )
+    _builtins_src = __builtins__ if isinstance(__builtins__, dict) else vars(__builtins__)
+    _safe_builtins = {n: _builtins_src[n] for n in _safe_names if n in _builtins_src}
+
+    df_current = st.session_state['df']
+
+    st.caption(
+        f"Current dataset: **{df_current.shape[0]:,} rows × {df_current.shape[1]} columns** "
+        f"— `df` is pre-loaded. Reassign it or mutate in place."
+    )
+
+    _DEFAULT = '''\
+# df is your current dataset (pandas DataFrame).
+# pd and np are also available.
+
+# Examples:
+# df = df.dropna(subset=['age'])
+# df['price'] = df['price'].clip(lower=0)
+# df['name'] = df['name'].str.strip().str.title()
+# df = df[df['status'] != 'inactive'].reset_index(drop=True)
+'''
+
+    code = st.text_area(
+        'code',
+        value=st.session_state.get('_custom_code_text', _DEFAULT),
+        height=220,
+        key='_custom_code_editor',
+        label_visibility='collapsed',
+    )
+    st.session_state['_custom_code_text'] = code
+
+    has_preview = '_custom_preview_df' in st.session_state
+    col_run, col_apply, col_clear = st.columns([2, 2, 1])
+    run_clicked   = col_run.button('▶ Run Preview', key='custom_run_btn', type='primary')
+    apply_clicked = col_apply.button('✅ Apply Changes', key='custom_apply_btn', disabled=not has_preview)
+    if col_clear.button('✕ Reset', key='custom_clear_btn'):
+        st.session_state.pop('_custom_preview_df', None)
+        st.session_state.pop('_custom_preview_error', None)
+        st.session_state.pop('_custom_code_text', None)
+        st.rerun()
+
+    # ---- Run preview ---------------------------------------------------------
+    if run_clicked:
+        st.session_state.pop('_custom_preview_df', None)
+        st.session_state.pop('_custom_preview_error', None)
+        stripped = code.strip()
+        if not stripped or stripped == _DEFAULT.strip():
+            st.warning('Write some pandas code above first.')
+        else:
+            ns = {'__builtins__': _safe_builtins, 'df': df_current.copy(), 'pd': pd, 'np': np}
+            try:
+                exec(stripped, ns)  # noqa: S102
+                result = ns['df']
+                if not isinstance(result, pd.DataFrame):
+                    st.error('`df` must remain a pandas DataFrame after execution.')
+                else:
+                    st.session_state['_custom_preview_df'] = result
+            except Exception:
+                st.session_state['_custom_preview_error'] = _tb.format_exc()
+        st.rerun()
+
+    # ---- Error ---------------------------------------------------------------
+    if '_custom_preview_error' in st.session_state:
+        st.error('**Execution error** — fix the code and run again.')
+        st.code(st.session_state['_custom_preview_error'], language='python')
+
+    # ---- Preview -------------------------------------------------------------
+    if '_custom_preview_df' in st.session_state:
+        preview_df = st.session_state['_custom_preview_df']
+        diff = compute_diff(df_current, preview_df)
+        r0, c0 = df_current.shape
+        r1, c1 = preview_df.shape
+
+        parts = []
+        if r1 != r0:
+            parts.append(f"rows {r0:,} → {r1:,}  ({'−' if r1 < r0 else '+'}{abs(r1 - r0):,})")
+        if c1 != c0:
+            parts.append(f"columns {c0} → {c1}  ({'−' if c1 < c0 else '+'}{abs(c1 - c0)})")
+        st.success('**Preview ready** — ' + (' · '.join(parts) if parts else 'shape unchanged'))
+
+        render_diff(diff)
+
+        added_cols   = sorted(set(preview_df.columns) - set(df_current.columns))
+        removed_cols = sorted(set(df_current.columns) - set(preview_df.columns))
+        if added_cols:
+            st.caption('New columns: ' + ', '.join(f'`{c}`' for c in added_cols))
+        if removed_cols:
+            st.caption('Removed columns: ' + ', '.join(f'`{c}`' for c in removed_cols))
+
+        with st.expander('🔍 Preview modified dataset (first 50 rows)'):
+            st.dataframe(preview_df.head(50), use_container_width=True)
+
+    # ---- Apply ---------------------------------------------------------------
+    if apply_clicked and '_custom_preview_df' in st.session_state:
+        preview_df = st.session_state.pop('_custom_preview_df')
+        df_before  = df_current.copy()
+        label      = 'Custom Code'
+
+        st.session_state['df'] = preview_df
+
+        diff = compute_diff(df_before, preview_df)
+        rows_affected = diff.get('rows_changed', 0) + diff.get('rows_removed', 0)
+
+        log_entry = {
+            'action':          'custom_code',
+            'code':            code,
+            'rows_before':     len(df_before),
+            'rows_after':      len(preview_df),
+            'columns_before':  len(df_before.columns),
+            'columns_after':   len(preview_df.columns),
+        }
+        st.session_state['cleaning_log'].append(log_entry)
+        log_event('decision_made', action='custom_code', rows_affected=rows_affected)
+
+        history = st.session_state['df_history']
+        history.append({
+            'label':      label,
+            'log_entry':  log_entry,
+            'df_before':  df_before,
+            'diff':       diff,
+            'applied_at': len(history),
+        })
+        if len(history) > _HISTORY_CAP:
+            history.pop(0)
+
+        undo_stack = st.session_state.setdefault('_undo_stack', [])
+        undo_stack.append({'df': df_before, 'issue': {}, 'label': label})
+        if len(undo_stack) > _UNDO_CAP:
+            undo_stack.pop(0)
+
+        feedback_parts = [f'**{label}** applied']
+        if diff.get('rows_changed'):
+            feedback_parts.append(f"{diff['rows_changed']} rows updated")
+        if diff.get('rows_removed'):
+            feedback_parts.append(f"{diff['rows_removed']} rows removed")
+        st.session_state['_highlight_cols'] = diff.get('columns_affected', [])
+        st.session_state['_last_action_feedback'] = ' — '.join(feedback_parts)
+        st.rerun()
+
+
 def _dismiss_issue(idx: int) -> None:
     st.session_state['issues'].pop(idx)
     st.rerun()
@@ -1274,6 +1433,8 @@ def _reset_to_upload() -> None:
                  '_db_conn_str', '_db_tables', '_db_connected_type',
                  '_db_source_config', '_db_source_table', '_input_source'):
         st.session_state.pop(_key, None)
+    st.session_state['_highlight_cols'] = []
+    st.session_state['_last_action_label'] = ''
     st.session_state['stage'] = 'upload'
     _clear_preview()
 
