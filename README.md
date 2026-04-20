@@ -1,6 +1,8 @@
-# Neatly AI — Data Cleaning Copilot
+# Neatly — AI Data Cleaning Copilot
 
-AI-powered data quality detection and cleaning. Upload a CSV, get automated issue detection with plain-English explanations, apply deterministic fixes, and export a cleaned dataset with a detailed cleaning log.
+Upload a dataset, get automated issue detection with plain-English explanations, apply deterministic fixes with one click, and export a cleaned dataset with a full audit log.
+
+---
 
 ## Quick Start
 
@@ -8,115 +10,188 @@ AI-powered data quality detection and cleaning. Upload a CSV, get automated issu
 # Install dependencies
 pip install -r requirements.txt
 
-# Set API key (optional, only for explanations)
-export ANTHROPIC_API_KEY="sk-ant-..."
-
 # Run the app
 streamlit run src/app.py
 ```
 
-## Project Structure
+Open [http://localhost:8501](http://localhost:8501) in your browser.
 
-```
-neatly_ai/product/
-├── src/                           # All source code
-│   ├── app.py                     # Streamlit entry point (main app)
-│   ├── orchestrator.py            # Detector orchestration
-│   ├── explanation_layer.py       # Claude API integration
-│   ├── transformation_executor.py # Transform application
-│   ├── context_interpreter.py     # Context parsing
-│   │
-│   ├── admin_app.py               # Standalone analytics dashboard (local only — NOT deployed with public app)
-│   ├── detectors/                 # Data quality detectors (12+)
-│   ├── utils/                     # Utilities: db_ingestion, file_ingestion, diff_engine, etc.
-│   ├── tests/                     # Test suite (23+ test files)
-│   │
-│   ├── api/                       # API backend (FastAPI, optional)
-│   ├── core/                      # Core config and settings
-│   └── db/                        # Database models and sessions
-│
-├── docs/                          # All documentation
-│   ├── README.md                  (docs index)
-│   ├── DATABASE_CONNECTION_GUIDE.md
-│   ├── DATABASE_INPUT_SETUP.md
-│   ├── IMPLEMENTATION_COMPLETE.md
-│   ├── QA_REPORT.md
-│   └── TESTING_SUMMARY.md
-│
-├── CLAUDE.md                      # Project instructions for Claude Code
-├── README.md                      # This file (START HERE)
-└── requirements.txt               # Python dependencies
-```
+> `ANTHROPIC_API_KEY` is **not required** for normal operation — explanations use static templates.
 
-## Architecture
+---
 
-1. **Upload Stage** — Load data from file or database
-2. **Diagnosis Stage** — Run detectors, explain issues
-3. **Decide Stage** — Review findings, select actions
-4. **Execute Stage** — Apply transforms, generate cleaning log
-5. **Export Stage** — Download cleaned CSV + log
+## Admin Dashboard
 
-All data operations are deterministic (pandas/numpy only). Claude API is used **only** for generating plain-English explanations of issues, never for generating code or mutating data.
+The analytics dashboard lets you see session activity, which detectors fire most, and what actions users take. It is **not** bundled with the public app — it's a private script you run separately.
 
-## Running Tests
-
-```bash
-# All tests
-pytest src/tests -v
-
-# Single test file
-pytest src/tests/test_missing_value_detector.py -v
-
-# With coverage
-pytest src/tests --cov=src --cov-report=html
-```
-
-## Admin Dashboard (internal only)
-
-The analytics dashboard is **not** bundled with the public app — it's a standalone Streamlit script at `src/admin_app.py` that you run locally when you want to review usage events.
+### Open locally (dev sessions only)
 
 ```bash
 streamlit run src/admin_app.py --server.port 8502
 ```
 
-- Optional password gate: set `ADMIN_PASSWORD` in `.streamlit/secrets.toml`.
-- Reads `neatly_logs.jsonl` (local dev) or `/tmp/neatly_logs.jsonl` (cloud).
-- Local runs currently see **only local dev sessions** — cloud logs are not synced back. If you want to review production analytics, download the cloud log file manually or add external log storage (future work).
+Open [http://localhost:8502](http://localhost:8502). This reads `neatly_logs.jsonl` from the local filesystem and shows only sessions from your own machine.
 
-## Key Features
+### Open with Supabase (cloud + local sessions together)
 
-- **12+ detectors** — Missing values, duplicates, outliers, schema issues, consistency, patterns, ranges, whitespace, mixed types, near-duplicates, constant columns
-- **Database support** — PostgreSQL, MySQL, SQLite, SQL Server
-- **Safe transforms** — All mutations are deterministic pandas operations
-- **Detailed logging** — Every transform recorded with before/after statistics
-- **API integration** — Claude API for natural-language explanations (optional)
+When `SUPABASE_URL` and `SUPABASE_KEY` are set, every event — from both the deployed public app and local dev — is written to a shared `neatly_events` Postgres table. The admin dashboard reads from the same table, so you see **all users in one place**.
 
-## Dependencies
+**Step 1 — Create the table** (run once in Supabase SQL Editor):
 
-- `streamlit` — Web UI
-- `pandas`, `numpy` — Data operations
-- `sqlalchemy`, `psycopg2-binary`, `pymysql` — Database connectivity
-- `anthropic` — Claude API (optional)
+```sql
+CREATE TABLE neatly_events (
+  id          BIGSERIAL PRIMARY KEY,
+  session_id  TEXT        NOT NULL,
+  event       TEXT        NOT NULL,
+  ts          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  data        JSONB       NOT NULL DEFAULT '{}'
+);
+ALTER TABLE neatly_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all" ON neatly_events FOR ALL TO anon USING (true) WITH CHECK (true);
+```
 
-See `requirements.txt` for full list.
+**Step 2 — Set env vars** (local `.env` or Streamlit secrets):
 
-## Documentation
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-key
+```
 
-See [docs/README.md](docs/README.md) for detailed guides on:
-- Database connection setup
-- MCP server configuration for Claude Code
-- Reliability assessment and troubleshooting
-- Implementation details
-- QA findings and test coverage
+**Step 3 — Run the dashboard:**
+
+```bash
+streamlit run src/admin_app.py --server.port 8502
+```
+
+> **Password gate (optional):** Add `ADMIN_PASSWORD = "your-password"` to `.streamlit/secrets.toml` to require login before viewing the dashboard.
+
+---
+
+## Loading Data
+
+### File upload
+CSV, TSV, JSON, Excel (.xlsx/.xls), Parquet — up to **2 million rows**.
+
+### Database (direct connection)
+Connect directly without exporting a file first.
+
+| Database | Notes |
+|---|---|
+| **MySQL Workbench (Local)** | Use `localhost` / `3306` / `root` — same credentials as your Workbench connection |
+| **MySQL (remote)** | Any remote MySQL server |
+| **PostgreSQL** | Local or cloud (Supabase, Neon, RDS) |
+| **SQLite** | Provide the local file path |
+| **SQL Server** | Requires ODBC Driver 17 installed |
+
+Row limit: up to **2 million rows** via a slider before loading.
+
+---
+
+## Exporting Cleaned Data
+
+**When you loaded from a database:** the done stage leads with a pre-filled "Save to Database" tab — same host/port/user/password/database, output table defaults to `{source_table}_cleaned`. Just confirm and push.
+
+**When you uploaded a file:** CSV + JSON log downloads appear first. An optional "Save to Database" expander lets you push to any database.
+
+---
+
+## Detectors
+
+| Detector | What it finds |
+|---|---|
+| Missing values | Null / NaN cells |
+| Whitespace values | Cells that are only spaces / tabs |
+| Duplicate rows | Exact duplicate records |
+| Near-duplicate rows | Fuzzy text matches (edit distance) |
+| Duplicate columns | Columns with identical values |
+| Outliers | Statistical outliers via Tukey IQR |
+| Type mismatches | Columns with mixed / wrong types |
+| Pattern violations | Values not matching expected regex patterns |
+| Out-of-range values | Numeric values outside defined bounds |
+| Format inconsistencies | Inconsistent date/phone/currency formats |
+| Constant columns | Columns with a single unique value |
+| PII detection | Emails, phone numbers, SSNs, credit cards |
+| Schema analysis | Column type inference and anomalies |
+| Range validator | Min/max constraint checks |
+
+---
+
+## Project Structure
+
+```
+product/
+├── src/
+│   ├── app.py                    # Streamlit UI — main app
+│   ├── admin_app.py              # Analytics dashboard (local only)
+│   ├── orchestrator.py           # Wires detectors → explanation → transforms
+│   ├── explanation_layer.py      # Plain-English issue summaries (static templates)
+│   ├── transformation_executor.py# All data mutations (deterministic, pandas only)
+│   ├── detectors/                # 14 detector modules
+│   ├── utils/
+│   │   ├── analytics.py          # Event logging (local JSONL + Supabase)
+│   │   ├── db_ingestion.py       # SQLAlchemy database helpers
+│   │   ├── file_ingestion.py     # CSV/Excel/Parquet parsing
+│   │   └── diff_engine.py        # Before/after diff rendering
+│   ├── core/connectors/          # DB connector classes (MySQL, Postgres, S3, BigQuery)
+│   └── tests/                    # 597 tests across all modules
+├── requirements.txt
+├── CLAUDE.md                     # Development guidelines
+└── README.md                     # This file
+```
+
+---
+
+## Running Tests
+
+```bash
+# All tests
+cd src && python -m pytest tests/ -v
+
+# Single module
+python -m pytest tests/test_missing_value_detector.py -v
+
+# With coverage
+python -m pytest tests/ --cov=. --cov-report=html
+```
+
+**597 tests, all passing.**
+
+---
+
+## Architecture
+
+All business logic lives in `detectors/` and flows through `orchestrator.py → explanation_layer.py → transformation_executor.py`. `app.py` only reads and writes `st.session_state`.
+
+**Hard rules:**
+- All data mutations are deterministic pandas/numpy — no LLM-generated code
+- No LLM calls during normal operation — explanations use static templates
+- Every transform appends to `cleaning_log`
+
+---
 
 ## Development
 
-- Feature branches only — never commit to main
-- Run tests before pushing: `pytest src/tests`
-- Commit message format: `feat: [what]` or `fix: [what]`
+```bash
+# Feature branches only — never commit to main
+git checkout -b feat/your-feature
 
-See `CLAUDE.md` for detailed development guidelines.
+# Run tests before pushing
+cd src && python -m pytest tests/
 
-## Status
+# Commit format
+git commit -m "feat: add X" # or "fix: repair Y"
+```
 
-Production-ready. All tests passing (18+ tests, 100% coverage of core modules).
+---
+
+## Dependencies
+
+| Package | Purpose |
+|---|---|
+| `streamlit` | Web UI |
+| `pandas`, `numpy` | All data operations |
+| `sqlalchemy`, `pymysql`, `psycopg2-binary` | Database connectivity |
+| `supabase` | Cloud analytics log storage |
+| `anthropic` | Claude API (optional, explanations only) |
+
+See `requirements.txt` for the full list.
