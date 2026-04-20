@@ -45,7 +45,7 @@ def detect(df: pd.DataFrame) -> list[dict]:
 
         total_non_null = series.count()
         outlier_pct = round(outlier_count / total_non_null * 100, 2)
-        row_indices = outlier_mask.nonzero()[0][:5].tolist()
+        row_indices = outlier_mask.nonzero()[0][:100].tolist()
         lower_r = round(lower, 4)
         upper_r = round(upper, 4)
         min_v = float(series.min())
