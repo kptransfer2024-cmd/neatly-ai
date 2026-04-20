@@ -78,7 +78,7 @@ def create_connection(conn_str: str, timeout: int = 10) -> Engine:
         connect_args = {'timeout': timeout}
     else:
         connect_args = {'connect_timeout': timeout}
-    engine = create_engine(conn_str, connect_args=connect_args, echo=False)
+    engine = create_engine(conn_str, connect_args=connect_args, echo=False, pool_pre_ping=True)
     # Test the connection
     with engine.connect() as conn:
         pass

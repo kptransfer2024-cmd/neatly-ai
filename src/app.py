@@ -166,6 +166,29 @@ load_dotenv()
 _HISTORY_CAP = 20
 _UNDO_CAP = 10
 
+
+# ---------------------------------------------------------------------------
+# Cached DB helpers — engine and DataFrames survive across Streamlit reruns
+# ---------------------------------------------------------------------------
+
+@st.cache_resource
+def _get_db_engine(conn_str: str):
+    return create_connection(conn_str)
+
+
+@st.cache_data(ttl=600)
+def _load_table_cached(conn_str: str, table_name: str, limit: int) -> pd.DataFrame:
+    engine = _get_db_engine(conn_str)
+    return pd.read_sql(f"SELECT * FROM {table_name} LIMIT {limit}", engine)
+
+
+@st.cache_data(ttl=600)
+def _load_query_cached(conn_str: str, sql_query: str, limit: int) -> pd.DataFrame:
+    engine = _get_db_engine(conn_str)
+    query = f"SELECT * FROM ({sql_query.strip()}) AS _q LIMIT {limit}"
+    return pd.read_sql(query, engine)
+
+
 # ---------------------------------------------------------------------------
 # Session state initialisation
 # ---------------------------------------------------------------------------
@@ -338,9 +361,8 @@ def _render_database_loader() -> None:
         if st.button('Connect', key='connect_sqlite_btn'):
             try:
                 conn_str = build_connection_string('SQLite', path=db_path)
-                engine = create_connection(conn_str)
+                engine = _get_db_engine(conn_str)
                 tables = list_tables(engine)
-                engine.dispose()
                 if not tables:
                     st.warning('No tables found in this database.')
                 else:
@@ -381,9 +403,8 @@ def _render_database_loader() -> None:
                         user=user,
                         password=password,
                     )
-                    engine = create_connection(conn_str)
+                    engine = _get_db_engine(conn_str)
                     tables = list_tables(engine)
-                    engine.dispose()
                     if not tables:
                         st.warning('Connected but no tables found in this database/schema.')
                     else:
@@ -419,7 +440,7 @@ def _render_database_loader() -> None:
         table_name = st.selectbox('Select Table', tables, key='db_table_select')
         if st.button('Load Table', key='db_load_table_btn', type='primary'):
             try:
-                df = load_table(conn_str, table_name, limit=row_limit)
+                df = _load_table_cached(conn_str, table_name, row_limit)
                 st.session_state['_db_loaded_df'] = df
                 st.session_state['_db_source_table'] = table_name
                 st.rerun()
@@ -432,7 +453,7 @@ def _render_database_loader() -> None:
                 st.info('Enter a SQL SELECT query above.')
             else:
                 try:
-                    df = load_query(conn_str, sql_query, limit=row_limit)
+                    df = _load_query_cached(conn_str, sql_query, row_limit)
                     st.session_state['_db_loaded_df'] = df
                     st.rerun()
                 except Exception as e:
@@ -937,13 +958,24 @@ def _apply_action(idx: int, handler, label: str = 'Action') -> None:
     log = st.session_state['cleaning_log']
     log_entry = log[-1] if log else {}
     diff = compute_diff(df_before, st.session_state['df'])
+    rows_affected = diff.get('rows_changed', 0) + diff.get('rows_removed', 0)
     log_event(
         'decision_made',
         action=label,
         issue_type=issue.get('type'),
         column=(issue.get('columns') or [None])[0],
-        rows_affected=diff.get('rows_changed', 0) + diff.get('rows_removed', 0),
+        rows_affected=rows_affected,
     )
+
+    # Store highlight + toast state for next render
+    st.session_state['_highlight_cols'] = diff.get('columns_affected', [])
+    st.session_state['_last_action_label'] = label
+    parts = [f"**{label}** applied"]
+    if diff.get('rows_changed'):
+        parts.append(f"{diff['rows_changed']} rows updated")
+    if diff.get('rows_removed'):
+        parts.append(f"{diff['rows_removed']} rows removed")
+    st.session_state['_last_action_feedback'] = ' — '.join(parts)
 
     history = st.session_state['df_history']
     history.append({
