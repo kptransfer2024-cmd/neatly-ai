@@ -1,6 +1,7 @@
 """Detects near-duplicate rows using normalized string comparison and adjacent similarity scanning."""
 import difflib
 import pandas as pd
+from detectors.utils import get_string_columns, _WS_PATTERN
 
 _SIMILARITY_THRESHOLD = 0.85   # SequenceMatcher ratio ≥ 0.85 → near-duplicate
 _MAX_ROWS_TO_SCAN = 500        # cap O(n) scan; sample first 500 rows on large dfs
@@ -50,10 +51,9 @@ def detect(df: pd.DataFrame) -> list[dict]:
 def _select_candidate_columns(df: pd.DataFrame) -> list[str]:
     """Return string columns with moderate cardinality and non-trivial lengths."""
     candidates = []
-    for col in df.columns:
-        if str(df[col].dtype) not in ('object', 'str'):
-            continue
+    string_cols = get_string_columns(df)
 
+    for col in string_cols:
         non_null = df[col].dropna()
         if len(non_null) == 0:
             continue
@@ -72,7 +72,7 @@ def _select_candidate_columns(df: pd.DataFrame) -> list[str]:
 
 def _normalize(series: pd.Series) -> pd.Series:
     """Lowercase, strip, collapse whitespace."""
-    return series.astype(str).str.lower().str.strip().str.replace(r'\s+', ' ', regex=True)
+    return series.astype(str).str.lower().str.strip().str.replace(_WS_PATTERN, ' ', regex=True)
 
 
 def _find_clusters(normalized: pd.Series) -> list[list[int]]:

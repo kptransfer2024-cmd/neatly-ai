@@ -1,6 +1,7 @@
 """Detects numeric values outside physically/logically valid bounds for known domains."""
 import numpy as np
 import pandas as pd
+from detectors.utils import severity_from_pct
 
 _DOMAIN_BOUNDS: dict[str, tuple[float | None, float | None]] = {
     'age': (0.0, 150.0),        # human lifespan upper bound
@@ -84,7 +85,7 @@ def _build_issue(
     total_non_null = int(df[col].notna().sum())
     violation_pct = round(violation_count / total_non_null * 100, 2)
 
-    severity = 'high' if violation_pct > 20 else 'medium' if violation_pct > 5 else 'low'
+    severity = severity_from_pct(violation_pct)
 
     row_indices = [int(i) for i in violation_series.index.tolist()]
 

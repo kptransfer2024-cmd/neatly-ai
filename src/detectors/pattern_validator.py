@@ -1,6 +1,7 @@
 """Detects string columns typed as email/phone/URL/zip and flags malformed values."""
 import re
 import pandas as pd
+from detectors.utils import severity_from_pct, get_string_columns
 
 _MIN_COLUMN_MATCH_RATE = 0.6  # ≥60% of non-null values must match a pattern to "type" the column
 _MIN_INVALID_COUNT = 2        # suppress single-value noise; require ≥2 bad values
@@ -18,7 +19,7 @@ def detect(df: pd.DataFrame) -> list[dict]:
     if df.empty:
         return []
 
-    string_cols = [c for c in df.columns if str(df[c].dtype) in ('object', 'str')]
+    string_cols = get_string_columns(df)
     if not string_cols:
         return []
 
@@ -87,7 +88,7 @@ def _build_issue(
     total_non_null = len(non_null_series)
     invalid_pct = round(invalid_count / total_non_null * 100, 2)
 
-    severity = 'high' if invalid_pct > 20 else 'medium' if invalid_pct > 5 else 'low'
+    severity = severity_from_pct(invalid_pct)
 
     non_null_positions = df[col].notna()
     df_positions = df.index[non_null_positions]
