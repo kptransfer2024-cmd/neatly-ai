@@ -1,169 +1,69 @@
-"""Calls Claude API to generate plain-English explanations for detected issues.
+"""Generates plain-English explanations for detected issues using static templates.
 
-RULE: Only column-level stats and summaries are sent — never raw data rows.
+No API calls — zero latency, zero cost, fully deterministic.
 """
-import asyncio
-import anthropic
 
-_MODEL = 'claude-sonnet-4-6'
-_MAX_TOKENS = 256
-_SYSTEM_PROMPT = (
-    "You are a data-quality assistant helping a non-technical user clean a CSV. "
-    "Given a structured description of a single issue found by automated detectors, "
-    "write a concise 1-2 sentence plain-English explanation of WHAT the issue is "
-    "and WHY it matters for analysis. Do not suggest fixes — the UI offers action "
-    "buttons. Do not invent statistics that are not in the input. Refer to columns "
-    "by name only; do not echo raw cell values back."
-)
-_UNSAFE_KEYS = frozenset({
-    'sample_values', 'example_values', 'sample_indices',
-    'row_indices', 'rows', 'raw_rows',
-})
-_MAX_CONCURRENT = 5
+_TEMPLATES: dict[str, str] = {
+    'missing_value':             "{col} is missing {missing_count} values ({missing_pct}% of rows) — fill or drop before analysis.",
+    'outliers':                  "{col} has {outlier_count} statistical outliers ({outlier_pct}% of non-null values) beyond the IQR fence [{lower_fence}, {upper_fence}].",
+    'duplicates':                "{duplicate_count} fully duplicate rows found — these inflate counts and skew aggregations.",
+    'duplicate_column':          "{col} is an exact copy of '{duplicate_of}' — safe to drop.",
+    'whitespace_values':         "{col} has {whitespace_count} whitespace-only cells ({whitespace_pct}% of non-null) — treat as missing.",
+    'mixed_type':                "{col} mixes numeric and non-numeric values ({dirty_count} dirty, {dirty_pct}% of non-null) — coerce or drop.",
+    'constant_column':           "{col} holds a single constant value across all rows — no information for analysis.",
+    'inconsistent_format':       "{col} has inconsistent formatting — standardize before downstream use.",
+    'type_mismatch':             "{col} has unexpected data types — check for parsing errors on upload.",
+    'pattern_mismatch':          "{col} contains values that don't match the expected pattern.",
+    'out_of_range':              "{col} has values outside the valid range.",
+    'id_column':                 "{col} appears to be an ID column (high cardinality) — consider excluding from modeling.",
+    'pii_detected':              "{col} may contain PII — mask or remove before sharing.",
+    'near_duplicates':           "Near-duplicate rows detected — possible data entry errors or merged records.",
+    'date_out_of_range':         "{col} contains dates outside the expected range — check for data entry errors.",
+    'standardization_suggested': "{col} may benefit from standardization for consistent downstream processing.",
+}
 
 
-def explain_issues(
-    issues: list[dict],
-    df_stats: dict,
-    client: anthropic.Anthropic | None = None,
-) -> list[dict]:
+def explain_issues(issues: list[dict], df_stats: dict) -> list[dict]:  # noqa: ARG001
     """Attach a plain-English 'explanation' key to each issue dict.
 
-    For production use, batches API calls asynchronously for 5-10x faster processing.
-    For testing, accepts synchronous mocked clients.
-
-    Args:
-        issues: List of issue dicts from detectors.
-        df_stats: Column-level statistics (counts, dtypes, value distributions) —
-                  must not contain raw row data.
-        client: Injectable Anthropic client (for testing); defaults to env key.
-
-    Returns:
-        The same issue list with an 'explanation' str added to each dict.
+    Uses static templates interpolated with real issue stats — no API calls.
+    df_stats accepted for interface compatibility but not currently used.
     """
-    if not issues:
-        return issues
-
-    if client is None:
-        try:
-            client = anthropic.Anthropic()
-        except Exception:
-            # No API key / cannot construct → fall back to templates for every issue
-            for issue in issues:
-                issue['explanation'] = _fallback_explanation(issue)
-            return issues
-
-    stats_summary = _build_stats_summary(df_stats)
-
-    if _is_async_client(client):
-        explanations = asyncio.run(_explain_batch_async(issues, stats_summary, client))
-    else:
-        explanations = _explain_batch_sync(issues, stats_summary, client)
-
-    for issue, explanation in zip(issues, explanations):
-        issue['explanation'] = explanation
+    for issue in issues:
+        issue['explanation'] = _explain_one(issue)
     return issues
 
 
-def _is_async_client(client) -> bool:
-    """Check if client is an AsyncAnthropic instance (not mocks or regular client)."""
-    return type(client).__name__ == 'AsyncAnthropic'
-
-
-def _explain_batch_sync(
-    issues: list[dict],
-    stats_summary: str,
-    client: anthropic.Anthropic,
-) -> list[str]:
-    """Synchronous batch: for testing and mocked clients."""
-    return [_explain_one_sync(issue, stats_summary, client) for issue in issues]
-
-
-async def _explain_batch_async(
-    issues: list[dict],
-    stats_summary: str,
-    client,
-) -> list[str]:
-    """Async batch with rate limiting for production."""
-    sem = asyncio.Semaphore(_MAX_CONCURRENT)
-
-    async def explain_one_with_sem(issue: dict) -> str:
-        async with sem:
-            return await _explain_one_async(issue, stats_summary, client)
-
-    return await asyncio.gather(*[explain_one_with_sem(issue) for issue in issues])
-
-
-def _explain_one_sync(
-    issue: dict,
-    stats_summary: str,
-    client: anthropic.Anthropic,
-) -> str:
-    """Single-issue explanation call (synchronous).
-
-    Falls back to a template string on any client error, including missing
-    API key (TypeError in _validate_headers) and transport failures — so the
-    app works even when ANTHROPIC_API_KEY is not configured.
-    """
-    user_prompt = _build_issue_prompt(issue, stats_summary)
-    try:
-        response = client.messages.create(
-            model=_MODEL,
-            max_tokens=_MAX_TOKENS,
-            system=_SYSTEM_PROMPT,
-            messages=[{'role': 'user', 'content': user_prompt}],
-        )
-    except Exception:
+def _explain_one(issue: dict) -> str:
+    """Generate a stat-interpolated explanation from a template."""
+    issue_type = issue.get('type', '')
+    template = _TEMPLATES.get(issue_type)
+    if not template:
         return _fallback_explanation(issue)
-    text = ''.join(b.text for b in response.content if b.type == 'text').strip()
-    return text or _fallback_explanation(issue)
 
+    col = (issue.get('columns') or [None])[0] or issue.get('column', 'unknown column')
+    ctx: dict = {'col': col, 'type': issue_type}
 
-async def _explain_one_async(
-    issue: dict,
-    stats_summary: str,
-    client,
-) -> str:
-    """Single-issue explanation call (async)."""
-    user_prompt = _build_issue_prompt(issue, stats_summary)
+    for k, v in issue.items():
+        if isinstance(v, (int, float, str)):
+            ctx.setdefault(k, v)
+
+    # Flatten sample_data for the primary column (picks up e.g. duplicate_of)
+    sample = issue.get('sample_data', {})
+    if isinstance(sample, dict) and col in sample and isinstance(sample[col], dict):
+        for k, v in sample[col].items():
+            if isinstance(v, (int, float, str)):
+                ctx.setdefault(k, v)
+
     try:
-        response = await client.messages.create(
-            model=_MODEL,
-            max_tokens=_MAX_TOKENS,
-            system=_SYSTEM_PROMPT,
-            messages=[{'role': 'user', 'content': user_prompt}],
-        )
-    except (anthropic.APIError, Exception):
+        return template.format(**ctx)
+    except KeyError:
         return _fallback_explanation(issue)
-    text = ''.join(b.text for b in response.content if b.type == 'text').strip()
-    return text or _fallback_explanation(issue)
-
-
-def _build_issue_prompt(issue: dict, stats_summary: str) -> str:
-    """Render one issue as a compact, prompt-safe description (stats only)."""
-    safe = {k: v for k, v in issue.items() if k not in _UNSAFE_KEYS}
-    lines = [f"Issue type: {safe.pop('type', 'unknown')}"]
-    if 'column' in safe:
-        lines.append(f"Column: {safe.pop('column')}")
-    for k, v in safe.items():
-        lines.append(f"{k}: {v}")
-    if stats_summary:
-        lines.append("")
-        lines.append("Dataset context:")
-        lines.append(stats_summary)
-    return "\n".join(lines)
-
-
-def _build_stats_summary(df_stats: dict) -> str:
-    """Format df_stats into a compact prompt-safe string (stats only, no rows)."""
-    if not df_stats:
-        return ""
-    return "\n".join(f"- {k}: {v}" for k, v in df_stats.items())
 
 
 def _fallback_explanation(issue: dict) -> str:
     issue_type = issue.get('type', 'issue')
-    col = issue.get('column')
+    col = (issue.get('columns') or [None])[0] or issue.get('column')
     if col:
         return f"Detected {issue_type} in column '{col}'."
     return f"Detected {issue_type}."

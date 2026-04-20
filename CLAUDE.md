@@ -10,7 +10,6 @@ AI data cleaning copilot. Users upload a CSV, the app detects data quality issue
 
 - Streamlit frontend (`app.py`)
 - pandas for all data operations
-- Claude API (`claude-sonnet-4-6`) for natural-language explanations only
 - Python 3.12
 - pytest
 
@@ -28,9 +27,8 @@ export ANTHROPIC_API_KEY="sk-ant-..."  # or add to .env
 
 ### API & Rate Limits
 
-- Claude API calls happen only in `explanation_layer.py` (summaries only, never raw rows)
-- Standard rate limits apply (see [Anthropic docs](https://docs.anthropic.com/en/docs/build-with-claude/rate-limits))
-- Cost is proportional to column count and row sample size (capped in code)
+- No Claude API calls during normal operation. `explanation_layer.py` uses static templates — zero latency, zero cost.
+- `ANTHROPIC_API_KEY` is no longer required for the app to run.
 
 ## Commands
 
@@ -58,7 +56,7 @@ All logic lives in `detectors/` and is called by `orchestrator.py`, which feeds 
 product/
   app.py                        # Streamlit UI — reads/writes session_state only
   orchestrator.py               # Wires detectors → explanation_layer → transformation_executor
-  explanation_layer.py          # Claude API calls — summaries/stats only, never raw rows
+  explanation_layer.py          # Static template engine — generates plain-English summaries, no API calls
   transformation_executor.py    # Applies transforms deterministically; appends to cleaning_log
   detectors/
     missing_value_detector.py
@@ -121,7 +119,7 @@ When adding new detectors, assign a `type` value and update `_ISSUE_CATEGORIES` 
 ## Hard rules
 
 - **Deterministic transforms only.** All data mutations are Python/pandas — never LLM-generated code.
-- **LLM for explanation only.** Never send raw data rows to the Claude API — summaries and column stats only.
+- **No LLM calls during normal operation.** Explanations come from static templates in `explanation_layer.py`. Never send raw data rows to any external API.
 - **Every transform appends to `st.session_state['cleaning_log']`.**
 - Never modify working code unless fixing a confirmed bug.
 - No broad refactors unless explicitly asked.

@@ -174,28 +174,19 @@ class TestExplanationLayerIntegration:
     """Test explanation_layer interaction with detectors."""
 
     def test_explanation_layer_adds_explanation_key(self):
-        """explanation_layer adds 'explanation' key."""
+        """explanation_layer adds 'explanation' key (template-based, no API)."""
         from detectors.missing_value_detector import detect_missing
         from explanation_layer import explain_issues
 
         df = pd.DataFrame({'age': [25, None, 35]})
         issues = detect_missing(df)
 
-        # Before explanation
         assert 'explanation' not in issues[0]
 
-        # Mock the Claude API
-        with patch('explanation_layer.anthropic.Anthropic') as mock_client:
-            mock_instance = MagicMock()
-            mock_client.return_value = mock_instance
-            mock_instance.messages.create.return_value = MagicMock(
-                content=[MagicMock(type='text', text='Missing data detected')]
-            )
+        explained = explain_issues(issues, {})
 
-            explained = explain_issues(issues, {})
-
-        # After explanation
         assert 'explanation' in explained[0]
+        assert explained[0]['explanation'] != ''
         print(f"[OK] explanation_layer adds 'explanation': {explained[0]['explanation']}")
 
     def test_orchestrator_converts_explanation_to_summary(self):
