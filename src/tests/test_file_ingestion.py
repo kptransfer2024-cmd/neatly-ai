@@ -275,43 +275,25 @@ class TestCSVFallback:
 
         importlib.reload(mod)  # restore
 
-    def test_seek_called_on_fallback(self):
-        """File pointer is reset before fallback read so no data is lost."""
-        original_read_csv = pd.read_csv
-        seeked = {'called': False}
+    def test_file_read_once_on_fallback(self):
+        """Raw bytes are read from the file object exactly once; BytesIO handles retries."""
+        read_count = {'n': 0}
 
-        class SeekTrackingBuffer(io.BytesIO):
-            def seek(self, *args, **kwargs):
-                seeked['called'] = True
-                return super().seek(*args, **kwargs)
+        class ReadTrackingBuffer(io.BytesIO):
+            def read(self, *args, **kwargs):
+                read_count['n'] += 1
+                return super().read(*args, **kwargs)
 
         df = pd.DataFrame({'x': range(5)})
         raw = df.to_csv(index=False).encode()
-        buf = SeekTrackingBuffer(raw)
+        buf = ReadTrackingBuffer(raw)
         buf.name = 'track.csv'
         buf.size = len(raw)
 
-        # Monkeypatch only pyarrow path to fail
         import utils.file_ingestion as mod
-        original_fn = mod._read_csv
-
-        def failing_read_csv(f, sep=','):
-            try:
-                raise ImportError('forced')
-            except Exception:
-                if hasattr(f, 'seek'):
-                    f.seek(0)
-                return pd.read_csv(f, sep=sep, encoding='utf-8', low_memory=False)
-
-        mod._read_csv = failing_read_csv
-        mod._PARSERS['.csv'] = lambda f: mod._read_csv(f)
-
         result = mod.parse_uploaded_file(buf)
-        assert seeked['called']
+        assert read_count['n'] == 1, f'Expected 1 read, got {read_count["n"]}'
         assert len(result) == 5
-
-        mod._read_csv = original_fn
-        mod._PARSERS['.csv'] = lambda f: mod._read_csv(f)
 
 
 # ---------------------------------------------------------------------------

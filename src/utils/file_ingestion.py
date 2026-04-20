@@ -1,15 +1,33 @@
 """File parsing utilities for data ingestion."""
+import io
+
 import pandas as pd
 
 
 def _read_csv(f, sep: str = ',') -> pd.DataFrame:
-    # pyarrow engine is 3-10x faster than C for large files; fall back if unavailable.
+    # Read raw bytes once so every retry uses an in-memory BytesIO — eliminates
+    # re-reads from the original file object and avoids seek-position bugs.
+    raw = f.read() if hasattr(f, 'read') else open(f, 'rb').read()
+
+    # Fast path 1: PyArrow + UTF-8 (3-10x faster than C engine)
     try:
-        return pd.read_csv(f, sep=sep, encoding='utf-8', engine='pyarrow')
+        return pd.read_csv(io.BytesIO(raw), sep=sep, encoding='utf-8', engine='pyarrow')
     except Exception:
-        if hasattr(f, 'seek'):
-            f.seek(0)
-        return pd.read_csv(f, sep=sep, encoding='utf-8', low_memory=False)
+        pass
+
+    # Fast path 2: PyArrow + Latin-1 — handles windows-1252 / ISO-8859 files
+    # without falling back to the slow C engine.
+    try:
+        return pd.read_csv(io.BytesIO(raw), sep=sep, encoding='latin-1', engine='pyarrow')
+    except Exception:
+        pass
+
+    # Slow path: C engine handles mixed-type columns PyArrow rejects.
+    # Try UTF-8 first (correct for well-formed files), then Latin-1 as last resort.
+    try:
+        return pd.read_csv(io.BytesIO(raw), sep=sep, encoding='utf-8', low_memory=False)
+    except Exception:
+        return pd.read_csv(io.BytesIO(raw), sep=sep, encoding='latin-1', low_memory=False)
 
 
 _PARSERS = {
