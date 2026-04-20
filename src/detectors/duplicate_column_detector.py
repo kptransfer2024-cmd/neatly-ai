@@ -21,7 +21,7 @@ def detect(df: pd.DataFrame) -> list[dict]:
             issues.append({
                 'detector': 'duplicate_column_detector',
                 'type': 'duplicate_column',
-                'column': col,
+                'columns': [col],
                 'severity': 'medium',
                 'row_indices': [],
                 'summary': '',

@@ -31,7 +31,7 @@ def detect(df: pd.DataFrame) -> list[dict]:
         issues.append({
             'detector': 'whitespace_value_detector',
             'type': 'whitespace_values',
-            'column': col,
+            'columns': [col],
             'severity': severity,
             'row_indices': row_indices,
             'summary': '',

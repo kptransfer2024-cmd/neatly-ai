@@ -296,6 +296,88 @@ def test_flag_near_duplicates_marks_rows():
     assert result['name_near_duplicate_flag'].iloc[2] == True
 
 
+# --- merge_all_near_duplicates (bulk) tests ---
+
+def test_merge_all_near_duplicates_drops_extras_from_every_cluster():
+    from transformation_executor import merge_all_near_duplicates
+    df = pd.DataFrame({'name': ['Alice', 'Alice2', 'Bob', 'Bob2', 'Carol', 'Dana']})
+    log = []
+    clusters = [
+        {'column': 'name', 'row_indices': [0, 1]},
+        {'column': 'name', 'row_indices': [2, 3]},
+    ]
+    result = merge_all_near_duplicates(df, log, clusters)
+    assert len(result) == 4  # 6 - 2 dropped
+    assert list(result['name']) == ['Alice', 'Bob', 'Carol', 'Dana']
+
+
+def test_merge_all_near_duplicates_logs_once():
+    from transformation_executor import merge_all_near_duplicates
+    df = pd.DataFrame({'name': ['A', 'A2', 'B', 'B2']})
+    log = []
+    merge_all_near_duplicates(df, log, [
+        {'column': 'name', 'row_indices': [0, 1]},
+        {'column': 'name', 'row_indices': [2, 3]},
+    ])
+    assert len(log) == 1
+    entry = log[0]
+    assert entry['action'] == 'merge_all_near_duplicates'
+    assert entry['clusters_merged'] == 2
+    assert entry['rows_merged'] == 2
+
+
+def test_merge_all_near_duplicates_empty_clusters_noop():
+    from transformation_executor import merge_all_near_duplicates
+    df = pd.DataFrame({'a': [1, 2, 3]})
+    log = []
+    result = merge_all_near_duplicates(df, log, [])
+    assert len(result) == 3
+    assert log == []
+
+
+def test_merge_all_near_duplicates_singleton_cluster_ignored():
+    # A "cluster" of 1 row isn't a cluster — skip it
+    from transformation_executor import merge_all_near_duplicates
+    df = pd.DataFrame({'a': [1, 2, 3]})
+    log = []
+    result = merge_all_near_duplicates(df, log, [{'column': 'a', 'row_indices': [0]}])
+    assert len(result) == 3
+    assert log == []
+
+
+# --- flag_all_near_duplicates (bulk) tests ---
+
+def test_flag_all_near_duplicates_adds_single_flag_column():
+    from transformation_executor import flag_all_near_duplicates
+    df = pd.DataFrame({'name': ['A', 'B', 'C', 'D']})
+    log = []
+    result = flag_all_near_duplicates(df, log, [
+        {'column': 'name', 'row_indices': [0, 1]},
+        {'column': 'name', 'row_indices': [2, 3]},
+    ])
+    assert 'near_duplicate_flag' in result.columns
+    assert result['near_duplicate_flag'].sum() == 4  # all 4 flagged
+
+
+def test_flag_all_near_duplicates_only_marks_listed_rows():
+    from transformation_executor import flag_all_near_duplicates
+    df = pd.DataFrame({'name': ['A', 'B', 'C', 'D']})
+    log = []
+    result = flag_all_near_duplicates(df, log, [
+        {'column': 'name', 'row_indices': [1, 3]},
+    ])
+    assert list(result['near_duplicate_flag']) == [False, True, False, True]
+
+
+def test_flag_all_near_duplicates_logs():
+    from transformation_executor import flag_all_near_duplicates
+    df = pd.DataFrame({'name': ['A', 'B']})
+    log = []
+    flag_all_near_duplicates(df, log, [{'column': 'name', 'row_indices': [0, 1]}])
+    assert log[0]['action'] == 'flag_all_near_duplicates'
+    assert log[0]['flagged_count'] == 2
+
+
 # --- flag_invalid_patterns tests ---
 
 def test_flag_invalid_patterns_email():

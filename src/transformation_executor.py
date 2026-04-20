@@ -240,6 +240,73 @@ def flag_near_duplicates(
     return result
 
 
+def merge_all_near_duplicates(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    clusters: list[dict],
+) -> pd.DataFrame:
+    """Merge every near-duplicate cluster in one pass (keeps first row per cluster).
+
+    Each cluster is a dict with 'column' and 'row_indices'. Doing all drops at
+    once avoids the index-shift problem that would arise from applying
+    ``merge_near_duplicates`` sequentially per cluster.
+    """
+    if not clusters:
+        return df
+
+    drop_indices: set = set()
+    for cluster in clusters:
+        row_indices = cluster.get('row_indices') or []
+        if len(row_indices) < 2:
+            continue
+        drop_indices.update(row_indices[1:])
+
+    if not drop_indices:
+        return df
+
+    # Only drop indices that still exist (defensive against caller-side shifts)
+    drop_indices &= set(df.index)
+    result = df.drop(index=drop_indices).reset_index(drop=True)
+
+    _log(cleaning_log, 'merge_all_near_duplicates', {
+        'clusters_merged': sum(1 for c in clusters if len(c.get('row_indices') or []) >= 2),
+        'rows_merged': len(drop_indices),
+        'columns': sorted({c.get('column') for c in clusters if c.get('column')}),
+    })
+    return result
+
+
+def flag_all_near_duplicates(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    clusters: list[dict],
+) -> pd.DataFrame:
+    """Add a single boolean column marking any row in any near-duplicate cluster."""
+    if not clusters:
+        return df
+
+    flagged: set = set()
+    for cluster in clusters:
+        flagged.update(cluster.get('row_indices') or [])
+
+    if not flagged:
+        return df
+
+    result = df.copy()
+    flag_col = 'near_duplicate_flag'
+    result[flag_col] = False
+    valid = flagged & set(result.index)
+    result.loc[list(valid), flag_col] = True
+
+    _log(cleaning_log, 'flag_all_near_duplicates', {
+        'flag_column': flag_col,
+        'clusters_flagged': len(clusters),
+        'flagged_count': len(valid),
+        'columns': sorted({c.get('column') for c in clusters if c.get('column')}),
+    })
+    return result
+
+
 def flag_invalid_patterns(
     df: pd.DataFrame,
     cleaning_log: list,
@@ -439,6 +506,124 @@ def drop_column(df: pd.DataFrame, column: str, cleaning_log: list) -> pd.DataFra
         'columns_after': columns_after,
     })
     return result
+
+
+def drop_out_of_range_dates(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    lower: str,
+    upper: str,
+) -> pd.DataFrame:
+    """Drop rows whose datetime *column* falls outside [lower, upper] (ISO strings)."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+
+    lo = pd.Timestamp(lower)
+    hi = pd.Timestamp(upper)
+    series = pd.to_datetime(df[column], errors='coerce')
+
+    # NaT preserved; out-of-range rows dropped. Keep rows where value is in range OR NaT.
+    keep_mask = series.isna() | ((series >= lo) & (series <= hi))
+    before_count = len(df)
+    result = df[keep_mask].reset_index(drop=True)
+    after_count = len(result)
+
+    if before_count > after_count:
+        _log(cleaning_log, 'drop_out_of_range_dates', {
+            'column': column,
+            'lower': lower,
+            'upper': upper,
+            'rows_dropped': before_count - after_count,
+        })
+    return result
+
+
+def mask_pii(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    pii_type: str,
+    mask_type: str = 'partial',
+) -> pd.DataFrame:
+    """Mask PII values in a column."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+
+    result = df.copy()
+    series = result[column]
+
+    # Count non-null values to mask
+    non_null_mask = series.notna()
+    non_null_count = non_null_mask.sum()
+
+    if non_null_count == 0:
+        return result
+
+    if mask_type == 'full':
+        result.loc[non_null_mask, column] = '***'
+    else:
+        # Partial masking per PII type
+        if pii_type == 'email':
+            result.loc[non_null_mask, column] = series[non_null_mask].apply(_mask_email)
+        elif pii_type == 'phone':
+            result.loc[non_null_mask, column] = series[non_null_mask].apply(_mask_phone)
+        elif pii_type == 'ssn':
+            result.loc[non_null_mask, column] = series[non_null_mask].apply(_mask_ssn)
+        elif pii_type == 'credit_card':
+            result.loc[non_null_mask, column] = series[non_null_mask].apply(_mask_credit_card)
+        elif pii_type == 'name':
+            result.loc[non_null_mask, column] = series[non_null_mask].apply(_mask_name)
+        else:
+            result.loc[non_null_mask, column] = '***'
+
+    _log(cleaning_log, 'mask_pii', {
+        'column': column,
+        'pii_type': pii_type,
+        'mask_type': mask_type,
+        'values_masked': int(non_null_count),
+    })
+
+    return result
+
+
+def _mask_email(value: str) -> str:
+    """Mask email: user@domain.com → u***@domain.com"""
+    value = str(value).strip()
+    parts = value.split('@')
+    if len(parts) == 2:
+        username = parts[0]
+        domain = parts[1]
+        return f"{username[0]}***@{domain}" if username else '***@' + domain
+    return '***@***.com'
+
+
+def _mask_phone(value: str) -> str:
+    """Mask phone: (555) 123-4567 → (***) ***-4567"""
+    value = str(value).strip()
+    last_4 = value[-4:] if len(value) >= 4 else '****'
+    return f'(***) ***-{last_4}'
+
+
+def _mask_ssn(value: str) -> str:
+    """Mask SSN: 123-45-6789 → ***-**-6789"""
+    value = str(value).strip()
+    last_4 = value[-4:] if len(value) >= 4 else '****'
+    return f'***-**-{last_4}'
+
+
+def _mask_credit_card(value: str) -> str:
+    """Mask credit card: 1234-5678-9012-3456 → ****-****-****-3456"""
+    value = str(value).strip()
+    last_4 = value[-4:] if len(value) >= 4 else '****'
+    return f'****-****-****-{last_4}'
+
+
+def _mask_name(value: str) -> str:
+    """Mask name: John Doe → J*** D***"""
+    value = str(value).strip()
+    parts = value.split()
+    return ' '.join(f"{p[0]}***" if len(p) > 1 else p for p in parts)
 
 
 def _log(cleaning_log: list, action: str, details: dict) -> None:

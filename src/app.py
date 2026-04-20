@@ -76,6 +76,7 @@ from transformation_executor import (
     drop_invalid_rows,
     drop_missing,
     drop_non_numeric_rows,
+    drop_out_of_range_dates,
     drop_out_of_range_rows,
     drop_whitespace_rows,
     fill_missing,
@@ -83,6 +84,7 @@ from transformation_executor import (
     flag_all_near_duplicates,
     flag_invalid_patterns,
     flag_near_duplicates,
+    mask_pii,
     merge_all_near_duplicates,
     merge_near_duplicates,
     normalize_text,
@@ -680,6 +682,13 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
                 ('Drop invalid rows', lambda df, log: drop_invalid_rows(df, log, col, pattern)),
             ]
 
+    if issue_type == 'pii_detected' and col:
+        pii_type = issue.get('sample_data', {}).get(col, {}).get('pii_type', 'unknown')
+        return [
+            (f'Mask {pii_type}', lambda df, log: mask_pii(df, log, col, pii_type, 'partial')),
+            ('Remove Column', lambda df, log: drop_column(df, col, log)),
+        ]
+
     if issue_type == 'out_of_range' and col:
         sample = issue.get('sample_data', {}).get(col, {})
         lo, hi = sample.get('valid_lo'), sample.get('valid_hi')
@@ -694,6 +703,13 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
 
     if issue_type == 'id_column' and col:
         return [('Drop column', lambda df, log: drop_column(df, col, log))]
+
+    if issue_type == 'date_out_of_range' and col:
+        sample = issue.get('sample_data', {}).get(col, {})
+        lo = sample.get('valid_lower')
+        hi = sample.get('valid_upper')
+        if lo and hi:
+            return [('Drop out-of-range rows', lambda df, log: drop_out_of_range_dates(df, log, col, lo, hi))]
 
     if issue_type == 'whitespace_values' and col:
         return [

@@ -22,7 +22,7 @@ def test_detects_identical_columns():
     result = detect(df)
     assert len(result) == 1
     assert result[0]['type'] == 'duplicate_column'
-    assert result[0]['column'] == 'b'
+    assert result[0]['columns'][0] == 'b'
 
 
 def test_reports_original_column():
@@ -35,7 +35,7 @@ def test_three_identical_columns():
     df = pd.DataFrame({'a': [1, 2], 'b': [1, 2], 'c': [1, 2]})
     result = detect(df)
     assert len(result) == 2
-    reported_cols = {r['column'] for r in result}
+    reported_cols = {r['columns'][0] for r in result}
     assert 'a' not in reported_cols  # 'a' is the first — kept
 
 
@@ -48,7 +48,7 @@ def test_handles_nulls_correctly():
     df = pd.DataFrame({'a': [1, None, 3], 'b': [1, None, 3]})
     result = detect(df)
     assert len(result) == 1
-    assert result[0]['column'] == 'b'
+    assert result[0]['columns'][0] == 'b'
 
 
 def test_null_mismatch_not_flagged():
@@ -60,7 +60,7 @@ def test_string_columns():
     df = pd.DataFrame({'x': ['foo', 'bar'], 'y': ['foo', 'bar']})
     result = detect(df)
     assert len(result) == 1
-    assert result[0]['column'] == 'y'
+    assert result[0]['columns'][0] == 'y'
 
 
 def test_mixed_type_columns_not_flagged():

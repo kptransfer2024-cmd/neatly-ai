@@ -16,6 +16,7 @@ def init_state() -> None:
         '_preview_idx': None,     # index of the issue currently being previewed
         '_preview_handler': None, # callable to run for the preview diff
         '_preview_label': None,   # label of the previewed action
+        'theme': 'dark',          # 'dark' or 'light' theme preference
     }
     for key, value in INITIAL_STATE.items():
         if key not in st.session_state:

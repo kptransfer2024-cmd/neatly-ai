@@ -21,7 +21,7 @@ def test_detects_spaces_only():
     df = pd.DataFrame({'name': ['Alice', '   ', 'Charlie']})
     result = detect(df)
     assert len(result) == 1
-    assert result[0]['column'] == 'name'
+    assert result[0]['columns'][0] == 'name'
     assert result[0]['type'] == 'whitespace_values'
 
 
@@ -51,7 +51,7 @@ def test_multiple_string_columns():
         'b': ['x', 'y', '  '],
     })
     result = detect(df)
-    cols = {r['column'] for r in result}
+    cols = {r['columns'][0] for r in result}
     assert cols == {'a', 'b'}
 
 

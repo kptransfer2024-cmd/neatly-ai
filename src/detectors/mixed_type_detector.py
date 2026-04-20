@@ -41,7 +41,7 @@ def detect(df: pd.DataFrame) -> list[dict]:
         issues.append({
             'detector': 'mixed_type_detector',
             'type': 'mixed_type',
-            'column': col,
+            'columns': [col],
             'severity': severity,
             'row_indices': row_indices,
             'summary': '',

@@ -128,27 +128,54 @@ When adding new detectors, assign a `type` value and update `_ISSUE_CATEGORIES` 
 
 ## Permissions & Autonomy
 
-### No permission needed for:
-- Installing dependencies (`pip install -r requirements.txt`)
-- Running tests (`pytest`)
-- Running the app (`streamlit run app.py`)
-- Setting environment variables
-- Running any standard development commands
-- File edits, reads, and writes within the project directory
+### Go do the job — ask less!
 
-### Autonomous mode shifting:
-- **Enter plan mode** to design implementation before coding (no approval needed)
-- **Ask questions** to clarify ambiguous requirements mid-task
-- **Edit code directly** without asking — fix bugs, refactor, optimize as needed
-- **Use tools proactively** — Explore, Grep, Read, Write, Edit, Bash all proceed without prompts
+**Agents should proceed autonomously. Only ask if you're genuinely blocked.**
 
-**Rationale:** These are development workflow modes, not destructive actions. Proceeding autonomously in these modes unblocks work and enables iterative refinement. You can redirect or correct course at any time.
+### No questions needed for:
+- Installing dependencies, running tests, running the app
+- Setting environment variables, running dev commands
+- File edits, reads, writes within the project
+- Fixing bugs, refactoring, optimizing code
+- Exploring codebase (Glob, Grep, Read)
+- Making architectural decisions for new features
+- Adding tests, adjusting implementations based on test results
+- Committing and pushing code
+
+### When to ask (only if truly unclear):
+- User intent is ambiguous AND context doesn't clarify it
+- Multiple equally-valid approaches exist AND user preference affects timeline/strategy
+- You need clarification on specific business logic or acceptance criteria
+
+**Default: Take your best judgment and proceed. User can always redirect.**
+
+### Autonomous workflow:
+1. **Understand the task** — Read it once, infer intent from context
+2. **Plan mentally** (no need to ask approval)
+3. **Code and test** — Fix issues as you encounter them
+4. **Commit** — Push work to branch
+5. **Report results** — One sentence: what changed, what's next
+
+**Rationale:** Unnecessary questions block momentum. You have good judgment. Use it.
+
+## Decision-Making
+
+**You decide. Don't ask permission for:**
+- How to structure a new module
+- Whether to add helper functions
+- Which design pattern to use (as long as it's consistent with codebase)
+- Test structure and coverage level
+- Code style and organization
+- Error messages and logging
+
+**Just do it. If it's wrong, course-correct and move on.**
 
 ## Git workflow
 
 - Feature branches only — never commit to main.
 - Commit message format: `feat: [what]` or `fix: [what]`
-- After each module: run tests, then commit and push to current branch (use `/push` skill).
+- After each module: run tests, then commit and push to current branch
+- Push often (small commits, not big bundles)
 
 ## Development standards
 

@@ -28,7 +28,7 @@ def test_detects_mostly_numeric_with_dirty_values():
     result = detect(df)
     assert len(result) == 1
     assert result[0]['type'] == 'mixed_type'
-    assert result[0]['column'] == 'revenue'
+    assert result[0]['columns'][0] == 'revenue'
 
 
 def test_does_not_flag_below_numeric_threshold():
