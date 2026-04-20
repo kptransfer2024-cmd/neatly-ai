@@ -579,6 +579,11 @@ _STATS_HIDE_KEYS = {
 def render_decide() -> None:
     _render_stage_bar('decide')
 
+    # Toast feedback from last applied action
+    feedback = st.session_state.pop('_last_action_feedback', None)
+    if feedback:
+        st.toast(feedback)
+
     # Undo button — top right, only when stack has entries
     undo_stack = st.session_state.get('_undo_stack', [])
     if undo_stack:
@@ -587,6 +592,10 @@ def render_decide() -> None:
             _undo_last_action()
 
     st.header('Review & Fix Issues')
+
+    # Live dataset window — always visible, updates after each action
+    _render_live_data_window()
+
     issues = st.session_state['issues']
     history = st.session_state['df_history']
 
@@ -598,7 +607,7 @@ def render_decide() -> None:
         )
 
     changes_label = f"📋 Changes ({len(history)})" if history else "📋 Changes"
-    tab_issues, tab_changes = st.tabs(['🔍 Issues', changes_label])
+    tab_issues, tab_changes, tab_code = st.tabs(['🔍 Issues', changes_label, '🧪 Custom Code'])
 
     with tab_issues:
         _render_column_context_panel()
@@ -645,6 +654,9 @@ def render_decide() -> None:
 
     with tab_changes:
         render_changes_tab()
+
+    with tab_code:
+        render_custom_code_tab()
 
 
 def _render_near_duplicate_quick_actions(issues: list) -> None:
@@ -727,17 +739,17 @@ def _render_issue_card(idx: int, issue: dict) -> None:
     if not actions:
         st.caption("_No automatic fix available for this issue._")
     else:
-        # Layout: Preview | actions... | Skip
+        # Layout: action buttons... | View | Skip
         cols = st.columns(len(actions) + 2)
-        if cols[0].button('▸ Preview', key=f'prev_{idx}'):
+        for btn_col, (lbl, handler) in zip(cols[:-2], actions):
+            if btn_col.button(lbl, key=f'act_{idx}_{lbl}', type='primary'):
+                _apply_action(idx, handler, lbl)
+        if cols[-2].button('View', key=f'prev_{idx}'):
             first_label, first_handler = actions[0]
             st.session_state['_preview_idx'] = idx
             st.session_state['_preview_handler'] = first_handler
             st.session_state['_preview_label'] = first_label
             st.rerun()
-        for btn_col, (label, handler) in zip(cols[1:-1], actions):
-            if btn_col.button(label, key=f'act_{idx}_{label}', type='primary'):
-                _apply_action(idx, handler, label)
         if cols[-1].button('Skip', key=f'skip_{idx}'):
             _clear_preview()
             issue = st.session_state['issues'][idx] if idx < len(st.session_state['issues']) else {}
@@ -756,17 +768,77 @@ def _render_preview_panel(idx: int) -> None:
     handler = st.session_state['_preview_handler']
     label = st.session_state['_preview_label']
     try:
-        df_preview = handler(st.session_state['df'].copy(), [])
+        df_current = st.session_state['df']
+        df_preview = handler(df_current.copy(), [])
     except Exception as e:
         st.error(f'Preview failed: {e}')
         return
-    diff = compute_diff(st.session_state['df'], df_preview)
-    st.info(f"**Preview — `{label}`.** These changes will apply if you click the action button above.")
-    render_diff(diff)
-    c1, c2 = st.columns([1, 5])
-    if c1.button('Close preview', key=f'prev_close_{idx}'):
-        _clear_preview()
-        st.rerun()
+
+    diff = compute_diff(df_current, df_preview)
+    cols_affected = diff.get('columns_affected', [])
+
+    with st.container(border=True):
+        st.markdown(f"**If you apply: {label}**")
+
+        parts = []
+        if diff['rows_changed']:
+            parts.append(f"{diff['rows_changed']} rows updated")
+        if diff['rows_removed']:
+            parts.append(f"{diff['rows_removed']} rows removed")
+        if diff['rows_added']:
+            parts.append(f"{diff['rows_added']} rows added")
+        if diff['cells_changed'] and not parts:
+            parts.append(f"{diff['cells_changed']} cells changed")
+        st.caption(" • ".join(parts) if parts else "No row-level changes — dtype or flag column will be updated")
+
+        display_df = df_preview.head(30)
+        valid_cols = [c for c in cols_affected if c in display_df.columns]
+        if valid_cols:
+            styled = display_df.style.set_properties(
+                subset=valid_cols,
+                **{'background-color': 'rgba(52, 211, 153, 0.18)'},
+            )
+            st.dataframe(styled, use_container_width=True, height=220)
+            st.caption(f"Green = changed columns: {', '.join(f'`{c}`' for c in valid_cols)}")
+        elif diff['rows_removed'] and df_preview.empty:
+            st.info("All rows would be removed.")
+        else:
+            st.dataframe(display_df, use_container_width=True, height=220)
+
+        if diff['rows_removed'] and not df_preview.empty:
+            st.caption(f"⚠️ {diff['rows_removed']} rows will be removed (not shown above)")
+
+        if st.button('Close', key=f'prev_close_{idx}'):
+            _clear_preview()
+            st.rerun()
+
+
+def _render_live_data_window() -> None:
+    """Always-visible current dataset pane with last-changed columns highlighted in blue."""
+    df = st.session_state.get('df')
+    if df is None:
+        return
+    highlight_cols = st.session_state.get('_highlight_cols', [])
+    last_label = st.session_state.get('_last_action_label', '')
+
+    title = f"📊 Current Dataset — {len(df):,} rows × {len(df.columns)} cols"
+    if last_label:
+        title += f"  ·  last: {last_label}"
+
+    with st.expander(title, expanded=True):
+        display_df = df.head(30)
+        valid_cols = [c for c in highlight_cols if c in display_df.columns]
+        if valid_cols:
+            st.caption(f"Recently changed columns (blue): {', '.join(f'`{c}`' for c in valid_cols)}")
+            styled = display_df.style.set_properties(
+                subset=valid_cols,
+                **{'background-color': 'rgba(59, 130, 246, 0.15)'},
+            )
+            st.dataframe(styled, use_container_width=True, height=230)
+        else:
+            st.dataframe(display_df, use_container_width=True, height=230)
+        if len(df) > 30:
+            st.caption(f"Showing first 30 of {len(df):,} rows.")
 
 
 def _clear_preview() -> None:
@@ -1179,14 +1251,9 @@ def render_done() -> None:
         with st.expander('Save to Database (optional)', expanded=False):
             _render_push_to_db(df)
 
-    # Cleaning log in expander
     if cleaning_log:
-        with st.expander('View cleaning log', expanded=False):
+        with st.expander(f'View cleaning log ({len(cleaning_log)} transform{"s" if len(cleaning_log) != 1 else ""})', expanded=False):
             st.json(cleaning_log)
-
-    if cleaning_log:
-        st.subheader('Cleaning log')
-        st.json(cleaning_log)
 
     st.divider()
     if st.button('Start Over', key='restart_btn'):
@@ -1203,8 +1270,10 @@ def _reset_to_upload() -> None:
     st.session_state['df_history'] = []
     st.session_state['column_contexts'] = []
     st.session_state['_undo_stack'] = []
-    st.session_state.pop('_upload_cache_key', None)
-    st.session_state.pop('_upload_cached_df', None)
+    for _key in ('_upload_cache_key', '_upload_cached_df', '_db_loaded_df',
+                 '_db_conn_str', '_db_tables', '_db_connected_type',
+                 '_db_source_config', '_db_source_table', '_input_source'):
+        st.session_state.pop(_key, None)
     st.session_state['stage'] = 'upload'
     _clear_preview()
 
