@@ -40,9 +40,12 @@ init_state()
 # ---------------------------------------------------------------------------
 
 def render_upload() -> None:
-    st.header('Upload your CSV')
+    st.header('Upload your data file')
     st.write("Neatly will find data-quality issues, explain them in plain English, and let you clean the file with a few clicks.")
-    uploaded_file = st.file_uploader('Choose a CSV file', type='csv')
+    uploaded_file = st.file_uploader(
+        'Choose a file (CSV, TSV, JSON, Excel, Parquet)',
+        type=['csv', 'tsv', 'json', 'xlsx', 'xls', 'parquet'],
+    )
 
     if not uploaded_file:
         return
