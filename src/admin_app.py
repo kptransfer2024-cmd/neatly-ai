@@ -18,17 +18,22 @@ Log source:
   - Reads `neatly_logs.jsonl` in cwd (local) or `/tmp/neatly_logs.jsonl`
     (cloud). Local runs see local dev sessions only — cloud logs are not
     synced back yet.
+
+Streamlit Cloud deployment (separate app):
+  - Point share.streamlit.io at this repo, set main file = src/admin_app.py
+  - IMPORTANT: set ADMIN_PASSWORD in Streamlit secrets before deploying
+  - NOTE: Cloud admin app reads its own /tmp — it cannot see the public
+    app's logs without external log storage (Supabase, Upstash, etc.)
 """
 import hmac
 import json
 from collections import Counter
 from datetime import datetime
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
-# This file lives at src/admin_app.py; adding `src/` to the path lets us do
-# `from utils.analytics import load_logs`.
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -37,14 +42,11 @@ from utils.analytics import load_logs
 
 st.set_page_config(page_title='Neatly Admin', page_icon='📊', layout='wide')
 
-# Import theme from parent app
 init_state_module = __import__('utils.session_state', fromlist=['init_state'])
 init_state_module.init_state()
 
-# Apply theme CSS from parent
 st.markdown("""
 <style>
-/* Theme Variables */
 :root {
   --bg-primary: #0f0f11;
   --bg-secondary: #18181b;
@@ -79,11 +81,9 @@ footer { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# Apply theme from session state
 theme = st.session_state.get('theme', 'dark')
 st.markdown(f"<script>document.documentElement.setAttribute('data-theme', '{theme}');</script>", unsafe_allow_html=True)
 
-# Render theme toggle
 col1, col2 = st.columns([10, 1])
 with col2:
     icon = '☀️' if theme == 'dark' else '🌙'
@@ -97,11 +97,6 @@ with col2:
 # ---------------------------------------------------------------------------
 
 def _check_password() -> bool:
-    """Return True if the user is authenticated (or no password is required).
-
-    If ADMIN_PASSWORD secret is not set, the page is open. Otherwise show a
-    sign-in form and cache success in session_state for the session.
-    """
     try:
         expected = st.secrets.get('ADMIN_PASSWORD')
     except Exception:
@@ -121,7 +116,6 @@ def _check_password() -> bool:
     if not submitted:
         return False
 
-    # Constant-time comparison — avoids leaking length via response time
     if hmac.compare_digest(pwd or '', expected):
         st.session_state['_admin_authed'] = True
         st.rerun()
@@ -135,6 +129,42 @@ if not _check_password():
 
 st.title('📊 Neatly Analytics')
 
+# ---------------------------------------------------------------------------
+# Chart helper — horizontal bar chart with readable left-side labels
+# ---------------------------------------------------------------------------
+
+_ACCENT = '#7c3aed'
+
+
+def _hbar(data: pd.Series, x_label: str, color: str = _ACCENT) -> alt.Chart:
+    """Return a horizontal Altair bar chart. Labels are on the y-axis (left)
+    so they are always readable regardless of length."""
+    df = data.reset_index()
+    df.columns = ['Category', x_label]
+    chart_height = max(160, len(data) * 38)
+    return (
+        alt.Chart(df)
+        .mark_bar(color=color, cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+        .encode(
+            y=alt.Y('Category:N', sort='-x', title=None,
+                    axis=alt.Axis(labelLimit=240, labelFontSize=13)),
+            x=alt.X(f'{x_label}:Q', title=x_label,
+                    axis=alt.Axis(tickMinStep=1, labelFontSize=12)),
+            tooltip=[
+                alt.Tooltip('Category:N', title='Category'),
+                alt.Tooltip(f'{x_label}:Q', title=x_label),
+            ],
+        )
+        .properties(height=chart_height)
+        .configure_axis(grid=False)
+        .configure_view(strokeWidth=0)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Load data
+# ---------------------------------------------------------------------------
+
 @st.cache_data(ttl=10)
 def _load() -> pd.DataFrame:
     entries = load_logs()
@@ -144,6 +174,7 @@ def _load() -> pd.DataFrame:
     df['ts'] = pd.to_datetime(df['ts'], errors='coerce')
     df['date'] = df['ts'].dt.date
     return df
+
 
 logs = _load()
 
@@ -185,23 +216,33 @@ st.markdown('<div class="analytics-card">', unsafe_allow_html=True)
 st.subheader('Conversion Funnel')
 
 funnel_events = [
-    ('session_started',      'Session started'),
-    ('file_uploaded',        'File uploaded'),
-    ('diagnosis_completed',  'Diagnosis completed'),
-    ('decision_made',        'At least 1 action taken'),
-    ('session_completed',    'Session completed'),
+    ('session_started',     'Session started'),
+    ('file_uploaded',       'File uploaded'),
+    ('diagnosis_completed', 'Diagnosis completed'),
+    ('decision_made',       'Action taken'),
+    ('session_completed',   'Session completed'),
 ]
 
 funnel_rows = []
 for event, label in funnel_events:
-    if event == 'decision_made':
-        count = logs[logs['event'] == event]['session_id'].nunique()
-    else:
-        count = logs[logs['event'] == event]['session_id'].nunique()
+    count = logs[logs['event'] == event]['session_id'].nunique()
     funnel_rows.append({'Step': label, 'Sessions': count})
 
 funnel_df = pd.DataFrame(funnel_rows)
-st.bar_chart(funnel_df.set_index('Step'), use_container_width=True)
+funnel_series = funnel_df.set_index('Step')['Sessions']
+
+col_chart, col_table = st.columns([3, 1])
+with col_chart:
+    st.altair_chart(_hbar(funnel_series, 'Sessions'), use_container_width=True)
+with col_table:
+    st.caption('Drop-off rates')
+    top = funnel_rows[0]['Sessions'] or 1
+    table_rows = [
+        {'Step': r['Step'], '% of start': f"{r['Sessions'] / top * 100:.0f}%"}
+        for r in funnel_rows
+    ]
+    st.dataframe(pd.DataFrame(table_rows).set_index('Step'), use_container_width=True)
+
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
@@ -213,7 +254,7 @@ st.subheader('Issue Types Detected')
 
 detected = logs[logs['event'] == 'diagnosis_completed']
 if not detected.empty and 'issue_types' in detected.columns:
-    all_types = []
+    all_types: list[str] = []
     for val in detected['issue_types'].dropna():
         if isinstance(val, list):
             all_types.extend(val)
@@ -224,7 +265,8 @@ if not detected.empty and 'issue_types' in detected.columns:
                 all_types.append(val)
     if all_types:
         type_counts = pd.Series(Counter(all_types)).sort_values(ascending=False)
-        st.bar_chart(type_counts, use_container_width=True)
+        st.altair_chart(_hbar(type_counts, 'Count'), use_container_width=True)
+        st.caption(f'{len(type_counts)} unique issue type(s) across {len(detected)} diagnosis event(s)')
     else:
         st.caption('No issue type data yet.')
 else:
@@ -240,7 +282,8 @@ st.subheader('Most Applied Actions')
 
 if not decisions.empty and 'action' in decisions.columns:
     action_counts = decisions['action'].value_counts().head(10)
-    st.bar_chart(action_counts, use_container_width=True)
+    st.altair_chart(_hbar(action_counts, 'Times Applied'), use_container_width=True)
+    st.caption(f'{len(decisions)} total decisions across {decisions["session_id"].nunique()} session(s)')
 else:
     st.caption('No decision events logged yet.')
 st.markdown('</div>', unsafe_allow_html=True)
@@ -251,7 +294,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="analytics-card">', unsafe_allow_html=True)
 st.subheader('Where Do Users Drop Off?')
-st.caption('Last recorded event per session — sessions that stopped here.')
+st.caption('Last recorded event per session — shows where sessions ended.')
 
 last_events = (
     logs.sort_values('ts')
@@ -260,7 +303,7 @@ last_events = (
     .value_counts()
 )
 if not last_events.empty:
-    st.bar_chart(last_events, use_container_width=True)
+    st.altair_chart(_hbar(last_events, 'Sessions'), use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
