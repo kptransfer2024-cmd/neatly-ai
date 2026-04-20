@@ -1,10 +1,5 @@
 import pandas as pd
 import pytest
-import streamlit as st
-
-# Bootstrap minimal session_state before importing the module
-if 'cleaning_log' not in st.session_state:
-    st.session_state['cleaning_log'] = []
 
 from transformation_executor import (
     drop_duplicates,
@@ -16,179 +11,238 @@ from transformation_executor import (
 )
 
 
-@pytest.fixture(autouse=True)
-def clear_log():
-    st.session_state['cleaning_log'] = []
-    yield
-
-
 # drop_duplicates tests
 def test_drop_duplicates_removes_rows():
     df = pd.DataFrame({'a': [1, 1, 2]})
-    result = drop_duplicates(df)
+    log = []
+    result = drop_duplicates(df, log)
     assert len(result) == 2
 
 
 def test_drop_duplicates_logs():
     df = pd.DataFrame({'a': [1, 1, 2]})
-    drop_duplicates(df)
-    assert len(st.session_state['cleaning_log']) == 1
+    log = []
+    drop_duplicates(df, log)
+    assert len(log) == 1
+    assert log[0]['action'] == 'drop_duplicates'
+    assert log[0]['duplicates_removed'] == 1
 
 
 def test_drop_duplicates_no_dupes():
     df = pd.DataFrame({'a': [1, 2, 3]})
-    result = drop_duplicates(df)
+    log = []
+    result = drop_duplicates(df, log)
     assert len(result) == 3
-    assert len(st.session_state['cleaning_log']) == 0
+    assert len(log) == 0
 
 
 # fill_missing tests
 def test_fill_missing_mean():
     df = pd.DataFrame({'a': [1.0, None, 3.0]})
-    result = fill_missing(df, 'a', 'mean')
+    log = []
+    result = fill_missing(df, 'a', 'mean', log)
     assert result['a'].isna().sum() == 0
 
 
 def test_fill_missing_logs():
     df = pd.DataFrame({'a': [1.0, None, 3.0]})
-    fill_missing(df, 'a', 'mean')
-    assert len(st.session_state['cleaning_log']) == 1
-    assert st.session_state['cleaning_log'][0]['action'] == 'fill_missing'
-    assert st.session_state['cleaning_log'][0]['column'] == 'a'
-    assert st.session_state['cleaning_log'][0]['filled_count'] == 1
+    log = []
+    fill_missing(df, 'a', 'mean', log)
+    assert len(log) == 1
+    assert log[0]['action'] == 'fill_missing'
+    assert log[0]['column'] == 'a'
+    assert log[0]['filled_count'] == 1
 
 
 def test_fill_missing_median():
     df = pd.DataFrame({'a': [1.0, None, 100.0]})
-    result = fill_missing(df, 'a', 'median')
+    log = []
+    result = fill_missing(df, 'a', 'median', log)
     assert result['a'].isna().sum() == 0
 
 
 def test_fill_missing_mode():
     df = pd.DataFrame({'a': ['x', 'x', None, 'y']})
-    result = fill_missing(df, 'a', 'mode')
+    log = []
+    result = fill_missing(df, 'a', 'mode', log)
     assert result['a'].isna().sum() == 0
 
 
 def test_fill_missing_constant():
     df = pd.DataFrame({'a': [1.0, None, 3.0]})
-    result = fill_missing(df, 'a', 'constant', fill_value=999)
+    log = []
+    result = fill_missing(df, 'a', 'constant', log, fill_value=999)
     assert result['a'].isna().sum() == 0
     assert result['a'].iloc[1] == 999
 
 
 def test_fill_missing_invalid_strategy():
     df = pd.DataFrame({'a': [1.0, None, 3.0]})
+    log = []
     with pytest.raises(ValueError):
-        fill_missing(df, 'a', 'invalid')
+        fill_missing(df, 'a', 'invalid', log)
 
 
 def test_fill_missing_no_nulls():
     df = pd.DataFrame({'a': [1.0, 2.0, 3.0]})
-    result = fill_missing(df, 'a', 'mean')
-    assert len(st.session_state['cleaning_log']) == 0
+    log = []
+    result = fill_missing(df, 'a', 'mean', log)
+    assert len(log) == 0
 
 
 # drop_missing tests
 def test_drop_missing_removes_rows():
     df = pd.DataFrame({'a': [1.0, None, 3.0]})
-    result = drop_missing(df, 'a')
+    log = []
+    result = drop_missing(df, 'a', log)
     assert len(result) == 2
 
 
 def test_drop_missing_logs():
     df = pd.DataFrame({'a': [1.0, None, 3.0]})
-    drop_missing(df, 'a')
-    assert len(st.session_state['cleaning_log']) == 1
-    assert st.session_state['cleaning_log'][0]['action'] == 'drop_missing'
-    assert st.session_state['cleaning_log'][0]['column'] == 'a'
-    assert st.session_state['cleaning_log'][0]['rows_dropped'] == 1
+    log = []
+    drop_missing(df, 'a', log)
+    assert len(log) == 1
+    assert log[0]['action'] == 'drop_missing'
+    assert log[0]['column'] == 'a'
+    assert log[0]['rows_dropped'] == 1
 
 
 def test_drop_missing_no_nulls():
     df = pd.DataFrame({'a': [1.0, 2.0, 3.0]})
-    result = drop_missing(df, 'a')
+    log = []
+    result = drop_missing(df, 'a', log)
     assert len(result) == 3
-    assert len(st.session_state['cleaning_log']) == 0
+    assert len(log) == 0
 
 
 # clip_outliers tests
 def test_clip_outliers():
     df = pd.DataFrame({'val': [1.0, 2.0, 1000.0]})
-    result = clip_outliers(df, 'val', 0.0, 10.0)
+    log = []
+    result = clip_outliers(df, 'val', 0.0, 10.0, log)
     assert result['val'].max() <= 10.0
 
 
 def test_clip_outliers_logs():
     df = pd.DataFrame({'val': [1.0, 2.0, 1000.0]})
-    clip_outliers(df, 'val', 0.0, 10.0)
-    assert len(st.session_state['cleaning_log']) == 1
-    assert st.session_state['cleaning_log'][0]['action'] == 'clip_outliers'
-    assert st.session_state['cleaning_log'][0]['clipped_count'] == 1
+    log = []
+    clip_outliers(df, 'val', 0.0, 10.0, log)
+    assert len(log) == 1
+    assert log[0]['action'] == 'clip_outliers'
+    assert log[0]['clipped_count'] == 1
 
 
 def test_clip_outliers_no_outliers():
     df = pd.DataFrame({'val': [1.0, 2.0, 5.0]})
-    result = clip_outliers(df, 'val', 0.0, 10.0)
-    assert len(st.session_state['cleaning_log']) == 0
+    log = []
+    result = clip_outliers(df, 'val', 0.0, 10.0, log)
+    assert len(log) == 0
 
 
 # cast_column tests
 def test_cast_column_to_int():
     df = pd.DataFrame({'a': [1.0, 2.0, 3.0]})
-    result = cast_column(df, 'a', 'int')
+    log = []
+    result = cast_column(df, 'a', 'int', log)
     assert result['a'].dtype == 'Int64'
 
 
 def test_cast_column_logs():
     df = pd.DataFrame({'a': [1.0, 2.0, 3.0]})
-    cast_column(df, 'a', 'int')
-    assert len(st.session_state['cleaning_log']) == 1
-    assert st.session_state['cleaning_log'][0]['action'] == 'cast_column'
-    assert st.session_state['cleaning_log'][0]['column'] == 'a'
+    log = []
+    cast_column(df, 'a', 'int', log)
+    assert len(log) == 1
+    assert log[0]['action'] == 'cast_column'
+    assert log[0]['column'] == 'a'
 
 
 def test_cast_column_to_str():
     df = pd.DataFrame({'a': [1, 2, 3]})
-    result = cast_column(df, 'a', 'str')
+    log = []
+    result = cast_column(df, 'a', 'str', log)
     assert result['a'].dtype == 'str'
 
 
 # normalize_text tests
 def test_normalize_text_lowercase():
     df = pd.DataFrame({'a': ['HELLO', 'WORLD']})
-    result = normalize_text(df, 'a', 'lowercase')
+    log = []
+    result = normalize_text(df, 'a', 'lowercase', log)
     assert result['a'].iloc[0] == 'hello'
 
 
 def test_normalize_text_logs():
     df = pd.DataFrame({'a': ['HELLO', 'WORLD']})
-    normalize_text(df, 'a', 'lowercase')
-    assert len(st.session_state['cleaning_log']) == 1
-    assert st.session_state['cleaning_log'][0]['action'] == 'normalize_text'
-    assert st.session_state['cleaning_log'][0]['operation'] == 'lowercase'
+    log = []
+    normalize_text(df, 'a', 'lowercase', log)
+    assert len(log) == 1
+    assert log[0]['action'] == 'normalize_text'
+    assert log[0]['operation'] == 'lowercase'
 
 
 def test_normalize_text_uppercase():
     df = pd.DataFrame({'a': ['hello', 'world']})
-    result = normalize_text(df, 'a', 'uppercase')
+    log = []
+    result = normalize_text(df, 'a', 'uppercase', log)
     assert result['a'].iloc[0] == 'HELLO'
 
 
 def test_normalize_text_strip():
     df = pd.DataFrame({'a': ['  hello  ', '  world  ']})
-    result = normalize_text(df, 'a', 'strip_whitespace')
+    log = []
+    result = normalize_text(df, 'a', 'strip_whitespace', log)
     assert result['a'].iloc[0] == 'hello'
 
 
 # Edge case tests
 def test_empty_dataframe():
     df = pd.DataFrame()
-    result = drop_duplicates(df)
+    log = []
+    result = drop_duplicates(df, log)
     assert len(result) == 0
 
 
 def test_missing_column_raises():
     df = pd.DataFrame({'a': [1, 2, 3]})
+    log = []
     with pytest.raises(KeyError):
-        fill_missing(df, 'b', 'mean')
+        fill_missing(df, 'b', 'mean', log)
+
+
+def test_cast_to_datetime():
+    df = pd.DataFrame({'d': ['2024-01-15', '2024-02-15']})
+    log = []
+    result = cast_column(df, 'd', 'datetime', log)
+    assert 'datetime' in str(result['d'].dtype)
+
+
+def test_cast_noop_does_not_log():
+    df = pd.DataFrame({'a': [1, 2, 3]})  # already int64
+    log = []
+    cast_column(df, 'a', 'int64', log)
+    assert log == []
+
+
+def test_normalize_titlecase():
+    df = pd.DataFrame({'a': ['hello world', 'foo bar']})
+    log = []
+    result = normalize_text(df, 'a', 'titlecase', log)
+    assert result['a'].iloc[0] == 'Hello World'
+
+
+def test_clip_outliers_caps_low():
+    df = pd.DataFrame({'v': [-1000.0, 5.0, 8.0]})
+    log = []
+    result = clip_outliers(df, 'v', 0.0, 10.0, log)
+    assert result['v'].min() == 0.0
+
+
+def test_multiple_actions_accumulate_in_log():
+    df = pd.DataFrame({'a': [1.0, 1.0, None, 1000.0]})
+    log = []
+    df = drop_duplicates(df, log)
+    df = fill_missing(df, 'a', 'mean', log)
+    df = clip_outliers(df, 'a', 0.0, 10.0, log)
+    actions = [entry['action'] for entry in log]
+    assert actions == ['drop_duplicates', 'fill_missing', 'clip_outliers']
