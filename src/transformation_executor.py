@@ -325,6 +325,8 @@ def flag_invalid_patterns(
 
     if pattern not in pattern_regexes:
         raise ValueError(f"Unknown pattern: {pattern}")
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
 
     result = df.copy()
     regex = re.compile(pattern_regexes[pattern])
@@ -360,6 +362,8 @@ def drop_invalid_rows(
 
     if pattern not in pattern_regexes:
         raise ValueError(f"Unknown pattern: {pattern}")
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
 
     before_count = len(df)
     regex = re.compile(pattern_regexes[pattern])
@@ -498,7 +502,7 @@ def drop_column(df: pd.DataFrame, column: str, cleaning_log: list) -> pd.DataFra
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
     columns_before = len(df.columns)
-    result = df.drop(columns=[column]).reset_index(drop=True)
+    result = df.drop(columns=[column])
     columns_after = len(result.columns)
     _log(cleaning_log, 'drop_column', {
         'column': column,
