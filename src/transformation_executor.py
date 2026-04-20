@@ -329,12 +329,14 @@ def drop_out_of_range_rows(
 
     result = result.reset_index(drop=True)
     after_count = len(result)
+    dropped_count = before_count - after_count
 
-    _log(cleaning_log, 'drop_out_of_range_rows', {
-        'column': column,
-        'valid_range': [lo, hi],
-        'rows_dropped': before_count - after_count,
-    })
+    if dropped_count > 0:
+        _log(cleaning_log, 'drop_out_of_range_rows', {
+            'column': column,
+            'valid_range': [lo, hi],
+            'rows_dropped': dropped_count,
+        })
 
     return result
 
@@ -357,11 +359,12 @@ def clip_to_range(
 
     result[column] = clipped
 
-    _log(cleaning_log, 'clip_to_range', {
-        'column': column,
-        'valid_range': [lo, hi],
-        'values_clipped': changed_count,
-    })
+    if changed_count > 0:
+        _log(cleaning_log, 'clip_to_range', {
+            'column': column,
+            'valid_range': [lo, hi],
+            'values_clipped': changed_count,
+        })
 
     return result
 
@@ -402,10 +405,11 @@ def coerce_to_numeric(df: pd.DataFrame, cleaning_log: list, column: str) -> pd.D
     before_nulls = int(result[column].isna().sum())
     result[column] = pd.to_numeric(result[column], errors='coerce')
     coerced_to_null = int(result[column].isna().sum()) - before_nulls
-    _log(cleaning_log, 'coerce_to_numeric', {
-        'column': column,
-        'values_coerced_to_null': coerced_to_null,
-    })
+    if coerced_to_null > 0:
+        _log(cleaning_log, 'coerce_to_numeric', {
+            'column': column,
+            'values_coerced_to_null': coerced_to_null,
+        })
     return result
 
 

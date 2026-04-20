@@ -2,11 +2,12 @@
 from typing import List
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, field_serializer
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from src.api.deps import get_db, get_current_user
 from src.db.models import User, Dataset
+from src.api.scheduler import add_dataset_schedule
 
 router = APIRouter()
 
@@ -58,7 +59,8 @@ def list_datasets(
 
 
 @router.post("/datasets", response_model=DatasetResponse, status_code=status.HTTP_201_CREATED)
-def create_dataset(
+async def create_dataset(
+    request: Request,
     dataset_data: DatasetCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -102,6 +104,12 @@ def create_dataset(
     db.add(new_dataset)
     db.commit()
     db.refresh(new_dataset)
+
+    # Register schedule with APScheduler if cron is provided
+    if new_dataset.schedule_cron:
+        scheduler = request.app.state.scheduler
+        await add_dataset_schedule(scheduler, new_dataset.id, new_dataset.schedule_cron)
+
     return new_dataset
 
 
@@ -125,7 +133,8 @@ def get_dataset(
 
 
 @router.patch("/datasets/{dataset_id}", response_model=DatasetResponse)
-def update_dataset(
+async def update_dataset(
+    request: Request,
     dataset_id: int,
     dataset_data: DatasetUpdate,
     current_user: User = Depends(get_current_user),
@@ -142,6 +151,17 @@ def update_dataset(
             detail="Dataset not found",
         )
 
+    # Validate cron expression if provided
+    if dataset_data.schedule_cron is not None:
+        from apscheduler.triggers.cron import CronTrigger
+        try:
+            CronTrigger.from_crontab(dataset_data.schedule_cron)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid cron expression: {str(e)}",
+            )
+
     # Update fields if provided
     if dataset_data.name is not None:
         dataset.name = dataset_data.name
@@ -152,6 +172,12 @@ def update_dataset(
 
     db.commit()
     db.refresh(dataset)
+
+    # Update schedule with APScheduler if cron was changed
+    if dataset_data.schedule_cron is not None:
+        scheduler = request.app.state.scheduler
+        await add_dataset_schedule(scheduler, dataset.id, dataset.schedule_cron)
+
     return dataset
 
 

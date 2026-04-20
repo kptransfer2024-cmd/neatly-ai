@@ -1,12 +1,16 @@
 """FastAPI application factory."""
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.config import settings
-from src.db.session import init_db
+from src.db.session import init_db, SessionLocal
+from src.db.models import Dataset as DatasetModel
 from src.api.routes import auth, datasets, diagnoses
-from src.api.scheduler import create_scheduler
+from src.api.scheduler import create_scheduler, add_dataset_schedule
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -21,7 +25,16 @@ async def lifespan(app: FastAPI):
     app.state.scheduler = scheduler
 
     # Load existing scheduled jobs from database
-    # TODO: Load dataset schedules from DB on startup
+    db = SessionLocal()
+    try:
+        scheduled = db.query(DatasetModel).filter(DatasetModel.schedule_cron.isnot(None)).all()
+        for ds in scheduled:
+            await add_dataset_schedule(scheduler, ds.id, ds.schedule_cron)
+        logger.info(f"Loaded {len(scheduled)} dataset schedules from DB on startup")
+    except Exception as e:
+        logger.error(f"Failed to load schedules on startup: {e}")
+    finally:
+        db.close()
 
     yield
 

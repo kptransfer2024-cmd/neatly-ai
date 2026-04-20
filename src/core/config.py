@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     CLAUDE_MODEL: str = "claude-sonnet-4-6"
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 
+    # File Storage
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
+
     class Config:
         case_sensitive = True
 

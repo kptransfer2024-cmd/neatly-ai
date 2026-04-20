@@ -590,7 +590,7 @@ def test_coerce_to_numeric_already_numeric():
     df = pd.DataFrame({'n': [1.0, 2.0, 3.0]})
     log = []
     result = coerce_to_numeric(df, log, 'n')
-    assert log[0]['values_coerced_to_null'] == 0
+    assert log == []
 
 
 def test_coerce_to_numeric_missing_column():

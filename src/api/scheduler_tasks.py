@@ -7,6 +7,7 @@ from src.db.session import SessionLocal
 from src.db.models import Dataset, DiagnosisRun, Issue
 from src.orchestrator import run_diagnosis
 from src.core.connectors import get_connector
+from src.core.alerts import check_and_send_alerts
 
 logger = logging.getLogger(__name__)
 
@@ -87,20 +88,17 @@ async def run_scheduled_diagnosis(dataset_id: int) -> None:
             db.add(issue)
 
         db.commit()
+
+        issue_count = len(diagnosis_result.get('issues', []))
         score_str = f"{run.quality_score:.1f}" if run.quality_score is not None else "N/A"
         logger.info(
             f"Completed diagnosis for dataset {dataset_id}: "
             f"quality_score={score_str}, "
-            f"issues={len(diagnosis_result.get('issues', []))}"
+            f"issues={issue_count}"
         )
 
-        # Check alert threshold
-        if run.quality_score is not None and run.quality_score < dataset.alert_threshold:
-            logger.warning(
-                f"Quality score {run.quality_score:.1f} below threshold "
-                f"{dataset.alert_threshold} for dataset {dataset_id}"
-            )
-            # TODO: Send alert (Phase 2.3)
+        # Check alert threshold and send alerts if needed
+        await check_and_send_alerts(db, dataset, run, issue_count)
 
     except Exception as e:
         logger.error(f"Unexpected error in scheduled diagnosis for dataset {dataset_id}: {e}")

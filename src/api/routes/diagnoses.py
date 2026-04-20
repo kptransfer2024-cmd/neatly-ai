@@ -1,4 +1,6 @@
 """Diagnosis and file upload routes."""
+import pathlib
+import uuid
 from datetime import datetime, timezone
 from typing import List
 from pydantic import BaseModel
@@ -9,8 +11,22 @@ from src.api.deps import get_db, get_current_user
 from src.db.models import User, Dataset, DiagnosisRun, Issue
 from src.utils.file_ingestion import parse_uploaded_file
 from src.orchestrator import run_diagnosis
+from src.core.config import settings
 
 router = APIRouter()
+
+
+def _build_issue_row(run_id: int, issue: dict) -> Issue:
+    """Build an Issue ORM object from a diagnosis issue dict."""
+    return Issue(
+        run_id=run_id,
+        detector_name=issue.get("detector", "unknown"),
+        issue_type=issue.get("type", "unknown"),
+        column_name=(issue.get("columns") or [None])[0],
+        severity=issue.get("severity", "medium"),
+        description=issue.get("summary", ""),
+        explanation=issue.get("summary", ""),
+    )
 
 
 class IssueResponse(BaseModel):
@@ -47,12 +63,12 @@ class DiagnosisRunResponse(BaseModel):
 
 
 @router.post("/datasets/{dataset_id}/diagnose", response_model=DiagnosisRunResponse)
-def trigger_diagnosis(
+async def trigger_diagnosis(
     dataset_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Trigger an immediate data quality diagnosis run."""
+    """Trigger an immediate data quality diagnosis run on a registered dataset."""
     # Verify dataset ownership
     dataset = db.query(Dataset).filter(
         Dataset.id == dataset_id,
@@ -64,12 +80,59 @@ def trigger_diagnosis(
             detail="Dataset not found",
         )
 
-    # TODO: Load data from source (for MVP, assume test data)
-    # For now, this is a placeholder that requires file upload first
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Diagnose from registered source coming in Phase 2. Use /upload for now.",
+    started_at = datetime.now(timezone.utc)
+
+    # Create a "running" diagnosis run immediately
+    run = DiagnosisRun(
+        dataset_id=dataset_id,
+        status="running",
+        started_at=started_at,
     )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+
+    try:
+        # Load data from the configured source
+        from src.core.connectors import get_connector
+        connector = get_connector(dataset.source_type, dataset.source_config)
+        df = await connector.fetch()
+    except Exception as e:
+        run.status = "failed"
+        run.finished_at = datetime.now(timezone.utc)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load data from source: {str(e)}",
+        )
+
+    try:
+        # Run the diagnosis
+        diagnosis_result = run_diagnosis(df)
+    except Exception as e:
+        run.status = "failed"
+        run.finished_at = datetime.now(timezone.utc)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Diagnosis failed: {str(e)}",
+        )
+
+    # Persist successful diagnosis results
+    run.status = "success"
+    run.finished_at = datetime.now(timezone.utc)
+    run.quality_score = diagnosis_result.get("quality_score")
+    run.row_count = diagnosis_result.get("row_count")
+    run.column_count = diagnosis_result.get("column_count")
+    run.result_json = diagnosis_result
+
+    # Create Issue records for each issue
+    for issue_dict in diagnosis_result.get("issues", []):
+        db.add(_build_issue_row(run.id, issue_dict))
+
+    db.commit()
+    db.refresh(run)
+    return run
 
 
 @router.get("/datasets/{dataset_id}/runs", response_model=List[DiagnosisRunResponse])
@@ -153,12 +216,26 @@ async def upload_file(
             detail=f"Failed to parse file: {str(e)}",
         )
 
+    # Save the file to disk for future re-diagnosis
+    try:
+        upload_dir = pathlib.Path(settings.UPLOAD_DIR)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        suffix = pathlib.Path(file.filename).suffix
+        saved_path = upload_dir / f"{uuid.uuid4().hex}{suffix}"
+        contents = await file.read()
+        saved_path.write_bytes(contents)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save file: {str(e)}",
+        )
+
     # Create a temporary dataset for this upload
     temp_dataset = Dataset(
         user_id=current_user.id,
         name=f"Upload: {file.filename}",
         source_type="upload",
-        source_config={"filename": file.filename},
+        source_config={"path": str(saved_path), "filename": file.filename},
     )
     db.add(temp_dataset)
     db.flush()  # Get the dataset ID without committing yet
@@ -188,16 +265,7 @@ async def upload_file(
 
     # Create Issue records for each issue
     for issue_dict in diagnosis_result.get("issues", []):
-        issue = Issue(
-            run_id=run.id,
-            detector_name=issue_dict.get("detector", "unknown"),
-            issue_type=issue_dict.get("type", "unknown"),
-            column_name=issue_dict.get("column"),
-            severity=issue_dict.get("severity", "medium"),
-            description=issue_dict.get("summary", ""),
-            explanation=issue_dict.get("summary", ""),
-        )
-        db.add(issue)
+        db.add(_build_issue_row(run.id, issue_dict))
 
     db.commit()
     db.refresh(run)
