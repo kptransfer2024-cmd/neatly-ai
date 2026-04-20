@@ -86,7 +86,10 @@ def _build_issue(
         'columns': [col],
         'severity': severity,
         'row_indices': bad_indices[:5],
-        'summary': '',
+        'summary': (
+            f'{bad_count} of {total} values in "{col}" are outside the valid date range '
+            f'{lower.date()}..{upper.date()} ({bad_pct:.1f}% affected)'
+        ),
         'sub_type': sub_type,
         'sample_data': {
             col: {

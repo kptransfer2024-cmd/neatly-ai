@@ -103,6 +103,7 @@ def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
         'diagnosed_at': datetime.now(timezone.utc).isoformat(),
         'row_count': len(df),
         'column_count': len(df.columns),
+        'failed_detectors': failed_detectors,
     }
 
 

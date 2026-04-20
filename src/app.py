@@ -694,7 +694,7 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
     if issue_type == 'missing_value' and col:
         dtype = issue.get('dtype', '')
         actions: list[tuple[str, callable]] = []
-        if dtype not in ('object', 'str'):
+        if dtype not in ('object', 'str', 'string'):
             actions.append(('Fill mean', lambda df, log: fill_missing(df, col, 'mean', log)))
             actions.append(('Fill median', lambda df, log: fill_missing(df, col, 'median', log)))
         actions.append(('Fill mode', lambda df, log: fill_missing(df, col, 'mode', log)))
