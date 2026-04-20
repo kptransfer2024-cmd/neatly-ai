@@ -721,3 +721,160 @@ def test_drop_non_numeric_rows_missing_column():
     log = []
     with pytest.raises(KeyError):
         drop_non_numeric_rows(df, log, 'missing')
+
+
+# drop_out_of_range_dates tests
+def test_drop_out_of_range_dates_before_lower():
+    from transformation_executor import drop_out_of_range_dates
+    df = pd.DataFrame({'date': ['2020-01-01', '2021-01-01', '2022-01-01']})
+    log = []
+    result = drop_out_of_range_dates(df, log, 'date', '2021-06-01', '2022-06-01')
+    assert len(result) == 1
+    assert result['date'].iloc[0] == '2022-01-01'
+
+
+def test_drop_out_of_range_dates_after_upper():
+    from transformation_executor import drop_out_of_range_dates
+    df = pd.DataFrame({'date': ['2021-01-01', '2022-06-01', '2023-01-01']})
+    log = []
+    result = drop_out_of_range_dates(df, log, 'date', '2021-06-01', '2022-06-01')
+    assert len(result) == 1
+    assert result['date'].iloc[0] == '2022-06-01'
+
+
+def test_drop_out_of_range_dates_in_range():
+    from transformation_executor import drop_out_of_range_dates
+    df = pd.DataFrame({'date': ['2021-09-15', '2022-03-20', '2022-05-10']})
+    log = []
+    result = drop_out_of_range_dates(df, log, 'date', '2021-06-01', '2022-06-01')
+    assert len(result) == 3
+
+
+def test_drop_out_of_range_dates_preserves_nat():
+    from transformation_executor import drop_out_of_range_dates
+    df = pd.DataFrame({'date': ['2021-01-01', None, '2022-01-01']})
+    log = []
+    result = drop_out_of_range_dates(df, log, 'date', '2021-06-01', '2022-06-01')
+    assert len(result) == 2
+    assert result['date'].isna().sum() == 1
+
+
+def test_drop_out_of_range_dates_logs():
+    from transformation_executor import drop_out_of_range_dates
+    df = pd.DataFrame({'date': ['2020-01-01', '2021-01-01', '2022-01-01']})
+    log = []
+    drop_out_of_range_dates(df, log, 'date', '2021-06-01', '2022-06-01')
+    assert len(log) == 1
+    entry = log[0]
+    assert entry['action'] == 'drop_out_of_range_dates'
+    assert entry['rows_dropped'] == 2
+    assert entry['column'] == 'date'
+
+
+def test_drop_out_of_range_dates_missing_column():
+    from transformation_executor import drop_out_of_range_dates
+    df = pd.DataFrame({'other': [1, 2, 3]})
+    log = []
+    with pytest.raises(KeyError):
+        drop_out_of_range_dates(df, log, 'date', '2021-01-01', '2022-01-01')
+
+
+def test_drop_out_of_range_dates_no_drops():
+    from transformation_executor import drop_out_of_range_dates
+    df = pd.DataFrame({'date': ['2021-09-15', '2022-03-20']})
+    log = []
+    result = drop_out_of_range_dates(df, log, 'date', '2021-06-01', '2022-06-01')
+    assert len(result) == 2
+    assert log == []
+
+
+# mask_pii tests
+def test_mask_pii_email_full():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'email': ['john@example.com', 'jane@example.com']})
+    log = []
+    result = mask_pii(df, log, 'email', 'email', 'full')
+    assert (result['email'] == '***').all()
+
+
+def test_mask_pii_email_partial():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'email': ['john@example.com', 'jane@example.com']})
+    log = []
+    result = mask_pii(df, log, 'email', 'email', 'partial')
+    assert result['email'].iloc[0] == 'j***@example.com'
+    assert result['email'].iloc[1] == 'j***@example.com'
+
+
+def test_mask_pii_phone():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'phone': ['(555) 123-4567', '(888) 999-0000']})
+    log = []
+    result = mask_pii(df, log, 'phone', 'phone', 'partial')
+    assert result['phone'].iloc[0] == '(***) ***-4567'
+    assert result['phone'].iloc[1] == '(***) ***-0000'
+
+
+def test_mask_pii_ssn():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'ssn': ['123-45-6789', '999-88-7777']})
+    log = []
+    result = mask_pii(df, log, 'ssn', 'ssn', 'partial')
+    assert result['ssn'].iloc[0] == '***-**-6789'
+    assert result['ssn'].iloc[1] == '***-**-7777'
+
+
+def test_mask_pii_credit_card():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'cc': ['1234-5678-9012-3456']})
+    log = []
+    result = mask_pii(df, log, 'cc', 'credit_card', 'partial')
+    assert result['cc'].iloc[0] == '****-****-****-3456'
+
+
+def test_mask_pii_name():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'name': ['John Doe', 'Jane Smith']})
+    log = []
+    result = mask_pii(df, log, 'name', 'name', 'partial')
+    assert 'J***' in result['name'].iloc[0]
+    assert 'D***' in result['name'].iloc[0]
+
+
+def test_mask_pii_preserves_nulls():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'email': ['john@example.com', None, 'jane@example.com']})
+    log = []
+    result = mask_pii(df, log, 'email', 'email', 'partial')
+    assert result['email'].isna().sum() == 1
+    assert 'j***' in result['email'].iloc[0].lower()
+
+
+def test_mask_pii_no_values():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'email': [None, None]})
+    log = []
+    result = mask_pii(df, log, 'email', 'email', 'partial')
+    assert result['email'].isna().all()
+    assert log == []
+
+
+def test_mask_pii_logs():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'email': ['john@example.com', 'jane@example.com']})
+    log = []
+    mask_pii(df, log, 'email', 'email', 'partial')
+    assert len(log) == 1
+    entry = log[0]
+    assert entry['action'] == 'mask_pii'
+    assert entry['column'] == 'email'
+    assert entry['pii_type'] == 'email'
+    assert entry['values_masked'] == 2
+
+
+def test_mask_pii_missing_column():
+    from transformation_executor import mask_pii
+    df = pd.DataFrame({'other': [1, 2]})
+    log = []
+    with pytest.raises(KeyError):
+        mask_pii(df, log, 'email', 'email', 'partial')

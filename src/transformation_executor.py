@@ -36,10 +36,11 @@ def fill_missing(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df.copy()
-    missing_count = int(result[column].isna().sum())
+    missing_count = int(df[column].isna().sum())
     if missing_count == 0:
-        return result
+        return df
+
+    result = df.copy()
 
     if strategy == 'mean':
         fill_val = result[column].mean()
@@ -103,7 +104,7 @@ def cast_column(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df.copy()
+    result = df
     original_dtype = str(result[column].dtype)
 
     try:
@@ -145,7 +146,7 @@ def normalize_text(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df.copy()
+    result = df
     if operation == 'strip_whitespace':
         result[column] = result[column].str.strip()
     elif operation == 'lowercase':
@@ -292,7 +293,7 @@ def flag_all_near_duplicates(
     if not flagged:
         return df
 
-    result = df.copy()
+    result = df
     flag_col = 'near_duplicate_flag'
     result[flag_col] = False
     valid = flagged & set(result.index)
@@ -328,7 +329,7 @@ def flag_invalid_patterns(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df.copy()
+    result = df
     regex = re.compile(pattern_regexes[pattern])
     mask = result[column].astype(str).str.match(regex, na=False)
     invalid_count = (~mask).sum()
@@ -423,7 +424,7 @@ def clip_to_range(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df.copy()
+    result = df
     clipped = result[column].clip(lower=lo, upper=hi)
     changed_mask = (result[column] != clipped) & result[column].notna()
     changed_count = int(changed_mask.sum())
@@ -554,7 +555,7 @@ def mask_pii(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df.copy()
+    result = df
     series = result[column]
 
     # Count non-null values to mask
