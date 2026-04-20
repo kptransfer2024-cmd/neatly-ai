@@ -20,24 +20,32 @@ streamlit run src/app.py
 ```
 neatly_ai/product/
 ├── src/                           # All source code
-│   ├── app.py                     # Streamlit entry point
+│   ├── app.py                     # Streamlit entry point (main app)
 │   ├── orchestrator.py            # Detector orchestration
 │   ├── explanation_layer.py       # Claude API integration
 │   ├── transformation_executor.py # Transform application
 │   ├── context_interpreter.py     # Context parsing
-│   ├── detectors/                 # Data quality detectors
-│   ├── utils/                     # Helper utilities (db_ingestion, file_ingestion, etc.)
+│   │
+│   ├── detectors/                 # Data quality detectors (12+)
+│   ├── utils/                     # Utilities: db_ingestion, file_ingestion, diff_engine, etc.
 │   ├── pages/                     # Streamlit pages (admin.py)
-│   └── tests/                     # Test suite (18+ test files)
-├── docs/                          # Documentation
+│   ├── tests/                     # Test suite (23+ test files)
+│   │
+│   ├── api/                       # API backend (FastAPI, optional)
+│   ├── core/                      # Core config and settings
+│   └── db/                        # Database models and sessions
+│
+├── docs/                          # All documentation
+│   ├── README.md                  (docs index)
 │   ├── DATABASE_CONNECTION_GUIDE.md
 │   ├── DATABASE_INPUT_SETUP.md
 │   ├── IMPLEMENTATION_COMPLETE.md
 │   ├── QA_REPORT.md
 │   └── TESTING_SUMMARY.md
+│
 ├── CLAUDE.md                      # Project instructions for Claude Code
-├── requirements.txt               # Python dependencies
-└── README.md                      # This file
+├── README.md                      # This file (START HERE)
+└── requirements.txt               # Python dependencies
 ```
 
 ## Architecture

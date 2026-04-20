@@ -2,6 +2,8 @@
 
 Comprehensive guides for using and developing Neatly AI.
 
+**Start with:** [../README.md](../README.md) (main project overview)
+
 ## Getting Started
 
 1. **[DATABASE_INPUT_SETUP.md](DATABASE_INPUT_SETUP.md)** — How to use the database input feature
