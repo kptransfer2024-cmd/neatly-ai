@@ -380,7 +380,7 @@ class TestFindReplace:
 
 
 # ---------------------------------------------------------------------------
-# st_ace import + signature smoke test
+# Editor component compatibility — st_ace (fallback) + code_editor (primary)
 # ---------------------------------------------------------------------------
 
 class TestStAceCompatibility:
@@ -399,16 +399,127 @@ class TestStAceCompatibility:
                          'height', 'key'):
             assert required in params, f'st_ace missing param: {required}'
 
-    def test_completions_param_absent(self):
-        """Ensure the param that caused the TypeError is not present."""
+    def test_completions_param_absent_on_st_ace(self):
+        """st_ace does not support completions — passing it would raise TypeError."""
         import inspect
         from streamlit_ace import st_ace
         sig = inspect.signature(st_ace)
         assert 'completions' not in sig.parameters
 
-    def test_app_does_not_call_completions(self):
-        """Guard: app.py must not pass completions= to st_ace (was the TypeError root cause)."""
+    def test_app_does_not_pass_completions_to_st_ace(self):
+        """Guard: st_ace(...) call in app.py must NOT include completions="""
+        import re
         from pathlib import Path
         app_src = (Path(__file__).parent.parent / 'app.py').read_text(encoding='utf-8')
-        assert 'completions=_build_completions' not in app_src
-        assert 'def _build_completions' not in app_src
+        # Extract every `st_ace(...)` call's argument block and assert none contain 'completions='
+        for match in re.finditer(r'st_ace\s*\((.*?)\)\s*\n', app_src, re.DOTALL):
+            assert 'completions=' not in match.group(1), \
+                'st_ace() call must not receive completions='
+
+
+class TestCodeEditorCompatibility:
+    def test_import_succeeds(self):
+        from code_editor import code_editor
+        assert callable(code_editor)
+
+    def test_signature_has_completions(self):
+        """code_editor is the primary editor — it MUST accept completions."""
+        import inspect
+        from code_editor import code_editor
+        sig = inspect.signature(code_editor)
+        assert 'completions' in sig.parameters
+
+    def test_signature_has_required_params(self):
+        import inspect
+        from code_editor import code_editor
+        sig = inspect.signature(code_editor)
+        params = set(sig.parameters.keys())
+        for required in ('code', 'lang', 'theme', 'shortcuts',
+                         'completions', 'response_mode', 'height', 'key'):
+            assert required in params, f'code_editor missing param: {required}'
+
+    def test_app_passes_completions_to_code_editor(self):
+        """app.py MUST call code_editor with completions=... (regression guard)."""
+        from pathlib import Path
+        app_src = (Path(__file__).parent.parent / 'app.py').read_text(encoding='utf-8')
+        assert 'code_editor(' in app_src, 'app.py must call code_editor(...)'
+        assert 'completions=_completions' in app_src \
+            or 'completions=_build_completions' in app_src, \
+            'code_editor() call must pass completions=...'
+
+    def test_build_completions_defined(self):
+        """The helper that supplies completions must exist in app.py."""
+        from pathlib import Path
+        app_src = (Path(__file__).parent.parent / 'app.py').read_text(encoding='utf-8')
+        assert 'def _build_completions' in app_src
+
+
+class TestBuildCompletions:
+    """Direct tests of _build_completions — shape, content, and safety."""
+
+    @pytest.fixture(scope='class')
+    def _build(self):
+        import importlib.util
+        from pathlib import Path
+        app_path = Path(__file__).parent.parent / 'app.py'
+        # Parse app.py and extract just the _build_completions function to
+        # avoid running the Streamlit page code on import.
+        import ast
+        src = app_path.read_text(encoding='utf-8')
+        tree = ast.parse(src)
+        fn_node = next(
+            (n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == '_build_completions'),
+            None,
+        )
+        assert fn_node is not None, '_build_completions not found in app.py'
+        module = ast.Module(body=[fn_node], type_ignores=[])
+        ns: dict = {'pd': pd, 'np': np}
+        exec(compile(module, str(app_path), 'exec'), ns)
+        return ns['_build_completions']
+
+    def test_returns_list(self, _build, simple_df):
+        out = _build(simple_df)
+        assert isinstance(out, list)
+        assert len(out) > 0
+
+    def test_each_entry_has_required_keys(self, _build, simple_df):
+        out = _build(simple_df)
+        for entry in out:
+            assert 'caption' in entry
+            assert 'value' in entry
+            assert 'meta' in entry
+            assert 'score' in entry
+
+    def test_columns_scored_highest(self, _build, simple_df):
+        out = _build(simple_df)
+        col_entries = [e for e in out if e.get('meta', '').startswith('col')]
+        assert len(col_entries) == len(simple_df.columns)
+        for e in col_entries:
+            assert e['score'] == 1000
+
+    def test_pandas_entries_present(self, _build, simple_df):
+        out = _build(simple_df)
+        captions = {e['caption'] for e in out}
+        for expected in ('df.dropna()', 'df.fillna()', 'df.groupby()', 'str.strip()'):
+            assert expected in captions
+
+    def test_numpy_entries_present(self, _build, simple_df):
+        out = _build(simple_df)
+        captions = {e['caption'] for e in out}
+        for expected in ('np.where()', 'np.nan', 'np.mean()'):
+            assert expected in captions
+
+    def test_column_with_single_quote_is_escaped(self, _build):
+        df = pd.DataFrame({"it's_mine": [1, 2, 3]})
+        out = _build(df)
+        col_entry = next(e for e in out if e.get('meta', '').startswith('col'))
+        # Single quote in column name must be escaped in the inserted value
+        assert "\\'" in col_entry['value']
+
+    def test_empty_dataframe_produces_only_pd_and_np_entries(self, _build):
+        df = pd.DataFrame()
+        out = _build(df)
+        cols = [e for e in out if e.get('meta', '').startswith('col')]
+        assert len(cols) == 0
+        # pandas + numpy entries remain
+        assert len(out) > 30

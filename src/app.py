@@ -28,7 +28,9 @@ st.markdown("""
   --border-strong: #2a3f58;
 }
 
-.block-container { max-width: 920px; padding: 1.5rem 1rem; }
+/* Extra top padding so the stepper clears Streamlit's floating header banner;
+   extra bottom padding so the fixed footer never covers content. */
+.block-container { max-width: 920px; padding: 3.25rem 1rem 4.5rem 1rem; }
 h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.3; }
 
 .stepper {
@@ -119,6 +121,22 @@ button.neatly-undo {
 [data-testid="stAppViewContainer"] { padding-top: 0; }
 
 footer { display: none; }
+
+/* Copyright footer — pinned to the very bottom of the viewport, subtle so it
+   doesn't compete with content. Backdrop blur keeps it readable against the
+   page beneath. */
+.neatly-footer {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  text-align: center; color: var(--muted); font-size: 11px;
+  padding: 8px 12px;
+  background: rgba(14, 17, 23, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  z-index: 50;
+}
+.neatly-footer a { color: var(--muted); text-decoration: none; }
+.neatly-footer a:hover { color: var(--accent); text-decoration: underline; }
 </style>
 <script>
 (function() {
@@ -179,6 +197,7 @@ from utils.db_ingestion import (
     write_table,
 )
 from streamlit_ace import st_ace
+from code_editor import code_editor
 from utils.analytics import init_session, log_event
 from utils.context_summary import summarize_data_context
 from utils.session_state import init_state
@@ -1146,6 +1165,90 @@ def render_changes_tab() -> None:
         render_diff(cumulative)
 
 
+def _build_completions(df: pd.DataFrame) -> list:
+    """ACE completion dicts: columns (1000), pandas methods (500), numpy funcs (300)."""
+    out: list = []
+    for col in df.columns:
+        safe = str(col).replace("'", "\\'")
+        name = str(col)
+        out.append({
+            'caption': name,
+            'value':   f"df['{safe}']",
+            'meta':    f"col · {df[col].dtype}",
+            'name':    name,
+            'score':   1000,
+        })
+    _PD = [
+        ('df.shape',             'df.shape',                                                    'pd · prop'),
+        ('df.dtypes',            'df.dtypes',                                                   'pd · prop'),
+        ('df.columns',           'df.columns.tolist()',                                         'pd · prop'),
+        ('df.head()',            'df.head(10)',                                                 'pd · inspect'),
+        ('df.describe()',        'df.describe()',                                               'pd · inspect'),
+        ('df.value_counts()',    "df['col'].value_counts()",                                    'pd · inspect'),
+        ('df.nunique()',         'df.nunique()',                                                'pd · inspect'),
+        ('df.isna()',            'df.isna().sum()',                                             'pd · null'),
+        ('df.dropna()',          "df.dropna(subset=['col'])",                                   'pd · null'),
+        ('df.fillna()',          "df['col'].fillna(0)",                                         'pd · null'),
+        ('df.loc[]',             "df.loc[df['col'] == val]",                                    'pd · select'),
+        ('df.query()',           'df.query("col == \'val\'")',                                  'pd · select'),
+        ('df.isin()',            "df[df['col'].isin(['a','b'])]",                               'pd · select'),
+        ('df.assign()',          "df.assign(new_col=df['col'] * 2)",                            'pd · mutate'),
+        ('df.rename()',          "df.rename(columns={'old': 'new'})",                           'pd · mutate'),
+        ('df.drop()',            "df.drop(columns=['col'])",                                    'pd · mutate'),
+        ('df.astype()',          "df['col'].astype('Int64')",                                   'pd · cast'),
+        ('pd.to_datetime()',     "pd.to_datetime(df['col'], errors='coerce')",                  'pd · cast'),
+        ('pd.to_numeric()',      "pd.to_numeric(df['col'], errors='coerce')",                   'pd · cast'),
+        ('str.strip()',          "df['col'].str.strip()",                                       'pd · str'),
+        ('str.lower()',          "df['col'].str.lower()",                                       'pd · str'),
+        ('str.upper()',          "df['col'].str.upper()",                                       'pd · str'),
+        ('str.replace()',        "df['col'].str.replace('a', 'b', regex=False)",                'pd · str'),
+        ('str.contains()',       "df['col'].str.contains('pat', na=False)",                    'pd · str'),
+        ('str.extract()',        r"df['col'].str.extract(r'(\d+)')",                            'pd · str'),
+        ('str.split()',          "df['col'].str.split(',', expand=True)",                       'pd · str'),
+        ('df.clip()',            "df['col'].clip(lower=0, upper=100)",                          'pd · num'),
+        ('df.round()',           "df['col'].round(2)",                                          'pd · num'),
+        ('df.abs()',             "df['col'].abs()",                                             'pd · num'),
+        ('df.median()',          "df['col'].median()",                                          'pd · num'),
+        ('df.mean()',            "df['col'].mean()",                                            'pd · num'),
+        ('df.cumsum()',          "df['col'].cumsum()",                                          'pd · num'),
+        ('dt.year',              "df['col'].dt.year",                                           'pd · dt'),
+        ('dt.month',             "df['col'].dt.month",                                          'pd · dt'),
+        ('dt.day',               "df['col'].dt.day",                                            'pd · dt'),
+        ('dt.strftime()',        "df['col'].dt.strftime('%Y-%m-%d')",                           'pd · dt'),
+        ('df.sort_values()',     "df.sort_values('col').reset_index(drop=True)",                'pd · reshape'),
+        ('df.reset_index()',     'df.reset_index(drop=True)',                                   'pd · reshape'),
+        ('df.drop_duplicates()', "df.drop_duplicates(subset=['col']).reset_index(drop=True)",   'pd · reshape'),
+        ('df.groupby()',         "df.groupby('col').agg({'val': 'sum'}).reset_index()",         'pd · reshape'),
+        ('df.merge()',           "df.merge(other, on='key', how='left')",                       'pd · reshape'),
+        ('df.melt()',            "df.melt(id_vars=['id'], value_vars=['a','b'])",               'pd · reshape'),
+        ('df.pivot_table()',     "df.pivot_table(index='a', columns='b', values='c', aggfunc='sum')", 'pd · reshape'),
+        ('df.explode()',         "df.explode('list_col').reset_index(drop=True)",               'pd · reshape'),
+        ('pd.cut()',             "pd.cut(df['col'], bins=5, labels=False)",                     'pd · bin'),
+        ('pd.qcut()',            "pd.qcut(df['col'], q=4, labels=['Q1','Q2','Q3','Q4'])",       'pd · bin'),
+    ]
+    for cap, val, meta in _PD:
+        out.append({'caption': cap, 'value': val, 'meta': meta, 'name': cap, 'score': 500})
+    _NP = [
+        ('np.nan',          'np.nan',                                         'np · const'),
+        ('np.inf',          'np.inf',                                         'np · const'),
+        ('np.where()',      "np.where(df['col'] > 0, 1, 0)",                  'np · cond'),
+        ('np.select()',     'np.select([cond1, cond2], [v1, v2], default=0)', 'np · cond'),
+        ('np.isnan()',      "np.isnan(df['col'])",                            'np · null'),
+        ('np.log()',        "np.log(df['col'])",                              'np · math'),
+        ('np.sqrt()',       "np.sqrt(df['col'])",                             'np · math'),
+        ('np.abs()',        "np.abs(df['col'])",                              'np · math'),
+        ('np.floor()',      "np.floor(df['col'])",                            'np · math'),
+        ('np.ceil()',       "np.ceil(df['col'])",                             'np · math'),
+        ('np.round()',      "np.round(df['col'], 2)",                         'np · math'),
+        ('np.clip()',       "np.clip(df['col'], 0, 100)",                     'np · math'),
+        ('np.percentile()', "np.percentile(df['col'].dropna(), 95)",          'np · stats'),
+        ('np.mean()',       "np.mean(df['col'])",                             'np · stats'),
+        ('np.median()',     "np.median(df['col'].dropna())",                  'np · stats'),
+        ('np.std()',        "np.std(df['col'].dropna())",                     'np · stats'),
+    ]
+    for cap, val, meta in _NP:
+        out.append({'caption': cap, 'value': val, 'meta': meta, 'name': cap, 'score': 300})
+    return out
 
 
 def render_custom_code_tab() -> None:
@@ -1430,7 +1533,7 @@ def render_custom_code_tab() -> None:
   <div class="cs-tab">🐍 main.py <span class="cs-tab-close">×</span></div>
 </div>""", unsafe_allow_html=True)
 
-        # ── ACE editor ───────────────────────────────────────────────────────
+        # ── Code editor (Monaco-like via streamlit-code-editor) ──────────────
         _DEFAULT = (
             f'# df  →  {df_rows:,} rows × {df_cols} columns\n'
             f'# Available: pd, np, and any installed package via import\n\n'
@@ -1438,31 +1541,70 @@ def render_custom_code_tab() -> None:
         _themes = ['tomorrow_night_eighties', 'monokai', 'dracula',
                    'nord_dark', 'solarized_dark', 'tomorrow', 'github']
 
-        # Theme selector above the editor — widget key is the single source of
-        # truth, so a theme change reruns once and takes effect immediately.
         theme = st.selectbox(
             'Theme', _themes, index=0,
             key='_cs_theme', label_visibility='collapsed',
         )
         st.caption('Ctrl+Space / Tab for suggestions · Ctrl+/ comment · Ctrl+Z undo · Shift+Tab dedent')
 
-        # Versioned key: bumping '_cs_editor_version' forces ACE to remount
-        # with a fresh `value` (how we insert snippets into the editor)
+        # Versioned key: bumping '_cs_editor_version' forces the editor to
+        # remount with a fresh `code` (how we insert snippets into the editor).
         _ed_ver = st.session_state.get('_cs_editor_version', 0)
-        code = st_ace(
-            value=st.session_state.get('_custom_code_text', _DEFAULT),
-            language='python',
-            theme=theme,
-            keybinding='vscode',
-            font_size=13,
-            tab_size=4,
-            show_gutter=True,
-            show_print_margin=False,
-            wrap=False,
-            auto_update=True,
-            height=440,
-            key=f'_custom_code_editor_v{_ed_ver}',
-        )
+        _current_val = st.session_state.get('_custom_code_text', _DEFAULT)
+        _completions = _build_completions(df_current)
+
+        code = None
+        try:
+            # `code_editor` returns a dict with keys: id, type, lang, text.
+            # response_mode=["debounce","blur"] keeps text in sync without a
+            # toolbar trigger, so the existing Run button still works.
+            response = code_editor(
+                code=_current_val,
+                lang='python',
+                theme='dark',
+                shortcuts='vscode',
+                completions=_completions,
+                response_mode=['debounce', 'blur'],
+                options={'wrap': False, 'showGutter': True, 'fontSize': 13,
+                         'tabSize': 4, 'theme': f'ace/theme/{theme}'},
+                height=[18, 24],
+                key=f'_custom_code_editor_v{_ed_ver}',
+            )
+            if isinstance(response, dict):
+                text = response.get('text', '')
+                # Empty string on the very first render before user edits;
+                # preserve the default/current value in that case
+                code = text if text else _current_val
+        except Exception:
+            code = None
+
+        if code is None:
+            # Fallback 1: streamlit-ace (still shipped in requirements)
+            try:
+                code = st_ace(
+                    value=_current_val,
+                    language='python',
+                    theme=theme,
+                    keybinding='vscode',
+                    font_size=13,
+                    tab_size=4,
+                    show_gutter=True,
+                    show_print_margin=False,
+                    wrap=False,
+                    auto_update=True,
+                    height=440,
+                    key=f'_custom_code_ace_v{_ed_ver}',
+                )
+            except Exception:
+                # Fallback 2: plain text_area
+                code = st.text_area(
+                    'Python code',
+                    value=_current_val,
+                    height=440,
+                    key=f'_custom_code_textarea_v{_ed_ver}',
+                    label_visibility='collapsed',
+                )
+
         if code is not None:
             st.session_state['_custom_code_text'] = code
         else:
@@ -2191,9 +2333,10 @@ STAGE_RENDERERS = {
 STAGE_RENDERERS[st.session_state['stage']]()
 
 st.markdown(
-    '<p style="text-align:center;color:#64748b;font-size:12px;margin-top:2rem;">'
-    '© 2026 Kunpeng Liu · <a href="mailto:liukunpeng267@gmail.com" style="color:#64748b;">liukunpeng267@gmail.com</a>'
+    '<div class="neatly-footer">'
+    '© 2026 Kunpeng Liu · '
+    '<a href="mailto:liukunpeng267@gmail.com">liukunpeng267@gmail.com</a>'
     ' · Last updated April 19, 2026'
-    '</p>',
+    '</div>',
     unsafe_allow_html=True,
 )
