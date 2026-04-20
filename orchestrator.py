@@ -12,6 +12,9 @@ from detectors.duplicate_detector import detect as detect_duplicates
 from detectors.schema_analyzer import detect as detect_schema
 from detectors.consistency_cleaner import detect as detect_consistency
 from detectors.outlier_detector import detect as detect_outliers
+from detectors.pattern_validator import detect as detect_patterns
+from detectors.range_validator import detect as detect_ranges
+from detectors.near_duplicate_detector import detect as detect_near_duplicates
 from explanation_layer import explain_issues
 
 _REQUIRED_ISSUE_FIELDS = {
@@ -45,6 +48,9 @@ def run_diagnosis(df: pd.DataFrame) -> dict[str, Any]:
         (detect_schema, 'schema_analyzer', 'type_mismatch'),
         (detect_consistency, 'consistency_cleaner', 'inconsistent_format'),
         (detect_outliers, 'outlier_detector', 'outliers'),
+        (detect_patterns, 'pattern_validator', 'pattern_mismatch'),
+        (detect_ranges, 'range_validator', 'out_of_range'),
+        (detect_near_duplicates, 'near_duplicate_detector', 'near_duplicates'),
     ]:
         try:
             detector_issues = detector_fn(df)
