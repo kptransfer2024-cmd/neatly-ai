@@ -67,6 +67,24 @@ def create_dataset(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Free tier limited to 1 dataset. Upgrade to Pro.",
             )
+    elif current_user.plan_tier == "pro":
+        existing_count = db.query(Dataset).filter(Dataset.user_id == current_user.id).count()
+        if existing_count >= 10:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Pro tier limited to 10 datasets. Upgrade to Business.",
+            )
+
+    # Validate cron expression if provided
+    if dataset_data.schedule_cron:
+        from apscheduler.triggers.cron import CronTrigger
+        try:
+            CronTrigger.from_crontab(dataset_data.schedule_cron)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid cron expression: {str(e)}",
+            )
 
     new_dataset = Dataset(
         user_id=current_user.id,

@@ -35,7 +35,10 @@ def get_current_user(
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
         )
-        user_id: int = payload.get("sub")
+        try:
+            user_id = int(payload.get("sub"))
+        except (TypeError, ValueError):
+            raise InvalidTokenError("Invalid user ID in token")
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

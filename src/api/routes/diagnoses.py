@@ -1,5 +1,5 @@
 """Diagnosis and file upload routes."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
@@ -128,6 +128,22 @@ async def upload_file(
     db: Session = Depends(get_db),
 ):
     """Upload a file and run diagnosis immediately."""
+    # Enforce plan tier limits (free: 1 dataset, pro: 10, business: unlimited)
+    if current_user.plan_tier == "free":
+        existing_count = db.query(Dataset).filter(Dataset.user_id == current_user.id).count()
+        if existing_count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Free tier limited to 1 dataset. Upgrade to Pro.",
+            )
+    elif current_user.plan_tier == "pro":
+        existing_count = db.query(Dataset).filter(Dataset.user_id == current_user.id).count()
+        if existing_count >= 10:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Pro tier limited to 10 datasets. Upgrade to Business.",
+            )
+
     try:
         # Parse the uploaded file
         df = parse_uploaded_file(file)
@@ -160,7 +176,7 @@ async def upload_file(
     # Create a DiagnosisRun record
     run = DiagnosisRun(
         dataset_id=temp_dataset.id,
-        finished_at=datetime.utcnow(),
+        finished_at=datetime.now(timezone.utc),
         status="success",
         quality_score=diagnosis_result.get("quality_score"),
         row_count=diagnosis_result.get("row_count"),
@@ -186,3 +202,68 @@ async def upload_file(
     db.commit()
     db.refresh(run)
     return run
+
+
+@router.get("/runs/{run_id}/issues", response_model=List[IssueResponse])
+def list_issues(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get issues from a diagnosis run (owner only)."""
+    run = db.query(DiagnosisRun).filter(DiagnosisRun.id == run_id).first()
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Diagnosis run not found",
+        )
+
+    # Verify ownership through dataset
+    dataset = run.dataset
+    if dataset.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    issues = db.query(Issue).filter(Issue.run_id == run_id).all()
+    return issues
+
+
+@router.post("/runs/{run_id}/issues/{issue_id}/resolve", status_code=status.HTTP_200_OK)
+def resolve_issue(
+    run_id: int,
+    issue_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark an issue as resolved (owner only)."""
+    run = db.query(DiagnosisRun).filter(DiagnosisRun.id == run_id).first()
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Diagnosis run not found",
+        )
+
+    # Verify ownership through dataset
+    dataset = run.dataset
+    if dataset.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    issue = db.query(Issue).filter(
+        Issue.id == issue_id,
+        Issue.run_id == run_id,
+    ).first()
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found",
+        )
+
+    issue.resolved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(issue)
+    return {"message": "Issue resolved"}

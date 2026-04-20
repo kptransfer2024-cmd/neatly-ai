@@ -1,10 +1,13 @@
 """PostgreSQL connector for fetching tables and query results."""
+import re
 import pandas as pd
 import logging
 
 from . import DataSourceConnector
 
 logger = logging.getLogger(__name__)
+
+_TABLE_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_.]*$')
 
 
 class PostgresConnector(DataSourceConnector):
@@ -45,12 +48,14 @@ class PostgresConnector(DataSourceConnector):
             # Determine which query to run
             if "table_name" in self.config:
                 table = self.config["table_name"]
-                row_limit = self.config.get("row_limit", 100000)
+                if not _TABLE_RE.match(table):
+                    raise ValueError(f"Invalid table name: {table!r}")
+                row_limit = int(self.config.get("row_limit", 100000))
                 query = f"SELECT * FROM {table} LIMIT {row_limit}"
             elif "query" in self.config:
-                query = self.config["query"]
-                row_limit = self.config.get("row_limit", 100000)
-                query += f" LIMIT {row_limit}"
+                inner = self.config["query"]
+                row_limit = int(self.config.get("row_limit", 100000))
+                query = f"SELECT * FROM ({inner}) AS _q LIMIT {row_limit}"
             else:
                 raise ValueError("PostgresConnector requires 'table_name' or 'query' in config")
 

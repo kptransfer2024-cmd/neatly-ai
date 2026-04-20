@@ -1,7 +1,5 @@
 """Alert system for quality threshold violations."""
 import logging
-import json
-from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 import httpx
 
@@ -14,6 +12,7 @@ async def check_and_send_alerts(
     db: Session,
     dataset: Dataset,
     run: DiagnosisRun,
+    issue_count: int = 0,
 ) -> None:
     """Check if quality score triggered an alert and send notifications.
 
@@ -21,6 +20,7 @@ async def check_and_send_alerts(
         db: Database session
         dataset: The dataset that was diagnosed
         run: The completed diagnosis run
+        issue_count: Number of issues detected (passed to avoid DetachedInstanceError)
     """
     if run.quality_score is None:
         return
@@ -43,23 +43,24 @@ async def check_and_send_alerts(
 
     # Send email alert
     try:
-        await send_email_alert(dataset, run)
+        await send_email_alert(dataset, run, issue_count)
     except Exception as e:
         logger.error(f"Failed to send email alert: {e}")
 
     # Send webhook alert
     try:
-        await send_webhook_alert(dataset, run)
+        await send_webhook_alert(dataset, run, issue_count)
     except Exception as e:
         logger.error(f"Failed to send webhook alert: {e}")
 
 
-async def send_email_alert(dataset: Dataset, run: DiagnosisRun) -> None:
+async def send_email_alert(dataset: Dataset, run: DiagnosisRun, issue_count: int = 0) -> None:
     """Send email alert to dataset owner.
 
     Args:
         dataset: The dataset that triggered the alert
         run: The diagnosis run with poor quality score
+        issue_count: Number of issues detected
     """
     import aiosmtplib
     from email.mime.text import MIMEText
@@ -72,6 +73,7 @@ async def send_email_alert(dataset: Dataset, run: DiagnosisRun) -> None:
 
     to_addr = dataset.owner.email
     subject = f"Data Quality Alert: {dataset.name}"
+    finished_at_str = run.finished_at.isoformat() if run.finished_at else "N/A"
     html_body = f"""
     <h2>Data Quality Alert</h2>
     <p>Your dataset <strong>{dataset.name}</strong> has a low quality score.</p>
@@ -80,8 +82,8 @@ async def send_email_alert(dataset: Dataset, run: DiagnosisRun) -> None:
         <li><strong>Threshold:</strong> {dataset.alert_threshold}%</li>
         <li><strong>Rows:</strong> {run.row_count}</li>
         <li><strong>Columns:</strong> {run.column_count}</li>
-        <li><strong>Issues Found:</strong> {len(run.issues)}</li>
-        <li><strong>Time:</strong> {run.finished_at}</li>
+        <li><strong>Issues Found:</strong> {issue_count}</li>
+        <li><strong>Time:</strong> {finished_at_str}</li>
     </ul>
     <p>
         <a href="https://neatly.app/datasets/{dataset.id}/runs/{run.id}">
@@ -95,12 +97,13 @@ async def send_email_alert(dataset: Dataset, run: DiagnosisRun) -> None:
     logger.info(f"Would send email alert to {to_addr}: {subject}")
 
 
-async def send_webhook_alert(dataset: Dataset, run: DiagnosisRun) -> None:
+async def send_webhook_alert(dataset: Dataset, run: DiagnosisRun, issue_count: int = 0) -> None:
     """Send webhook POST to user-configured URL.
 
     Args:
         dataset: The dataset that triggered the alert
         run: The diagnosis run with poor quality score
+        issue_count: Number of issues detected
     """
     # TODO: Store webhook_url in user or dataset settings
     webhook_url = None  # dataset.alert_webhook_url
@@ -109,6 +112,7 @@ async def send_webhook_alert(dataset: Dataset, run: DiagnosisRun) -> None:
         logger.debug(f"No webhook configured for dataset {dataset.id}")
         return
 
+    timestamp_str = run.finished_at.isoformat() if run.finished_at else None
     payload = {
         "event": "quality_alert",
         "dataset_id": dataset.id,
@@ -117,8 +121,8 @@ async def send_webhook_alert(dataset: Dataset, run: DiagnosisRun) -> None:
         "threshold": dataset.alert_threshold,
         "row_count": run.row_count,
         "column_count": run.column_count,
-        "issues_count": len(run.issues),
-        "timestamp": run.finished_at.isoformat(),
+        "issues_count": issue_count,
+        "timestamp": timestamp_str,
     }
 
     try:

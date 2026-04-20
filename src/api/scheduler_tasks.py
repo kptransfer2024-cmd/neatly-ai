@@ -1,6 +1,6 @@
 """Scheduled background tasks for diagnosis runs."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from src.db.session import SessionLocal
@@ -18,6 +18,7 @@ async def run_scheduled_diagnosis(dataset_id: int) -> None:
         dataset_id: The dataset ID to diagnose
     """
     db = SessionLocal()
+    started_at = datetime.now(timezone.utc)
     try:
         # Fetch dataset
         dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
@@ -33,6 +34,14 @@ async def run_scheduled_diagnosis(dataset_id: int) -> None:
             df = await connector.fetch()
         except Exception as e:
             logger.error(f"Failed to fetch data for dataset {dataset_id}: {e}")
+            run = DiagnosisRun(
+                dataset_id=dataset_id,
+                started_at=started_at,
+                finished_at=datetime.now(timezone.utc),
+                status="failed",
+            )
+            db.add(run)
+            db.commit()
             return
 
         # Run diagnosis
@@ -40,12 +49,21 @@ async def run_scheduled_diagnosis(dataset_id: int) -> None:
             diagnosis_result = run_diagnosis(df)
         except Exception as e:
             logger.error(f"Diagnosis failed for dataset {dataset_id}: {e}")
+            run = DiagnosisRun(
+                dataset_id=dataset_id,
+                started_at=started_at,
+                finished_at=datetime.now(timezone.utc),
+                status="failed",
+            )
+            db.add(run)
+            db.commit()
             return
 
         # Save run to database
         run = DiagnosisRun(
             dataset_id=dataset_id,
-            finished_at=datetime.utcnow(),
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc),
             status="success",
             quality_score=diagnosis_result.get("quality_score"),
             row_count=diagnosis_result.get("row_count"),
@@ -69,9 +87,10 @@ async def run_scheduled_diagnosis(dataset_id: int) -> None:
             db.add(issue)
 
         db.commit()
+        score_str = f"{run.quality_score:.1f}" if run.quality_score is not None else "N/A"
         logger.info(
             f"Completed diagnosis for dataset {dataset_id}: "
-            f"quality_score={run.quality_score:.1f}, "
+            f"quality_score={score_str}, "
             f"issues={len(diagnosis_result.get('issues', []))}"
         )
 
