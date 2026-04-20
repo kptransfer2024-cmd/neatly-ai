@@ -339,6 +339,33 @@ def drop_out_of_range_rows(
     return result
 
 
+def clip_to_range(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    lo: float | None,
+    hi: float | None,
+) -> pd.DataFrame:
+    """Clamp column values to [lo, hi] range; NaN values unchanged."""
+    if column not in df.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+
+    result = df.copy()
+    clipped = result[column].clip(lower=lo, upper=hi)
+    changed_mask = (result[column] != clipped) & result[column].notna()
+    changed_count = int(changed_mask.sum())
+
+    result[column] = clipped
+
+    _log(cleaning_log, 'clip_to_range', {
+        'column': column,
+        'valid_range': [lo, hi],
+        'values_clipped': changed_count,
+    })
+
+    return result
+
+
 def null_out_whitespace(df: pd.DataFrame, cleaning_log: list, column: str) -> pd.DataFrame:
     """Replace whitespace-only cells in column with NaN and log the action."""
     if column not in df.columns:

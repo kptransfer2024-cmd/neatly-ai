@@ -420,3 +420,222 @@ def test_drop_column_preserves_input():
     drop_column(df, 'a', log)
     # Original untouched
     assert list(df.columns) == ['a', 'b']
+
+
+# --- clip_to_range tests ---
+
+def test_clip_to_range_clamps_high():
+    from transformation_executor import clip_to_range
+    df = pd.DataFrame({'score': [50, 150, 80]})
+    log = []
+    result = clip_to_range(df, log, 'score', 0, 100)
+    assert result['score'].max() == 100
+    assert result.loc[1, 'score'] == 100  # 150 clamped to 100
+
+
+def test_clip_to_range_clamps_low():
+    from transformation_executor import clip_to_range
+    df = pd.DataFrame({'score': [50, -10, 80]})
+    log = []
+    result = clip_to_range(df, log, 'score', 0, 100)
+    assert result['score'].min() == 0
+    assert result.loc[1, 'score'] == 0  # -10 clamped to 0
+
+
+def test_clip_to_range_in_bounds_unchanged():
+    from transformation_executor import clip_to_range
+    df = pd.DataFrame({'score': [50, 75, 80]})
+    log = []
+    result = clip_to_range(df, log, 'score', 0, 100)
+    assert (result['score'] == df['score']).all()
+
+
+def test_clip_to_range_nan_unchanged():
+    from transformation_executor import clip_to_range
+    df = pd.DataFrame({'score': [50.0, float('nan'), 80.0]})
+    log = []
+    result = clip_to_range(df, log, 'score', 0, 100)
+    assert pd.isna(result.loc[1, 'score'])
+    assert result.loc[0, 'score'] == 50.0
+    assert result.loc[2, 'score'] == 80.0
+
+
+def test_clip_to_range_one_sided_hi_none():
+    from transformation_executor import clip_to_range
+    df = pd.DataFrame({'score': [-5, 50, 150]})
+    log = []
+    result = clip_to_range(df, log, 'score', 0, None)
+    assert result.loc[0, 'score'] == 0  # -5 clamped to 0
+    assert result.loc[1, 'score'] == 50  # unchanged
+    assert result.loc[2, 'score'] == 150  # no upper bound
+
+
+def test_clip_to_range_one_sided_lo_none():
+    from transformation_executor import clip_to_range
+    df = pd.DataFrame({'score': [-5, 50, 150]})
+    log = []
+    result = clip_to_range(df, log, 'score', None, 100)
+    assert result.loc[0, 'score'] == -5  # no lower bound
+    assert result.loc[1, 'score'] == 50  # unchanged
+    assert result.loc[2, 'score'] == 100  # 150 clamped to 100
+
+
+def test_clip_to_range_logs_correctly():
+    from transformation_executor import clip_to_range
+    df = pd.DataFrame({'score': [50, 150, -5]})
+    log = []
+    clip_to_range(df, log, 'score', 0, 100)
+    assert log[0]['action'] == 'clip_to_range'
+    assert log[0]['column'] == 'score'
+    assert log[0]['valid_range'] == [0, 100]
+    assert log[0]['values_clipped'] == 2  # 150 and -5
+
+
+# --- null_out_whitespace tests ---
+
+def test_null_out_whitespace_basic():
+    from transformation_executor import null_out_whitespace
+    df = pd.DataFrame({'a': ['  ', 'hello', '   ']})
+    log = []
+    result = null_out_whitespace(df, log, 'a')
+    assert pd.isna(result['a'].iloc[0])
+    assert result['a'].iloc[1] == 'hello'
+    assert pd.isna(result['a'].iloc[2])
+    assert log[0]['nulled_count'] == 2
+
+
+def test_null_out_whitespace_noop():
+    from transformation_executor import null_out_whitespace
+    df = pd.DataFrame({'a': ['x', 'y']})
+    log = []
+    result = null_out_whitespace(df, log, 'a')
+    assert result['a'].iloc[0] == 'x'
+    assert log == []
+
+
+def test_null_out_whitespace_tabs_newlines():
+    from transformation_executor import null_out_whitespace
+    df = pd.DataFrame({'a': ['\t', '\n', 'real']})
+    log = []
+    result = null_out_whitespace(df, log, 'a')
+    assert pd.isna(result['a'].iloc[0])
+    assert pd.isna(result['a'].iloc[1])
+    assert result['a'].iloc[2] == 'real'
+    assert log[0]['nulled_count'] == 2
+
+
+def test_null_out_whitespace_missing_column():
+    from transformation_executor import null_out_whitespace
+    df = pd.DataFrame({'a': ['x']})
+    log = []
+    with pytest.raises(KeyError):
+        null_out_whitespace(df, log, 'missing')
+
+
+# --- drop_whitespace_rows tests ---
+
+def test_drop_whitespace_rows_basic():
+    from transformation_executor import drop_whitespace_rows
+    df = pd.DataFrame({'a': ['  ', 'hello', ' ']})
+    log = []
+    result = drop_whitespace_rows(df, log, 'a')
+    assert len(result) == 1
+    assert result['a'].iloc[0] == 'hello'
+    assert log[0]['rows_dropped'] == 2
+
+
+def test_drop_whitespace_rows_noop():
+    from transformation_executor import drop_whitespace_rows
+    df = pd.DataFrame({'a': ['x', 'y']})
+    log = []
+    result = drop_whitespace_rows(df, log, 'a')
+    assert len(result) == 2
+    assert log == []
+
+
+def test_drop_whitespace_rows_preserves_nan():
+    from transformation_executor import drop_whitespace_rows
+    df = pd.DataFrame({'a': [None, '  ', 'ok']})
+    log = []
+    result = drop_whitespace_rows(df, log, 'a')
+    assert len(result) == 2  # NaN row stays, whitespace row dropped
+    assert pd.isna(result['a'].iloc[0])
+    assert result['a'].iloc[1] == 'ok'
+
+
+def test_drop_whitespace_rows_missing_column():
+    from transformation_executor import drop_whitespace_rows
+    df = pd.DataFrame({'a': ['x']})
+    log = []
+    with pytest.raises(KeyError):
+        drop_whitespace_rows(df, log, 'missing')
+
+
+# --- coerce_to_numeric tests ---
+
+def test_coerce_to_numeric_dirty_strings():
+    from transformation_executor import coerce_to_numeric
+    df = pd.DataFrame({'rev': ['100', 'N/A', '200', 'bad']})
+    log = []
+    result = coerce_to_numeric(df, log, 'rev')
+    assert result['rev'].iloc[0] == 100.0
+    assert pd.isna(result['rev'].iloc[1])
+    assert result['rev'].iloc[2] == 200.0
+    assert pd.isna(result['rev'].iloc[3])
+    assert log[0]['values_coerced_to_null'] == 2
+
+
+def test_coerce_to_numeric_already_numeric():
+    from transformation_executor import coerce_to_numeric
+    df = pd.DataFrame({'n': [1.0, 2.0, 3.0]})
+    log = []
+    result = coerce_to_numeric(df, log, 'n')
+    assert log[0]['values_coerced_to_null'] == 0
+
+
+def test_coerce_to_numeric_missing_column():
+    from transformation_executor import coerce_to_numeric
+    df = pd.DataFrame({'n': [1]})
+    log = []
+    with pytest.raises(KeyError):
+        coerce_to_numeric(df, log, 'missing')
+
+
+# --- drop_non_numeric_rows tests ---
+
+def test_drop_non_numeric_rows_basic():
+    from transformation_executor import drop_non_numeric_rows
+    df = pd.DataFrame({'rev': ['100', 'N/A', '200']})
+    log = []
+    result = drop_non_numeric_rows(df, log, 'rev')
+    assert len(result) == 2
+    assert result['rev'].iloc[0] == '100'
+    assert result['rev'].iloc[1] == '200'
+    assert log[0]['rows_dropped'] == 1
+
+
+def test_drop_non_numeric_rows_preserves_nan():
+    from transformation_executor import drop_non_numeric_rows
+    df = pd.DataFrame({'rev': [None, '100', 'bad']})
+    log = []
+    result = drop_non_numeric_rows(df, log, 'rev')
+    assert len(result) == 2  # None row stays, 'bad' dropped
+    assert pd.isna(result['rev'].iloc[0])
+    assert result['rev'].iloc[1] == '100'
+
+
+def test_drop_non_numeric_rows_noop():
+    from transformation_executor import drop_non_numeric_rows
+    df = pd.DataFrame({'n': ['1', '2', '3']})
+    log = []
+    result = drop_non_numeric_rows(df, log, 'n')
+    assert len(result) == 3
+    assert log == []
+
+
+def test_drop_non_numeric_rows_missing_column():
+    from transformation_executor import drop_non_numeric_rows
+    df = pd.DataFrame({'n': [1]})
+    log = []
+    with pytest.raises(KeyError):
+        drop_non_numeric_rows(df, log, 'missing')
