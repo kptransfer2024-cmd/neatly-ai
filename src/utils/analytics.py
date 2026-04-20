@@ -9,7 +9,7 @@ Design goals:
 """
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import streamlit as st
@@ -32,7 +32,7 @@ def init_session() -> None:
     if 'session_id' in st.session_state:
         return  # already initialized
     st.session_state['session_id'] = uuid.uuid4().hex[:8]
-    st.session_state['_session_start'] = datetime.utcnow().isoformat()
+    st.session_state['_session_start'] = datetime.now(timezone.utc).isoformat()
     log_event('session_started')
 
 
@@ -42,7 +42,7 @@ def log_event(event: str, **meta) -> None:
         entry = {
             'session_id': st.session_state.get('session_id', 'anon'),
             'event': event,
-            'ts': datetime.utcnow().isoformat(),
+            'ts': datetime.now(timezone.utc).isoformat(),
             **{k: v for k, v in meta.items() if v is not None},
         }
         path = _log_path()
