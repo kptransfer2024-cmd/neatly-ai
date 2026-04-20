@@ -1,13 +1,23 @@
-"""Internal analytics dashboard for Neatly AI.
+"""Internal analytics dashboard for Neatly AI — standalone, NOT deployed with the public app.
 
-Access: /admin via Streamlit multipage navigation.
+Run locally when you want to review analytics:
+    streamlit run src/admin_app.py --server.port 8502
+
+This file is deliberately NOT inside `src/pages/` — Streamlit auto-discovers
+`pages/` and exposes every file there in the main app's sidebar. Keeping
+this at `src/` level hides it from the public deployment entirely.
 
 Password gate:
-  - Set ADMIN_PASSWORD in Streamlit secrets (Manage app → Settings → Secrets)
-    to require a password. Without the secret, the page is open (OK for
-    local dev / solo founder).
+  - Set ADMIN_PASSWORD in a local `.streamlit/secrets.toml` (or Streamlit
+    secrets, if you deploy this as its own app later). Without the secret
+    the page is open — fine for solo local dev.
   - Once authenticated in a browser session, credentials are cached in
     session_state so widget interactions don't re-prompt.
+
+Log source:
+  - Reads `neatly_logs.jsonl` in cwd (local) or `/tmp/neatly_logs.jsonl`
+    (cloud). Local runs see local dev sessions only — cloud logs are not
+    synced back yet.
 """
 import hmac
 import json
@@ -17,10 +27,11 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-# Import from parent package using sys.path hack that Streamlit multipage requires
+# This file lives at src/admin_app.py; adding `src/` to the path lets us do
+# `from utils.analytics import load_logs`.
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from utils.analytics import load_logs
 
