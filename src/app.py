@@ -1134,394 +1134,802 @@ def render_changes_tab() -> None:
         render_diff(cumulative)
 
 
-def render_custom_code_tab() -> None:
-    """Pandas code editor with column reference, snippets, stdout capture, and diff preview."""
-    import io
-    import numpy as np
-    import traceback as _tb
-    from contextlib import redirect_stdout
+def _build_completions(df: pd.DataFrame) -> list:
+    completions: list = []
 
-    _builtins_src = __builtins__ if isinstance(__builtins__, dict) else vars(__builtins__)
-    _safe_builtins = {n: _builtins_src[n] for n in (
-        'abs', 'all', 'any', 'bool', 'dict', 'enumerate', 'filter', 'float',
-        'frozenset', 'getattr', 'hasattr', 'int', 'isinstance', 'issubclass',
-        'iter', 'len', 'list', 'map', 'max', 'min', 'next', 'print', 'range',
-        'repr', 'round', 'set', 'setattr', 'slice', 'sorted', 'str', 'sum',
-        'tuple', 'type', 'zip',
-    ) if n in _builtins_src}
+    for col in df.columns:
+        safe = col.replace("'", "\\'")
+        completions.append({
+            'caption': col,
+            'value':   f"df['{safe}']",
+            'meta':    f"col · {df[col].dtype}",
+            'score':   1000,
+        })
+
+    _PD = [
+        ('df.shape',             'df.shape',                                            'pd · property'),
+        ('df.dtypes',            'df.dtypes',                                           'pd · property'),
+        ('df.columns',           'df.columns.tolist()',                                 'pd · property'),
+        ('df.head()',            'df.head(10)',                                         'pd · inspect'),
+        ('df.describe()',        'df.describe()',                                       'pd · inspect'),
+        ('df.value_counts()',    "df['col'].value_counts()",                            'pd · inspect'),
+        ('df.nunique()',         'df.nunique()',                                        'pd · inspect'),
+        ('df.isna()',            'df.isna().sum()',                                     'pd · null'),
+        ('df.dropna()',          "df.dropna(subset=['col'])",                           'pd · null'),
+        ('df.fillna()',          "df['col'].fillna(0)",                                 'pd · null'),
+        ('df.loc[]',             "df.loc[df['col'] == val]",                            'pd · select'),
+        ('df.query()',           'df.query("col == \'val\'")',                          'pd · select'),
+        ('df.isin()',            "df[df['col'].isin(['a','b'])]",                       'pd · select'),
+        ('df.assign()',          "df.assign(new_col=df['col'] * 2)",                    'pd · mutate'),
+        ('df.rename()',          "df.rename(columns={'old': 'new'})",                   'pd · mutate'),
+        ('df.drop()',            "df.drop(columns=['col'])",                            'pd · mutate'),
+        ('df.astype()',          "df['col'].astype('Int64')",                           'pd · cast'),
+        ('pd.to_datetime()',     "pd.to_datetime(df['col'], errors='coerce')",          'pd · cast'),
+        ('str.strip()',          "df['col'].str.strip()",                               'pd · str'),
+        ('str.lower()',          "df['col'].str.lower()",                               'pd · str'),
+        ('str.upper()',          "df['col'].str.upper()",                               'pd · str'),
+        ('str.replace()',        "df['col'].str.replace('a', 'b', regex=False)",        'pd · str'),
+        ('str.contains()',       "df['col'].str.contains('pat', na=False)",             'pd · str'),
+        ('str.extract()',        r"df['col'].str.extract(r'(\d+)')",                    'pd · str'),
+        ('str.split()',          "df['col'].str.split(',', expand=True)",               'pd · str'),
+        ('df.clip()',            "df['col'].clip(lower=0, upper=100)",                  'pd · numeric'),
+        ('df.round()',           "df['col'].round(2)",                                  'pd · numeric'),
+        ('df.abs()',             "df['col'].abs()",                                     'pd · numeric'),
+        ('df.median()',          "df['col'].median()",                                  'pd · numeric'),
+        ('df.mean()',            "df['col'].mean()",                                    'pd · numeric'),
+        ('df.cumsum()',          "df['col'].cumsum()",                                  'pd · numeric'),
+        ('dt.year',              "df['col'].dt.year",                                   'pd · datetime'),
+        ('dt.month',             "df['col'].dt.month",                                  'pd · datetime'),
+        ('dt.day',               "df['col'].dt.day",                                    'pd · datetime'),
+        ('dt.strftime()',        "df['col'].dt.strftime('%Y-%m-%d')",                   'pd · datetime'),
+        ('df.sort_values()',     "df.sort_values('col', ascending=True).reset_index(drop=True)", 'pd · reshape'),
+        ('df.reset_index()',     'df.reset_index(drop=True)',                           'pd · reshape'),
+        ('df.drop_duplicates()', "df.drop_duplicates(subset=['col']).reset_index(drop=True)", 'pd · reshape'),
+        ('df.groupby()',         "df.groupby('col').agg({'val': 'sum'}).reset_index()", 'pd · reshape'),
+        ('df.merge()',           "df.merge(other, on='key', how='left')",               'pd · reshape'),
+        ('df.melt()',            "df.melt(id_vars=['id'], value_vars=['a','b'])",       'pd · reshape'),
+        ('df.pivot_table()',     "df.pivot_table(index='a', columns='b', values='c', aggfunc='sum')", 'pd · reshape'),
+        ('df.explode()',         "df.explode('list_col').reset_index(drop=True)",       'pd · reshape'),
+        ('pd.cut()',             "pd.cut(df['col'], bins=5, labels=False)",             'pd · bin'),
+        ('pd.qcut()',            "pd.qcut(df['col'], q=4, labels=['Q1','Q2','Q3','Q4'])", 'pd · bin'),
+    ]
+    for caption, value, meta in _PD:
+        completions.append({'caption': caption, 'value': value, 'meta': meta, 'score': 500})
+
+    _NP = [
+        ('np.nan',           'np.nan',                                     'np · constant'),
+        ('np.inf',           'np.inf',                                     'np · constant'),
+        ('np.where()',       "np.where(df['col'] > 0, 1, 0)",              'np · conditional'),
+        ('np.select()',      'np.select([cond1, cond2], [v1, v2], default=0)', 'np · conditional'),
+        ('np.isnan()',       "np.isnan(df['col'])",                        'np · null'),
+        ('np.log()',         "np.log(df['col'])",                          'np · math'),
+        ('np.sqrt()',        "np.sqrt(df['col'])",                         'np · math'),
+        ('np.abs()',         "np.abs(df['col'])",                          'np · math'),
+        ('np.floor()',       "np.floor(df['col'])",                        'np · math'),
+        ('np.ceil()',        "np.ceil(df['col'])",                         'np · math'),
+        ('np.round()',       "np.round(df['col'], 2)",                     'np · math'),
+        ('np.clip()',        "np.clip(df['col'], 0, 100)",                 'np · math'),
+        ('np.percentile()',  "np.percentile(df['col'].dropna(), 95)",      'np · stats'),
+        ('np.mean()',        "np.mean(df['col'])",                         'np · stats'),
+        ('np.median()',      "np.median(df['col'].dropna())",              'np · stats'),
+        ('np.std()',         "np.std(df['col'].dropna())",                 'np · stats'),
+    ]
+    for caption, value, meta in _NP:
+        completions.append({'caption': caption, 'value': value, 'meta': meta, 'score': 300})
+
+    return completions
+
+
+def render_custom_code_tab() -> None:
+    """VS Code-inspired codespace: ACE editor, data explorer, package manager, terminal output."""
+    import sys as _sys
+    from utils.sandbox import run_code, install_package, get_sidebar_package_status
 
     df_current = st.session_state['df']
+    df_rows, df_cols = df_current.shape
 
-    # ── Column reference + snippets ──────────────────────────────────────────
-    left, right = st.columns([1, 2])
+    # ══════════════════════════════════════════════════════════════════════════
+    # CSS — VS Code dark theme panels
+    # ══════════════════════════════════════════════════════════════════════════
+    st.markdown("""
+<style>
+.cs-sidebar {
+  background:#1e1e1e; border:1px solid #3c3c3c;
+  border-radius:6px; padding:0; overflow:hidden;
+}
+.cs-section { border-bottom:1px solid #3c3c3c; padding:7px 10px 9px 10px; }
+.cs-section-title {
+  font-size:10px; font-weight:700; letter-spacing:.1em; color:#cccccc;
+  text-transform:uppercase; margin-bottom:5px;
+  font-family:'Menlo','Consolas','SF Mono',monospace;
+}
+.cs-stat { font-size:11px; color:#9cdcfe; margin-bottom:2px;
+  font-family:'Menlo','Consolas','SF Mono',monospace; }
+.cs-col-row {
+  display:flex; align-items:center; gap:5px; padding:2px 0;
+  font-size:11px; color:#d4d4d4;
+  font-family:'Menlo','Consolas','SF Mono',monospace;
+}
+.cs-dtype {
+  font-size:9px; background:#264f78; color:#9cdcfe;
+  border-radius:3px; padding:1px 5px; white-space:nowrap; flex-shrink:0;
+}
+.cs-dtype-str  { background:#3a3a1e; color:#dcdcaa; }
+.cs-dtype-bool { background:#1e3a2e; color:#4ec9b0; }
+.cs-dtype-date { background:#2d1e3a; color:#c586c0; }
+.cs-pkg-row {
+  display:flex; align-items:center; gap:6px; padding:2px 0;
+  font-size:11px; font-family:'Menlo','Consolas','SF Mono',monospace;
+}
+.cs-pkg-name { color:#9cdcfe; min-width:80px; }
+.cs-pkg-ver  { color:#6a9955; font-size:10px; }
+.cs-pkg-miss { color:#606060; font-size:10px; font-style:italic; }
+.cs-dot-ok   { width:6px; height:6px; border-radius:50%;
+  background:#4ec9b0; flex-shrink:0; display:inline-block; margin-top:1px; }
+.cs-dot-miss { width:6px; height:6px; border-radius:50%;
+  background:#606060; flex-shrink:0; display:inline-block; margin-top:1px; }
+.cs-tab-bar {
+  background:#2d2d2d; border:1px solid #3c3c3c; border-bottom:none;
+  border-radius:6px 6px 0 0; display:flex; align-items:stretch;
+  height:34px; overflow:hidden;
+}
+.cs-tab {
+  display:flex; align-items:center; gap:6px; padding:0 16px;
+  font-size:12px; color:#cccccc; background:#1e1e1e;
+  border-top:2px solid #007acc; border-right:1px solid #3c3c3c;
+  font-family:'Menlo','Consolas','SF Mono',monospace;
+}
+.cs-tab-close { color:#858585; margin-left:4px; }
+.cs-terminal {
+  background:#1e1e1e; border:1px solid #3c3c3c;
+  border-top:none; border-radius:0 0 6px 6px; overflow:hidden;
+  margin-top:0;
+}
+.cs-term-bar {
+  background:#2d2d2d; border-bottom:1px solid #3c3c3c;
+  padding:4px 12px; display:flex; align-items:center; gap:10px;
+  font-size:11px; color:#858585;
+  font-family:'Menlo','Consolas','SF Mono',monospace;
+}
+.cs-term-active { color:#ffffff; border-bottom:2px solid #007acc; padding-bottom:2px; }
+.cs-term-body {
+  padding:10px 14px; font-size:12px; line-height:1.7; color:#cccccc;
+  min-height:80px; max-height:240px; overflow-y:auto;
+  font-family:'Menlo','Consolas','SF Mono',monospace;
+}
+.t-ok   { color:#4ec9b0; }
+.t-err  { color:#f44747; }
+.t-info { color:#569cd6; }
+.t-dim  { color:#606060; }
+.t-out  { color:#d4d4d4; white-space:pre; }
+.cs-status-bar {
+  background:#007acc; border-radius:0 0 4px 4px; padding:2px 10px;
+  font-size:11px; color:#fff; display:flex; gap:16px;
+  font-family:'Menlo','Consolas','SF Mono',monospace;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    with left:
-        st.markdown('**Column reference**')
-        col_info = pd.DataFrame({
-            'column': df_current.columns,
-            'dtype':  [str(df_current[c].dtype) for c in df_current.columns],
-            'nulls':  [int(df_current[c].isna().sum()) for c in df_current.columns],
-            'sample': [
-                str(df_current[c].dropna().iloc[0]) if df_current[c].notna().any() else '—'
-                for c in df_current.columns
-            ],
-        })
-        st.dataframe(col_info, use_container_width=True, hide_index=True, height=200)
+    # ══════════════════════════════════════════════════════════════════════════
+    # Sidebar HTML helpers
+    # ══════════════════════════════════════════════════════════════════════════
+    def _badge(dtype_str: str) -> str:
+        s = str(dtype_str)
+        if 'float' in s or 'int' in s:
+            cls = 'cs-dtype'
+        elif 'object' in s or 'str' in s or 'string' in s:
+            cls = 'cs-dtype cs-dtype-str'
+        elif 'bool' in s:
+            cls = 'cs-dtype cs-dtype-bool'
+        elif 'date' in s or 'time' in s:
+            cls = 'cs-dtype cs-dtype-date'
+        else:
+            cls = 'cs-dtype'
+        short = (s.replace('datetime64[ns]', 'dt64')
+                  .replace('float64', 'f64').replace('float32', 'f32')
+                  .replace('int64', 'i64').replace('int32', 'i32')
+                  .replace('object', 'str').replace('boolean', 'bool'))
+        return f'<span class="{cls}">{short}</span>'
 
-    with right:
-        st.markdown('**Quick snippets** — click to insert into the editor')
-        # Pick representative column names for snippet templates
+    col_html = ''
+    for c in df_current.columns[:35]:
+        null_pct = int(df_current[c].isna().mean() * 100)
+        null_tag = (f' <span style="color:#606060;font-size:10px">({null_pct}%)</span>'
+                    if null_pct else '')
+        col_html += (
+            f'<div class="cs-col-row">{_badge(df_current[c].dtype)}'
+            f'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+            f'max-width:115px" title="{c}">{c}</span>{null_tag}</div>'
+        )
+    if len(df_current.columns) > 35:
+        col_html += f'<div class="cs-col-row t-dim">… {len(df_current.columns)-35} more</div>'
+
+    pkg_html = ''
+    for p in get_sidebar_package_status():
+        dot = '<span class="cs-dot-ok"></span>' if p['installed'] else '<span class="cs-dot-miss"></span>'
+        ver = (f'<span class="cs-pkg-ver">{p["version"]}</span>' if p['installed']
+               else '<span class="cs-pkg-miss">not installed</span>')
+        pkg_html += (f'<div class="cs-pkg-row">{dot}'
+                     f'<span class="cs-pkg-name">{p["name"]}</span>{ver}</div>')
+
+    sidebar_html = f"""
+<div class="cs-sidebar">
+  <div class="cs-section">
+    <div class="cs-section-title">⬡ Explorer</div>
+    <div class="cs-stat">📄 dataset.csv</div>
+    <div class="cs-stat" style="color:#6a9955">{df_rows:,} rows × {df_cols} columns</div>
+  </div>
+  <div class="cs-section">
+    <div class="cs-section-title">⊞ Columns</div>
+    {col_html}
+  </div>
+  <div class="cs-section">
+    <div class="cs-section-title">📦 Packages</div>
+    {pkg_html}
+  </div>
+</div>"""
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # Two-column layout: sidebar | editor
+    # ══════════════════════════════════════════════════════════════════════════
+    sb_col, ed_col = st.columns([1, 3], gap='small')
+
+    with sb_col:
+        st.markdown(sidebar_html, unsafe_allow_html=True)
+
+        with st.expander('📋 Snippets', expanded=False):
+            snip_search = st.text_input('Filter snippets', placeholder='search…',
+                                        key='_cs_snip_search', label_visibility='collapsed')
+        st.markdown('**Install package**')
+        pkg_input = st.text_input(
+            'pkg', placeholder='e.g. scipy, nltk, plotly',
+            key='_cs_pkg_input', label_visibility='collapsed',
+        )
+        if st.button('pip install', key='_cs_install_btn', use_container_width=True):
+            if pkg_input.strip():
+                with st.spinner(f'Installing {pkg_input}…'):
+                    ok, msg = install_package(pkg_input.strip())
+                (st.success if ok else st.error)(msg)
+            else:
+                st.warning('Enter a package name.')
+        st.markdown(
+            f'<div style="font-size:10px;color:#606060;margin-top:6px">'
+            f'Python {_sys.version.split()[0]}</div>',
+            unsafe_allow_html=True,
+        )
+
+    with ed_col:
+        # Snippet buttons rendered inside the editor column so they live above the editor
         num_cols  = [c for c in df_current.columns if df_current[c].dtype in ('float64', 'int64', 'Int64')]
         str_cols  = [c for c in df_current.columns if str(df_current[c].dtype) in ('object', 'str')]
         any_col   = df_current.columns[0] if len(df_current.columns) else 'col'
         nc = num_cols[0] if num_cols else any_col
         sc = str_cols[0] if str_cols else any_col
 
-        snippets = [
-            ('Drop NaN rows',    f"df = df.dropna(subset=['{any_col}']).reset_index(drop=True)"),
-            ('Drop duplicates',  "df = df.drop_duplicates().reset_index(drop=True)"),
-            ('Filter rows',      f"df = df[df['{any_col}'] != ''].reset_index(drop=True)"),
-            ('Rename column',    f"df = df.rename(columns={{'{any_col}': 'new_name'}})"),
-            ('Strip whitespace', f"df['{sc}'] = df['{sc}'].str.strip()"),
-            ('Lowercase text',   f"df['{sc}'] = df['{sc}'].str.lower()"),
-            ('Clip numeric',     f"df['{nc}'] = df['{nc}'].clip(lower=0)"),
-            ('Fill NaN median',  f"df['{nc}'] = df['{nc}'].fillna(df['{nc}'].median())"),
-            ('Cast to int',      f"df['{nc}'] = df['{nc}'].astype('Int64')"),
-            ('New column',       f"df['new_col'] = df['{nc}'] * 2"),
-            ('Drop column',      f"df = df.drop(columns=['{any_col}'])"),
-            ('Sort by column',   f"df = df.sort_values('{any_col}').reset_index(drop=True)"),
-        ]
-
-        rows = [snippets[i:i+3] for i in range(0, len(snippets), 3)]
-        for row in rows:
-            cols = st.columns(len(row))
-            for col_widget, (label, snippet) in zip(cols, row):
-                if col_widget.button(label, key=f'snip_{label}', use_container_width=True):
-                    current = st.session_state.get('_custom_code_text', '')
-                    st.session_state['_custom_code_text'] = (
-                        (current.rstrip('\n') + '\n' + snippet)
-                        if current.strip() else snippet
-                    )
-                    st.rerun()
-
-    st.divider()
-
-    # ── Code editor ──────────────────────────────────────────────────────────
-    _DEFAULT = f'''\
-# df is your current dataset ({df_current.shape[0]:,} rows × {df_current.shape[1]} cols).
-# pd and np are available. Reassign df or mutate in place.
-
-'''
-
-    code = st.text_area(
-        'Pandas code',
-        value=st.session_state.get('_custom_code_text', _DEFAULT),
-        height=260,
-        key='_custom_code_editor',
-        label_visibility='collapsed',
-        placeholder='Write pandas code here…',
-    )
-    st.session_state['_custom_code_text'] = code
-
-    has_preview = '_custom_preview_df' in st.session_state
-    col_run, col_apply, col_clear = st.columns([2, 2, 1])
-    run_clicked   = col_run.button('▶ Run Preview', key='custom_run_btn', type='primary')
-    apply_clicked = col_apply.button('✅ Apply Changes', key='custom_apply_btn', disabled=not has_preview)
-    if col_clear.button('✕ Reset', key='custom_clear_btn'):
-        for k in ('_custom_preview_df', '_custom_preview_error',
-                  '_custom_stdout', '_custom_code_text'):
-            st.session_state.pop(k, None)
-        st.rerun()
-
-    # ── Run preview ───────────────────────────────────────────────────────────
-    if run_clicked:
-        for k in ('_custom_preview_df', '_custom_preview_error', '_custom_stdout'):
-            st.session_state.pop(k, None)
-
-        stripped = code.strip()
-        if not stripped or stripped.startswith('#'):
-            st.warning('Write some pandas code above first.')
-        else:
-            ns = {'__builtins__': _safe_builtins, 'df': df_current.copy(), 'pd': pd, 'np': np}
-            buf = io.StringIO()
-            try:
-                with redirect_stdout(buf):
-                    exec(stripped, ns)  # noqa: S102
-                result = ns['df']
-                if not isinstance(result, pd.DataFrame):
-                    st.session_state['_custom_preview_error'] = (
-                        'TypeError: `df` must remain a pandas DataFrame after execution, '
-                        f'got {type(result).__name__}.'
-                    )
-                else:
-                    st.session_state['_custom_preview_df'] = result
-            except Exception:
-                tb_lines = _tb.format_exc().strip().split('\n')
-                # Find the user-code line (exec frame → last File line before error)
-                user_line = next(
-                    (l.strip() for l in reversed(tb_lines)
-                     if l.strip().startswith('File') and '<string>' in l),
-                    None,
-                )
-                error_msg = tb_lines[-1]
-                clean = error_msg
-                if user_line:
-                    clean = f"{user_line}\n{error_msg}"
-                st.session_state['_custom_preview_error'] = clean
-            finally:
-                stdout_out = buf.getvalue()
-                if stdout_out:
-                    st.session_state['_custom_stdout'] = stdout_out
-        st.rerun()
-
-    # ── Stdout output ─────────────────────────────────────────────────────────
-    if st.session_state.get('_custom_stdout'):
-        with st.expander('📤 Output (print statements)', expanded=True):
-            st.code(st.session_state['_custom_stdout'], language=None)
-
-    # ── Error display ─────────────────────────────────────────────────────────
-    if '_custom_preview_error' in st.session_state:
-        st.error('**Error** — ' + st.session_state['_custom_preview_error'])
-
-    # ── Preview ───────────────────────────────────────────────────────────────
-    if '_custom_preview_df' in st.session_state:
-        preview_df = st.session_state['_custom_preview_df']
-        diff = compute_diff(df_current, preview_df)
-        r0, c0 = df_current.shape
-        r1, c1 = preview_df.shape
-
-        parts = []
-        if r1 != r0:
-            arrow = '−' if r1 < r0 else '+'
-            parts.append(f"rows {r0:,} → {r1:,}  ({arrow}{abs(r1 - r0):,})")
-        if c1 != c0:
-            arrow = '−' if c1 < c0 else '+'
-            parts.append(f"columns {c0} → {c1}  ({arrow}{abs(c1 - c0)})")
-        st.success('**Preview ready** — ' + (' · '.join(parts) if parts else 'no shape change'))
-
-        render_diff(diff)
-
-        added_cols   = sorted(set(preview_df.columns) - set(df_current.columns))
-        removed_cols = sorted(set(df_current.columns) - set(preview_df.columns))
-        if added_cols:
-            st.caption('New columns: ' + ', '.join(f'`{c}`' for c in added_cols))
-        if removed_cols:
-            st.caption('Removed columns: ' + ', '.join(f'`{c}`' for c in removed_cols))
-
-        with st.expander('🔍 Preview modified dataset (first 50 rows)', expanded=True):
-            st.dataframe(preview_df.head(50), use_container_width=True)
-
-    # ── Apply ─────────────────────────────────────────────────────────────────
-    if apply_clicked and '_custom_preview_df' in st.session_state:
-        preview_df = st.session_state.pop('_custom_preview_df')
-        df_before  = df_current.copy()
-        label      = 'Custom Code'
-
-        st.session_state['df'] = preview_df
-
-        diff = compute_diff(df_before, preview_df)
-        rows_affected = diff.get('rows_changed', 0) + diff.get('rows_removed', 0)
-
-        log_entry = {
-            'action':         'custom_code',
-            'code':           code,
-            'rows_before':    len(df_before),
-            'rows_after':     len(preview_df),
-            'columns_before': len(df_before.columns),
-            'columns_after':  len(preview_df.columns),
+        # ── Snippet categories (inside editor column) ─────────────────────────
+        _SNIPPET_CATS = {
+            'General': [
+                ('Drop NaN rows',   f"df = df.dropna(subset=['{any_col}']).reset_index(drop=True)"),
+                ('Drop duplicates', "df = df.drop_duplicates().reset_index(drop=True)"),
+                ('Filter rows',     f"df = df[df['{any_col}'] != ''].reset_index(drop=True)"),
+                ('Rename column',   f"df = df.rename(columns={{'{any_col}': 'new_name'}})"),
+                ('Drop column',     f"df = df.drop(columns=['{any_col}'])"),
+                ('Sort',            f"df = df.sort_values('{any_col}').reset_index(drop=True)"),
+            ],
+            'Text': [
+                ('Strip spaces',    f"df['{sc}'] = df['{sc}'].str.strip()"),
+                ('Lowercase',       f"df['{sc}'] = df['{sc}'].str.lower()"),
+                ('Uppercase',       f"df['{sc}'] = df['{sc}'].str.upper()"),
+                ('Replace',         f"df['{sc}'] = df['{sc}'].str.replace('old', 'new', regex=False)"),
+                ('Extract pattern', f"df['{sc}'] = df['{sc}'].str.extract(r'(\\d+)')"),
+                ('Contains filter', f"df = df[df['{sc}'].str.contains('val', na=False)]"),
+            ],
+            'Numeric': [
+                ('Fill NaN median', f"df['{nc}'] = df['{nc}'].fillna(df['{nc}'].median())"),
+                ('Fill NaN zero',   f"df['{nc}'] = df['{nc}'].fillna(0)"),
+                ('Clip outliers',   f"df['{nc}'] = df['{nc}'].clip(lower=0)"),
+                ('Cast to int',     f"df['{nc}'] = pd.to_numeric(df['{nc}'], errors='coerce').astype('Int64')"),
+                ('Cast to float',   f"df['{nc}'] = df['{nc}'].astype('float64')"),
+                ('New column ×2',   f"df['new_col'] = df['{nc}'] * 2"),
+            ],
+            'DateTime': [
+                ('Parse datetime',  f"df['{any_col}'] = pd.to_datetime(df['{any_col}'], errors='coerce')"),
+                ('Extract year',    f"df['year'] = df['{any_col}'].dt.year"),
+                ('Extract month',   f"df['month'] = df['{any_col}'].dt.month"),
+                ('Extract day',     f"df['day'] = df['{any_col}'].dt.day"),
+                ('Format string',   f"df['{any_col}'] = df['{any_col}'].dt.strftime('%Y-%m-%d')"),
+                ('Days since 2000', f"df['days'] = (df['{any_col}'] - pd.Timestamp('2000-01-01')).dt.days"),
+            ],
+            'Reshape': [
+                ('Reset index',     "df = df.reset_index(drop=True)"),
+                ('Groupby sum',     f"df = df.groupby('{any_col}').agg({{'{nc}': 'sum'}}).reset_index()"),
+                ('Pivot table',     f"df = df.pivot_table(index='{any_col}', values='{nc}', aggfunc='mean').reset_index()"),
+                ('Melt',            f"df = df.melt(id_vars=['{any_col}'], var_name='variable', value_name='value')"),
+                ('Explode list col',f"df = df.explode('{any_col}').reset_index(drop=True)"),
+                ('Bin numeric',     f"df['binned'] = pd.cut(df['{nc}'], bins=5, labels=False)"),
+            ],
         }
-        st.session_state['cleaning_log'].append(log_entry)
-        log_event('decision_made', action='custom_code', rows_affected=rows_affected)
 
-        history = st.session_state['df_history']
-        history.append({
-            'label':      label,
-            'log_entry':  log_entry,
-            'df_before':  df_before,
-            'diff':       diff,
-            'applied_at': len(history),
-        })
-        if len(history) > _HISTORY_CAP:
-            history.pop(0)
+        snip_search = st.session_state.get('_cs_snip_search', '')
+        with st.expander('📋 Snippets — click to insert', expanded=False):
+            for cat_name, cat_snippets in _SNIPPET_CATS.items():
+                filtered = [s for s in cat_snippets
+                            if not snip_search or snip_search.lower() in s[0].lower()]
+                if not filtered:
+                    continue
+                st.markdown(f'**{cat_name}**')
+                for row in [filtered[i:i+3] for i in range(0, len(filtered), 3)]:
+                    cols_w = st.columns(len(row))
+                    for col_widget, (label, snippet) in zip(cols_w, row):
+                        if col_widget.button(label, key=f'snip_{cat_name}_{label}',
+                                             use_container_width=True):
+                            cur = st.session_state.get('_custom_code_text', '')
+                            st.session_state['_custom_code_text'] = (
+                                cur.rstrip('\n') + '\n' + snippet if cur.strip() else snippet
+                            )
+                            st.rerun()
 
-        undo_stack = st.session_state.setdefault('_undo_stack', [])
-        undo_stack.append({'df': df_before, 'issue': {}, 'label': label})
-        if len(undo_stack) > _UNDO_CAP:
-            undo_stack.pop(0)
+        # ── VS Code tab bar ───────────────────────────────────────────────────
+        st.markdown("""
+<div class="cs-tab-bar">
+  <div class="cs-tab">🐍 main.py <span class="cs-tab-close">×</span></div>
+</div>""", unsafe_allow_html=True)
 
-        feedback_parts = [f'**{label}** applied']
-        if diff.get('rows_changed'):
-            feedback_parts.append(f"{diff['rows_changed']} rows updated")
-        if diff.get('rows_removed'):
-            feedback_parts.append(f"{diff['rows_removed']} rows removed")
-        st.session_state['_highlight_cols'] = diff.get('columns_affected', [])
-        st.session_state['_last_action_feedback'] = ' — '.join(feedback_parts)
-        st.rerun()
+        # ── ACE editor ───────────────────────────────────────────────────────
+        _DEFAULT = (
+            f'# df  →  {df_rows:,} rows × {df_cols} columns\n'
+            f'# Available: pd, np, and any installed package via import\n\n'
+        )
+        _themes = ['tomorrow_night_eighties', 'monokai', 'dracula',
+                   'nord_dark', 'solarized_dark', 'tomorrow', 'github']
+        theme = st.session_state.get('_cs_theme', 'tomorrow_night_eighties')
 
+        st.caption('Ctrl+/ comment · Tab autocomplete · Ctrl+Z undo · Shift+Tab dedent')
+        code = st_ace(
+            value=st.session_state.get('_custom_code_text', _DEFAULT),
+            language='python',
+            theme=theme,
+            keybinding='vscode',
+            font_size=13,
+            tab_size=4,
+            show_gutter=True,
+            show_print_margin=False,
+            wrap=False,
+            auto_update=True,
+            completions=_build_completions(df_current),
+            height=340,
+            key='_custom_code_editor',
+        )
+        if code is not None:
+            st.session_state['_custom_code_text'] = code
+        else:
+            code = st.session_state.get('_custom_code_text', _DEFAULT)
 
-def render_custom_rules_tab() -> None:
-    """UI for defining, managing, and applying custom cleaning rules."""
-    import uuid
+        tc1, tc2 = st.columns([4, 1])
+        chosen_theme = tc1.selectbox(
+            'Theme', _themes,
+            index=_themes.index(theme) if theme in _themes else 0,
+            key='_cs_theme_pick', label_visibility='collapsed',
+        )
+        if chosen_theme != theme:
+            st.session_state['_cs_theme'] = chosen_theme
+            st.rerun()
 
-    df = st.session_state['df']
-    rules: list[dict] = st.session_state.setdefault('_custom_rules', [])
-    columns = df.columns.tolist()
+        # ── Action bar ────────────────────────────────────────────────────────
+        has_preview = '_custom_preview_df' in st.session_state
+        bc1, bc2, bc3, bc4 = st.columns([2, 2, 1, 1])
+        run_clicked   = bc1.button('▶  Run', key='custom_run_btn', type='primary',
+                                   use_container_width=True)
+        apply_clicked = bc2.button('✅  Apply', key='custom_apply_btn',
+                                   disabled=not has_preview, use_container_width=True)
+        if bc3.button('↺  Clear', key='custom_clear_btn', use_container_width=True):
+            for k in ('_custom_preview_df', '_cs_result', '_custom_code_text'):
+                st.session_state.pop(k, None)
+            st.rerun()
+        if bc4.button('⊘  Reset', key='custom_reset_btn', use_container_width=True):
+            for k in list(st.session_state.keys()):
+                if k.startswith('_custom_') or k.startswith('_cs_'):
+                    st.session_state.pop(k, None)
+            st.rerun()
 
-    st.subheader('Add a Rule')
+        # ── Execute ───────────────────────────────────────────────────────────
+        if run_clicked:
+            st.session_state.pop('_custom_preview_df', None)
+            stripped = (code or '').strip()
+            if not stripped or all(ln.strip().startswith('#') for ln in stripped.splitlines()):
+                st.session_state['_cs_result'] = {
+                    'ok': False, 'error': 'No executable code found.',
+                    'stdout': '', 'variables': {}, 'elapsed': 0, 'df': None,
+                }
+            else:
+                result = run_code(stripped, df_current)
+                st.session_state['_cs_result'] = result
+                if result['ok']:
+                    st.session_state['_custom_preview_df'] = result['df']
+            st.rerun()
 
-    _RULE_TYPES = ['Find & Replace', 'Fill Missing with Value', 'Clamp to Range', 'Custom Regex']
+        # ── Terminal panel ────────────────────────────────────────────────────
+        result = st.session_state.get('_cs_result')
 
-    with st.form('custom_rule_form', clear_on_submit=True):
-        col_type, col_col = st.columns([2, 2])
-        rule_type = col_type.selectbox('Rule type', _RULE_TYPES)
-        column = col_col.selectbox('Column', columns)
+        def _esc(s: str) -> str:
+            return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
-        # Dynamic param fields — Streamlit always renders all; show guidance per type
-        if rule_type == 'Find & Replace':
-            c1, c2, c3 = st.columns([2, 2, 1])
-            find_val    = c1.text_input('Find value', placeholder='e.g. N/A')
-            replace_val = c2.text_input('Replace with', placeholder='leave blank to replace with empty')
-            case_sens   = c3.checkbox('Case-sensitive', value=False)
-            num_min = num_max = fill_val = regex_pat = None
-            regex_action = 'null_out'
-
-        elif rule_type == 'Fill Missing with Value':
-            fill_val = st.text_input('Fill value', placeholder='e.g. Unknown')
-            find_val = replace_val = num_min = num_max = regex_pat = None
-            case_sens = False
-            regex_action = 'null_out'
-
-        elif rule_type == 'Clamp to Range':
-            c1, c2 = st.columns(2)
-            num_min = c1.number_input('Min value', value=0.0)
-            num_max = c2.number_input('Max value', value=100.0)
-            find_val = replace_val = fill_val = regex_pat = None
-            case_sens = False
-            regex_action = 'null_out'
-
-        else:  # Custom Regex
-            regex_pat = st.text_input('Regex pattern', placeholder=r'e.g. ^\d{4}-\d{2}-\d{2}$')
-            regex_action = st.radio(
-                'Action for non-matching values',
-                ['null_out', 'drop_rows'],
-                format_func=lambda x: 'Null out' if x == 'null_out' else 'Drop rows',
-                horizontal=True,
+        lines: list[str] = []
+        if result is None:
+            lines.append(
+                f'<span class="t-dim">Neatly Codespace  ·  '
+                f'Python {_sys.version.split()[0]}  ·  '
+                f'df: {df_rows:,} rows × {df_cols} cols ready</span>'
             )
-            find_val = replace_val = fill_val = num_min = num_max = None
-            case_sens = False
-
-        submitted = st.form_submit_button('+ Add Rule', type='primary')
-
-    if submitted:
-        error = None
-        if rule_type == 'Find & Replace' and not find_val:
-            error = 'Find value cannot be empty.'
-        elif rule_type == 'Fill Missing with Value' and fill_val is None:
-            error = 'Fill value cannot be empty.'
-        elif rule_type == 'Clamp to Range' and num_min >= num_max:
-            error = 'Min value must be less than Max value.'
-        elif rule_type == 'Custom Regex':
-            if not regex_pat:
-                error = 'Regex pattern cannot be empty.'
-            else:
-                import re as _re
-                try:
-                    _re.compile(regex_pat)
-                except _re.error as exc:
-                    error = f'Invalid regex: {exc}'
-
-        if error:
-            st.error(error)
         else:
-            if rule_type == 'Find & Replace':
-                label = f'Find & Replace — **{column}**: "{find_val}" → "{replace_val}"'
-                params = {'find_value': find_val, 'replace_value': replace_val or '', 'case_sensitive': case_sens}
-            elif rule_type == 'Fill Missing with Value':
-                label = f'Fill Missing — **{column}**: → "{fill_val}"'
-                params = {'fill_value': fill_val}
-            elif rule_type == 'Clamp to Range':
-                label = f'Clamp — **{column}**: [{num_min}, {num_max}]'
-                params = {'lo': float(num_min), 'hi': float(num_max)}
-            else:
-                action_lbl = 'Null out' if regex_action == 'null_out' else 'Drop rows'
-                label = f'Custom Regex — **{column}**: `{regex_pat}` ({action_lbl})'
-                params = {'pattern': regex_pat, 'action': regex_action}
-
-            rules.append({
-                'id': str(uuid.uuid4())[:8],
-                'type': rule_type,
-                'column': column,
-                'params': params,
-                'label': label,
-            })
-            st.session_state['_custom_rules'] = rules
-            st.rerun()
-
-    # ── Active rules list ────────────────────────────────────────────────────
-    st.divider()
-    if not rules:
-        st.info('No custom rules yet. Add one above.')
-        return
-
-    st.subheader(f'Active Rules ({len(rules)})')
-    for i, rule in enumerate(rules):
-        c_lbl, c_rm = st.columns([5, 1])
-        c_lbl.markdown(rule['label'])
-        if c_rm.button('✕ Remove', key=f'rm_rule_{rule["id"]}', use_container_width=True):
-            rules.pop(i)
-            st.session_state['_custom_rules'] = rules
-            st.rerun()
-
-    st.divider()
-    if st.button('▶ Apply All Rules', type='primary', use_container_width=True):
-        df_before = df.copy()
-        current_df = df.copy()
-        log = st.session_state['cleaning_log']
-        errors = []
-
-        for rule in rules:
-            col = rule['column']
-            params = rule['params']
-            try:
-                if rule['type'] == 'Find & Replace':
-                    current_df = find_replace(current_df, log, col, **params)
-                elif rule['type'] == 'Fill Missing with Value':
-                    current_df = fill_with_constant(current_df, log, col, **params)
-                elif rule['type'] == 'Clamp to Range':
-                    current_df = clip_to_range(current_df, log, col, **params)
+            ms = result['elapsed'] * 1000
+            if result['ok']:
+                pf = result['df']
+                r0, c0 = df_current.shape
+                r1, c1 = pf.shape
+                delta = []
+                if r1 != r0:
+                    delta.append(f'rows {r0:,} → {r1:,} ({"↓" if r1 < r0 else "↑"}{abs(r1-r0):,})')
+                if c1 != c0:
+                    delta.append(f'cols {c0} → {c1} ({"−" if c1 < c0 else "+"}{abs(c1-c0)})')
+                lines.append(f'<span class="t-ok">✓ Execution complete ({ms:.0f} ms)</span>')
+                if delta:
+                    lines.append(f'<span class="t-info">  Shape: {" · ".join(delta)}</span>')
                 else:
-                    current_df = apply_custom_regex(current_df, log, col, **params)
-            except Exception as exc:
-                errors.append(f'{rule["label"]}: {exc}')
+                    lines.append(f'<span class="t-dim">  Shape: unchanged ({r1:,} × {c1})</span>')
+                if result.get('variables'):
+                    vs = ', '.join(
+                        f'{k}: {type(v).__name__}'
+                        for k, v in list(result['variables'].items())[:6]
+                    )
+                    lines.append(f'<span class="t-dim">  Variables: {_esc(vs)}</span>')
+            else:
+                lines.append(f'<span class="t-err">✗ Error ({ms:.0f} ms)</span>')
+                for ln in _esc(result['error']).splitlines():
+                    lines.append(f'<span class="t-err">  {ln}</span>')
 
-        if errors:
-            st.error('Some rules failed:\n' + '\n'.join(errors))
-        else:
-            diff = compute_diff(df_before, current_df)
+            if result.get('stdout'):
+                lines.append('<span class="t-dim">── stdout ──────────────────────</span>')
+                for ln in _esc(result['stdout']).splitlines():
+                    lines.append(f'<span class="t-out">  {ln}</span>')
+
+        body = '<br>'.join(lines)
+        st.markdown(f"""
+<div class="cs-terminal">
+  <div class="cs-term-bar">
+    <span class="cs-term-active">TERMINAL</span>
+    <span>|</span><span>OUTPUT</span>
+  </div>
+  <div class="cs-term-body">{body}</div>
+</div>""", unsafe_allow_html=True)
+
+        st.markdown(
+            f'<div class="cs-status-bar">'
+            f'<span>🐍 Python {_sys.version.split()[0]}</span>'
+            f'<span>df: {df_rows:,} × {df_cols}</span>'
+            f'<span>UTF-8  LF</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── Preview diff ──────────────────────────────────────────────────────
+        if '_custom_preview_df' in st.session_state and result and result['ok']:
+            preview_df = st.session_state['_custom_preview_df']
+            diff = compute_diff(df_current, preview_df)
+            r0, c0 = df_current.shape
+            r1, c1 = preview_df.shape
+            parts = []
+            if r1 != r0:
+                parts.append(f"rows {r0:,} → {r1:,} ({'−' if r1<r0 else '+'}{abs(r1-r0):,})")
+            if c1 != c0:
+                parts.append(f"cols {c0} → {c1}")
+            st.success('**Preview ready** — ' + (' · '.join(parts) if parts else 'no shape change'))
+            render_diff(diff)
+            added   = sorted(set(preview_df.columns) - set(df_current.columns))
+            removed = sorted(set(df_current.columns) - set(preview_df.columns))
+            if added:
+                st.caption('New columns: ' + ', '.join(f'`{c}`' for c in added))
+            if removed:
+                st.caption('Removed: ' + ', '.join(f'`{c}`' for c in removed))
+            with st.expander('🔍 Preview dataset (first 100 rows)', expanded=False):
+                st.dataframe(preview_df.head(100), use_container_width=True)
+
+        # ── Apply ─────────────────────────────────────────────────────────────
+        if apply_clicked and '_custom_preview_df' in st.session_state:
+            preview_df  = st.session_state.pop('_custom_preview_df')
+            df_before   = df_current.copy()
+            label       = 'Custom Code'
+            applied_code = code or ''
+
+            st.session_state['df'] = preview_df
+            diff = compute_diff(df_before, preview_df)
+            rows_affected = diff.get('rows_changed', 0) + diff.get('rows_removed', 0)
+
+            log_entry = {
+                'action':         'custom_code',
+                'code':           applied_code,
+                'rows_before':    len(df_before),
+                'rows_after':     len(preview_df),
+                'columns_before': len(df_before.columns),
+                'columns_after':  len(preview_df.columns),
+            }
+            st.session_state['cleaning_log'].append(log_entry)
+            log_event('decision_made', action='custom_code', rows_affected=rows_affected)
+
             history = st.session_state['df_history']
             history.append({
-                'label': f'Custom Rules ({len(rules)})',
-                'log_entry': {'action': 'custom_rules', 'rules_applied': len(rules)},
-                'df_before': df_before,
-                'diff': diff,
-                'applied_at': len(history),
+                'label': label, 'log_entry': log_entry,
+                'df_before': df_before, 'diff': diff, 'applied_at': len(history),
             })
             if len(history) > _HISTORY_CAP:
                 history.pop(0)
 
             undo_stack = st.session_state.setdefault('_undo_stack', [])
-            undo_stack.append({'df': df_before, 'issue': {}, 'label': f'Custom Rules ({len(rules)})'})
+            undo_stack.append({'df': df_before, 'issue': {}, 'label': label})
             if len(undo_stack) > _UNDO_CAP:
                 undo_stack.pop(0)
 
+            parts = [f'**{label}** applied']
+            if diff.get('rows_changed'):
+                parts.append(f"{diff['rows_changed']} rows updated")
+            if diff.get('rows_removed'):
+                parts.append(f"{diff['rows_removed']} rows removed")
+            st.session_state['_highlight_cols'] = diff.get('columns_affected', [])
+            st.session_state['_last_action_feedback'] = ' — '.join(parts)
+            st.rerun()
+
+
+def render_custom_rules_tab() -> None:
+    """Airtable-style inline rule builder with live row-count previews."""
+    import re as _re
+    import uuid
+
+    df: pd.DataFrame = st.session_state['df']
+    rules: list[dict] = st.session_state.setdefault('_custom_rules', [])
+    columns = df.columns.tolist()
+
+    # ── Styles ────────────────────────────────────────────────────────────────
+    st.markdown("""
+<style>
+.cr-badge {
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;
+  background:#1e3a5f;color:#60a5fa;font-size:11px;font-weight:700;flex-shrink:0;
+}
+.cr-empty {
+  text-align:center;padding:32px 16px;color:#64748b;
+  border:1px dashed #1e2d40;border-radius:8px;font-size:13px;
+}
+.cr-preview-hit   { font-size:13px;color:#4ec9b0;padding:4px 0; }
+.cr-preview-miss  { font-size:13px;color:#fbbf24;padding:4px 0; }
+.cr-preview-clean { font-size:13px;color:#6a9955;padding:4px 0; }
+</style>""", unsafe_allow_html=True)
+
+    # ── Rule type map ─────────────────────────────────────────────────────────
+    _TYPES = {
+        '🔤  Replace text':            'find_replace',
+        '✏️  Fill empty cells':         'fill_missing',
+        '📏  Keep numbers in range':    'clamp',
+        '🗑️  Remove non-matching rows': 'drop_regex',
+    }
+    _DESCS = {
+        'find_replace': 'Find a specific value in a column and replace it with something else.',
+        'fill_missing': 'Replace blank / null cells with a default value you choose.',
+        'clamp':        'Clamp numeric values so they stay within a min–max range.',
+        'drop_regex':   'Drop rows whose value does not match a regular expression pattern.',
+    }
+
+    # ── Builder (no st.form — reactive, updates live as you type) ────────────
+    st.markdown('#### Build a rule')
+
+    c_type, c_col = st.columns([3, 2])
+    rule_type_label = c_type.selectbox('What do you want to do?', list(_TYPES.keys()), key='_cr_type')
+    rule_type = _TYPES[rule_type_label]
+    column = c_col.selectbox('On which column?', columns, key='_cr_col')
+    st.caption(_DESCS[rule_type])
+
+    valid = True
+    preview_html = ''
+    params: dict = {}
+
+    if rule_type == 'find_replace':
+        c1, c2, c3 = st.columns([5, 5, 2])
+        find_val    = c1.text_input('Find', placeholder='e.g.  N/A  or  ?  or  --', key='_cr_find')
+        replace_val = c2.text_input('Replace with', placeholder='leave blank to clear the cell', key='_cr_replace')
+        case_sens   = c3.checkbox('Aa', value=False, key='_cr_case', help='Match case-sensitively')
+        if not find_val:
+            valid = False
+        else:
+            params = {'find_value': find_val, 'replace_value': replace_val, 'case_sensitive': case_sens}
+            if column in df.columns:
+                s = df[column].astype(str)
+                mask = (s == find_val) if case_sens else (s.str.lower() == find_val.lower())
+                n = int(mask.sum())
+                if n:
+                    preview_html = f'<div class="cr-preview-hit">🎯 {n:,} row(s) match "{find_val}" in <strong>{column}</strong></div>'
+                else:
+                    preview_html = f'<div class="cr-preview-miss">⚠️ No rows match "{find_val}" in <strong>{column}</strong></div>'
+
+    elif rule_type == 'fill_missing':
+        fill_val = st.text_input('Fill empty cells with', placeholder='e.g.  Unknown  or  0  or  N/A', key='_cr_fill')
+        if not fill_val:
+            valid = False
+        else:
+            params = {'fill_value': fill_val}
+            if column in df.columns:
+                n = int(df[column].isna().sum())
+                if n:
+                    preview_html = f'<div class="cr-preview-hit">🎯 {n:,} empty cell(s) in <strong>{column}</strong> would be filled</div>'
+                else:
+                    preview_html = f'<div class="cr-preview-clean">✓ No empty cells in <strong>{column}</strong></div>'
+
+    elif rule_type == 'clamp':
+        if not pd.api.types.is_numeric_dtype(df[column]):
+            st.warning(f'**{column}** is not numeric — choose a numeric column for this rule.')
+            valid = False
+        else:
+            col_min = float(df[column].min()) if df[column].notna().any() else 0.0
+            col_max = float(df[column].max()) if df[column].notna().any() else 100.0
+            c1, c2 = st.columns(2)
+            num_min = c1.number_input('Min value', value=col_min, key='_cr_min')
+            num_max = c2.number_input('Max value', value=col_max, key='_cr_max')
+            if num_min >= num_max:
+                st.error('Min must be less than Max.')
+                valid = False
+            else:
+                params = {'lo': float(num_min), 'hi': float(num_max)}
+                mask = df[column].notna() & ((df[column] < num_min) | (df[column] > num_max))
+                n = int(mask.sum())
+                if n:
+                    preview_html = f'<div class="cr-preview-hit">🎯 {n:,} value(s) outside [{num_min}, {num_max}] would be clamped</div>'
+                else:
+                    preview_html = f'<div class="cr-preview-clean">✓ All values already within [{num_min}, {num_max}]</div>'
+
+    else:  # drop_regex
+        regex_pat = st.text_input(
+            'Regex pattern',
+            placeholder=r'e.g.  ^\d{5}$  or  ^[A-Z]{2}\d+$',
+            key='_cr_regex',
+        )
+        st.caption('Rows where the column does **not** match this pattern will be removed.')
+        if not regex_pat:
+            valid = False
+        else:
+            try:
+                compiled = _re.compile(regex_pat)
+                params = {'pattern': regex_pat, 'action': 'drop_rows'}
+                if column in df.columns:
+                    mask = ~df[column].astype(str).str.match(compiled, na=False)
+                    n = int(mask.sum())
+                    preview_html = f'<div class="cr-preview-hit">🗑️ {n:,} row(s) would be removed (non-matching)</div>'
+            except _re.error as exc:
+                st.error(f'Invalid pattern: {exc}')
+                valid = False
+
+    if preview_html:
+        st.markdown(preview_html, unsafe_allow_html=True)
+
+    if st.button('+ Add to Queue', key='_cr_add_btn', type='primary', disabled=not valid):
+        if rule_type == 'find_replace':
+            lbl = f'🔤 **{column}** · "{params["find_value"]}" → "{params["replace_value"] or "(blank)"}"'
+        elif rule_type == 'fill_missing':
+            lbl = f'✏️ **{column}** · fill empty → "{params["fill_value"]}"'
+        elif rule_type == 'clamp':
+            lbl = f'📏 **{column}** · clamp to [{params["lo"]}, {params["hi"]}]'
+        else:
+            lbl = f'🗑️ **{column}** · remove non-matching `{params["pattern"]}`'
+        rules.append({'id': str(uuid.uuid4())[:8], 'type': rule_type,
+                      'column': column, 'params': params, 'label': lbl})
+        st.session_state['_custom_rules'] = rules
+        st.rerun()
+
+    # ── Queue ─────────────────────────────────────────────────────────────────
+    st.markdown('---')
+
+    if not rules:
+        st.markdown('<div class="cr-empty">No rules queued yet.<br>Build one above and click <strong>+ Add to Queue</strong>.</div>', unsafe_allow_html=True)
+        return
+
+    # Approximate total rows affected (sequential simulation)
+    total_affected = 0
+    _tmp = df.copy()
+    for _r in rules:
+        _col, _p = _r['column'], _r['params']
+        try:
+            if _r['type'] == 'find_replace':
+                _s = _tmp[_col].astype(str)
+                _m = (_s == _p['find_value']) if _p.get('case_sensitive') else (_s.str.lower() == _p['find_value'].lower())
+                total_affected += int(_m.sum())
+            elif _r['type'] == 'fill_missing':
+                total_affected += int(_tmp[_col].isna().sum())
+            elif _r['type'] == 'clamp':
+                _m = _tmp[_col].notna() & ((_tmp[_col] < _p['lo']) | (_tmp[_col] > _p['hi']))
+                total_affected += int(_m.sum())
+            else:
+                _m = ~_tmp[_col].astype(str).str.match(_re.compile(_p['pattern']), na=False)
+                total_affected += int(_m.sum())
+        except Exception:
+            pass
+
+    n_rules = len(rules)
+    st.markdown(
+        f'#### Queue &nbsp;<span style="color:#60a5fa;font-size:14px">'
+        f'({n_rules} rule{"s" if n_rules > 1 else ""} · ~{total_affected:,} rows affected)'
+        f'</span>',
+        unsafe_allow_html=True,
+    )
+
+    for i, rule in enumerate(rules):
+        c_num, c_lbl, c_up, c_dn, c_rm = st.columns([1, 10, 1, 1, 2])
+        c_num.markdown(f'<div class="cr-badge">{i + 1}</div>', unsafe_allow_html=True)
+        c_lbl.markdown(rule['label'])
+        if n_rules > 1:
+            if c_up.button('↑', key=f'_cr_up_{rule["id"]}', disabled=(i == 0)):
+                rules.insert(i - 1, rules.pop(i))
+                st.session_state['_custom_rules'] = rules
+                st.rerun()
+            if c_dn.button('↓', key=f'_cr_dn_{rule["id"]}', disabled=(i == n_rules - 1)):
+                rules.insert(i + 1, rules.pop(i))
+                st.session_state['_custom_rules'] = rules
+                st.rerun()
+        if c_rm.button('✕ Remove', key=f'_cr_rm_{rule["id"]}', use_container_width=True):
+            rules.pop(i)
+            st.session_state['_custom_rules'] = rules
+            st.rerun()
+
+    st.divider()
+    col_apply, col_clear = st.columns([3, 1])
+    if col_apply.button(
+        f'▶  Apply All  ({total_affected:,} rows)',
+        type='primary', use_container_width=True, key='_cr_apply',
+    ):
+        df_before  = df.copy()
+        current_df = df.copy()
+        log = st.session_state['cleaning_log']
+        errors: list[str] = []
+
+        for idx_r, rule in enumerate(rules):
+            _col, _p = rule['column'], rule['params']
+            try:
+                if rule['type'] == 'find_replace':
+                    current_df = find_replace(current_df, log, _col, **_p)
+                elif rule['type'] == 'fill_missing':
+                    current_df = fill_with_constant(current_df, log, _col, **_p)
+                elif rule['type'] == 'clamp':
+                    current_df = clip_to_range(current_df, log, _col, **_p)
+                else:
+                    current_df = apply_custom_regex(current_df, log, _col, **_p)
+            except Exception as exc:
+                errors.append(f'Rule {idx_r + 1}: {exc}')
+
+        if errors:
+            st.error('Some rules failed:\n' + '\n'.join(f'• {e}' for e in errors))
+        else:
+            diff = compute_diff(df_before, current_df)
+            history = st.session_state['df_history']
+            history.append({
+                'label': f'Custom Rules ({n_rules})',
+                'log_entry': {'action': 'custom_rules', 'rules_applied': n_rules},
+                'df_before': df_before, 'diff': diff, 'applied_at': len(history),
+            })
+            if len(history) > _HISTORY_CAP:
+                history.pop(0)
+            undo_stack = st.session_state.setdefault('_undo_stack', [])
+            undo_stack.append({'df': df_before, 'issue': {}, 'label': f'Custom Rules ({n_rules})'})
+            if len(undo_stack) > _UNDO_CAP:
+                undo_stack.pop(0)
+            rows_aff = diff.get('rows_changed', 0) + diff.get('rows_removed', 0)
             st.session_state['df'] = current_df
             st.session_state['_custom_rules'] = []
-            rows_affected = diff.get('rows_changed', 0) + diff.get('rows_removed', 0)
-            log_event('decision_made', action='custom_rules', rows_affected=rows_affected)
+            log_event('decision_made', action='custom_rules', rows_affected=rows_aff)
             st.session_state['_last_action_feedback'] = (
-                f'**{len(rules)} custom rule(s) applied** — {rows_affected} rows affected'
+                f'**{n_rules} rule(s) applied** — {rows_aff} rows affected'
             )
             st.rerun()
+
+    if col_clear.button('Clear Queue', key='_cr_clear', use_container_width=True):
+        st.session_state['_custom_rules'] = []
+        st.rerun()
 
 
 def _dismiss_issue(idx: int) -> None:
@@ -1715,3 +2123,11 @@ STAGE_RENDERERS = {
 
 st.title('Neatly — AI Data Cleaning Copilot')
 STAGE_RENDERERS[st.session_state['stage']]()
+
+st.markdown(
+    '<p style="text-align:center;color:#64748b;font-size:12px;margin-top:2rem;">'
+    '© 2026 Kunpeng Liu · <a href="mailto:liukunpeng267@gmail.com" style="color:#64748b;">liukunpeng267@gmail.com</a>'
+    ' · Last updated April 19, 2026'
+    '</p>',
+    unsafe_allow_html=True,
+)
