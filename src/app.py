@@ -320,10 +320,14 @@ def render_upload() -> None:
 
 
 def _render_database_loader() -> None:
-    """Render the database connection UI."""
+    """Render the database connection UI.
+
+    Connection state is persisted in session_state so the table selector
+    remains visible across reruns after a successful connect.
+    """
     st.subheader('Connect to Database')
 
-    col1, col2 = st.columns(2)
+    col1, _ = st.columns(2)
     with col1:
         db_type = st.selectbox(
             'Database Type',
@@ -331,25 +335,31 @@ def _render_database_loader() -> None:
             key='db_type_select',
         )
 
-    # Connection parameters based on DB type
+    # Reset stored connection when db_type changes
+    if st.session_state.get('_db_connected_type') != db_type:
+        st.session_state.pop('_db_conn_str', None)
+        st.session_state.pop('_db_tables', None)
+        st.session_state.pop('_db_connected_type', None)
+
+    # ---- connection form ----
     if db_type == 'SQLite':
         db_path = st.text_input('Database File Path', key='sqlite_path')
-        if not st.button('Connect & Load', key='connect_sqlite_btn'):
-            return
-        try:
-            conn_str = build_connection_string('SQLite', path=db_path)
-            engine = create_connection(conn_str)
-            tables = list_tables(engine)
-            if not tables:
-                st.warning('No tables found in database')
-                return
-            table_name = st.selectbox('Select Table', tables, key='sqlite_table')
-            df = load_table(conn_str, table_name)
-            _finalize_database_load(df)
-        except Exception as e:
-            st.error(f'Connection failed: {e}')
+        if st.button('Connect', key='connect_sqlite_btn'):
+            try:
+                conn_str = build_connection_string('SQLite', path=db_path)
+                engine = create_connection(conn_str)
+                tables = list_tables(engine)
+                engine.dispose()
+                if not tables:
+                    st.warning('No tables found in this database.')
+                else:
+                    st.session_state['_db_conn_str'] = conn_str
+                    st.session_state['_db_tables'] = tables
+                    st.session_state['_db_connected_type'] = db_type
+                    st.rerun()
+            except Exception as e:
+                st.error(f'Connection failed: {e}')
     else:
-        # Network databases
         col1, col2 = st.columns(2)
         with col1:
             host = st.text_input('Host', key=f'{db_type}_host')
@@ -363,9 +373,7 @@ def _render_database_loader() -> None:
         with col2:
             password = st.text_input('Password', type='password', key=f'{db_type}_password')
 
-        row_limit = st.slider('Row Limit', 100, 100000, 10000, step=1000)
-
-        if st.button('Connect & Load', key=f'connect_{db_type}_btn'):
+        if st.button('Connect', key=f'connect_{db_type}_btn'):
             try:
                 conn_str = build_connection_string(
                     db_type,
@@ -377,27 +385,46 @@ def _render_database_loader() -> None:
                 )
                 engine = create_connection(conn_str)
                 tables = list_tables(engine)
-
+                engine.dispose()
                 if not tables:
-                    st.warning('No tables found in database')
-                    return
-
-                # Let user choose between table or custom query
-                load_mode = st.radio('Load Mode', ['Select Table', 'Custom Query'], horizontal=True)
-
-                if load_mode == 'Select Table':
-                    table_name = st.selectbox('Select Table', tables)
-                    df = load_table(conn_str, table_name, limit=row_limit)
+                    st.warning('No tables found in this database.')
                 else:
-                    sql_query = st.text_area('SQL Query', height=100)
-                    if not sql_query.strip():
-                        st.info('Enter a SQL SELECT query')
-                        return
-                    df = load_query(conn_str, sql_query, limit=row_limit)
-
-                _finalize_database_load(df)
+                    st.session_state['_db_conn_str'] = conn_str
+                    st.session_state['_db_tables'] = tables
+                    st.session_state['_db_connected_type'] = db_type
+                    st.rerun()
             except Exception as e:
                 st.error(f'Connection failed: {e}')
+
+    # ---- post-connect: table/query picker (persists across reruns) ----
+    conn_str = st.session_state.get('_db_conn_str')
+    tables = st.session_state.get('_db_tables')
+    if not conn_str or not tables:
+        return
+
+    st.success(f'Connected — {len(tables)} table(s) found')
+    row_limit = st.slider('Row Limit', 100, 100_000, 10_000, step=1_000, key='db_row_limit')
+    load_mode = st.radio('Load Mode', ['Select Table', 'Custom Query'], horizontal=True, key='db_load_mode')
+
+    if load_mode == 'Select Table':
+        table_name = st.selectbox('Select Table', tables, key='db_table_select')
+        if st.button('Load Table', key='db_load_table_btn', type='primary'):
+            try:
+                df = load_table(conn_str, table_name, limit=row_limit)
+                _finalize_database_load(df)
+            except Exception as e:
+                st.error(f'Load failed: {e}')
+    else:
+        sql_query = st.text_area('SQL Query', placeholder='SELECT * FROM my_table', height=100, key='db_sql_query')
+        if st.button('Run Query', key='db_run_query_btn', type='primary'):
+            if not sql_query.strip():
+                st.info('Enter a SQL SELECT query above.')
+            else:
+                try:
+                    df = load_query(conn_str, sql_query, limit=row_limit)
+                    _finalize_database_load(df)
+                except Exception as e:
+                    st.error(f'Query failed: {e}')
 
 
 def _finalize_database_load(df: pd.DataFrame) -> None:
