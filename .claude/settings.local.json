@@ -1,40 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git init *)",
-      "Bash(git checkout *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(python -m pytest tests/ -v --tb=short)",
-      "Bash(python3 -m pytest tests/ -v --tb=short)",
-      "Bash(python3 -m pytest tests/ -q)",
-      "Bash(python3 -m pytest tests/ -v)",
-      "Bash(python3 -m pip install streamlit python-dotenv)",
-      "Bash(git push *)",
-      "Bash(python3 -m pytest tests/ -v --tb=short -k \"\")",
-      "Bash(python3 -c \"import app\")",
-      "Bash(python3 -m pytest tests/ -xvs)",
-      "Bash(python3 -m pytest tests/test_e2e_schema.py -v -s)",
-      "Bash(python3 -m pytest tests/test_app.py -v)",
-      "Bash(python3 -m pytest)",
-      "Bash(python3 -m pytest tests/ -v --co -q)",
-      "Bash(python3 -m pytest tests/test_missing_value_detector.py::test_all_null_column -v)",
-      "Bash(python3 -m pytest tests/test_schema_compliance.py -v)",
-      "Bash(python3 -m pytest tests/test_missing_value_detector.py -v)",
-      "Bash(python3 -m pytest tests/ -x --tb=short)",
-      "Bash(python3 -m pytest tests/test_app_render_failures.py -v -s)",
-      "Bash(python3 -m pytest tests/test_e2e_schema.py::test_missing_value_detector_has_required_fields -v)",
-      "Bash(python3 -m pytest tests/test_e2e_schema.py tests/test_missing_value_detector.py -v)",
-      "Bash(python3 -m pytest tests/ --ignore=tests/test_e2e_schema.py -q)",
-      "Bash(python3 -m pytest tests/test_summary.py -v)",
-      "Bash(python3 -m pytest tests/ -v --tb=line)",
-      "Bash(python3 -m pytest tests/ -p no:randomly)",
-      "Bash(python3 -m pytest tests/ --ignore=tests/test_e2e_schema.py -v --tb=no)",
       "Bash(python *)",
       "Bash(python3 *)",
-      "Bash(git reset *)",
-      "Bash(git restore *)",
-      "Bash(git pull *)"
-    ]
+      "Bash(git *)",
+      "Bash(pip *)",
+      "Bash(pip3 *)",
+      "Bash(streamlit *)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Agent",
+      "Skill"
+    ],
+    "defaultMode": "auto"
   }
 }

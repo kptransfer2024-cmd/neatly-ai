@@ -115,9 +115,9 @@ Every detector returns a `list[dict]` where each dict represents one detected is
 - Never modify working code unless fixing a confirmed bug.
 - No broad refactors unless explicitly asked.
 
-## Permissions
+## Permissions & Autonomy
 
-Do not ask for permission before:
+### No permission needed for:
 - Installing dependencies (`pip install -r requirements.txt`)
 - Running tests (`pytest`)
 - Running the app (`streamlit run app.py`)
@@ -125,7 +125,13 @@ Do not ask for permission before:
 - Running any standard development commands
 - File edits, reads, and writes within the project directory
 
-These are routine development tasks and should proceed autonomously.
+### Autonomous mode shifting:
+- **Enter plan mode** to design implementation before coding (no approval needed)
+- **Ask questions** to clarify ambiguous requirements mid-task
+- **Edit code directly** without asking — fix bugs, refactor, optimize as needed
+- **Use tools proactively** — Explore, Grep, Read, Write, Edit, Bash all proceed without prompts
+
+**Rationale:** These are development workflow modes, not destructive actions. Proceeding autonomously in these modes unblocks work and enables iterative refinement. You can redirect or correct course at any time.
 
 ## Git workflow
 
