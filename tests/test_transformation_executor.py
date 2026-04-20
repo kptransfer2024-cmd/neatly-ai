@@ -246,3 +246,138 @@ def test_multiple_actions_accumulate_in_log():
     df = clip_outliers(df, 'a', 0.0, 10.0, log)
     actions = [entry['action'] for entry in log]
     assert actions == ['drop_duplicates', 'fill_missing', 'clip_outliers']
+
+
+# --- merge_near_duplicates tests ---
+
+def test_merge_near_duplicates_removes_extra_rows():
+    from transformation_executor import merge_near_duplicates
+    df = pd.DataFrame({'name': ['Alice', 'Bob', 'Charlie']})
+    log = []
+    result = merge_near_duplicates(df, log, 'name', [0, 1])
+    assert len(result) == 2
+
+
+def test_merge_near_duplicates_logs():
+    from transformation_executor import merge_near_duplicates
+    df = pd.DataFrame({'name': ['Alice', 'Bob', 'Charlie']})
+    log = []
+    merge_near_duplicates(df, log, 'name', [0, 1, 2])
+    assert len(log) == 1
+    assert log[0]['action'] == 'merge_near_duplicates'
+    assert log[0]['rows_merged'] == 2
+
+
+def test_merge_near_duplicates_keeps_first():
+    from transformation_executor import merge_near_duplicates
+    df = pd.DataFrame({'name': ['Alice', 'Alice2', 'Bob']})
+    log = []
+    result = merge_near_duplicates(df, log, 'name', [0, 1])
+    assert result['name'].iloc[0] == 'Alice'
+
+
+# --- flag_near_duplicates tests ---
+
+def test_flag_near_duplicates_adds_column():
+    from transformation_executor import flag_near_duplicates
+    df = pd.DataFrame({'name': ['Alice', 'Bob', 'Charlie']})
+    log = []
+    result = flag_near_duplicates(df, log, 'name', [0, 2])
+    assert 'name_near_duplicate_flag' in result.columns
+
+
+def test_flag_near_duplicates_marks_rows():
+    from transformation_executor import flag_near_duplicates
+    df = pd.DataFrame({'name': ['Alice', 'Bob', 'Charlie']})
+    log = []
+    result = flag_near_duplicates(df, log, 'name', [0, 2])
+    assert result['name_near_duplicate_flag'].iloc[0] == True
+    assert result['name_near_duplicate_flag'].iloc[1] == False
+    assert result['name_near_duplicate_flag'].iloc[2] == True
+
+
+# --- flag_invalid_patterns tests ---
+
+def test_flag_invalid_patterns_email():
+    from transformation_executor import flag_invalid_patterns
+    df = pd.DataFrame({'email': ['test@example.com', 'invalid', 'user@domain.org']})
+    log = []
+    result = flag_invalid_patterns(df, log, 'email', 'email')
+    assert pd.isna(result['email'].iloc[1])
+    assert result['email'].iloc[0] == 'test@example.com'
+
+
+def test_flag_invalid_patterns_logs():
+    from transformation_executor import flag_invalid_patterns
+    df = pd.DataFrame({'email': ['test@example.com', 'invalid', 'user@domain.org']})
+    log = []
+    flag_invalid_patterns(df, log, 'email', 'email')
+    assert len(log) == 1
+    assert log[0]['action'] == 'flag_invalid_patterns'
+    assert log[0]['flagged_as_null_count'] == 1
+
+
+def test_flag_invalid_patterns_zip():
+    from transformation_executor import flag_invalid_patterns
+    df = pd.DataFrame({'zip': ['12345', 'invalid', '98765-4321']})
+    log = []
+    result = flag_invalid_patterns(df, log, 'zip', 'us_zip')
+    assert pd.isna(result['zip'].iloc[1])
+
+
+# --- drop_invalid_rows tests ---
+
+def test_drop_invalid_rows_email():
+    from transformation_executor import drop_invalid_rows
+    df = pd.DataFrame({'email': ['test@example.com', 'invalid', 'user@domain.org']})
+    log = []
+    result = drop_invalid_rows(df, log, 'email', 'email')
+    assert len(result) == 2
+
+
+def test_drop_invalid_rows_logs():
+    from transformation_executor import drop_invalid_rows
+    df = pd.DataFrame({'email': ['test@example.com', 'invalid', 'user@domain.org']})
+    log = []
+    drop_invalid_rows(df, log, 'email', 'email')
+    assert len(log) == 1
+    assert log[0]['action'] == 'drop_invalid_rows'
+    assert log[0]['rows_dropped'] == 1
+
+
+# --- drop_out_of_range_rows tests ---
+
+def test_drop_out_of_range_rows_age():
+    from transformation_executor import drop_out_of_range_rows
+    df = pd.DataFrame({'age': [25, 200, 35]})
+    log = []
+    result = drop_out_of_range_rows(df, log, 'age', 0, 150)
+    assert len(result) == 2
+
+
+def test_drop_out_of_range_rows_logs():
+    from transformation_executor import drop_out_of_range_rows
+    df = pd.DataFrame({'age': [25, 200, 35]})
+    log = []
+    drop_out_of_range_rows(df, log, 'age', 0, 150)
+    assert len(log) == 1
+    assert log[0]['action'] == 'drop_out_of_range_rows'
+    assert log[0]['rows_dropped'] == 1
+
+
+def test_drop_out_of_range_rows_only_lower_bound():
+    from transformation_executor import drop_out_of_range_rows
+    df = pd.DataFrame({'price': [-10, 25, 100]})
+    log = []
+    result = drop_out_of_range_rows(df, log, 'price', 0, None)
+    assert len(result) == 2
+    assert result['price'].min() >= 0
+
+
+def test_drop_out_of_range_rows_only_upper_bound():
+    from transformation_executor import drop_out_of_range_rows
+    df = pd.DataFrame({'score': [50, 150, 80]})
+    log = []
+    result = drop_out_of_range_rows(df, log, 'score', None, 100)
+    assert len(result) == 2
+    assert result['score'].max() <= 100

@@ -368,3 +368,141 @@ def test_no_actions_for_malformed_issues():
     ]
     for issue in bad_issues:
         assert _actions_for(issue) == []
+
+
+# --- New detector action tests ---
+
+def test_actions_for_near_duplicates():
+    """Near duplicates should offer merge and flag actions."""
+    issue = {
+        'type': 'near_duplicates',
+        'column': 'name',
+        'row_indices': [0, 1, 2],
+    }
+    actions = _actions_for(issue)
+    labels = [label for label, _ in actions]
+    assert 'Merge cluster' in labels
+    assert 'Flag cluster' in labels
+
+
+def test_actions_for_near_duplicates_no_indices():
+    """Near duplicates without row_indices should return no actions."""
+    issue = {
+        'type': 'near_duplicates',
+        'column': 'name',
+    }
+    actions = _actions_for(issue)
+    assert actions == []
+
+
+def test_actions_for_pattern_mismatch_email():
+    """Pattern mismatch should offer flag and drop actions."""
+    issue = {
+        'type': 'pattern_mismatch',
+        'column': 'email',
+        'sample_data': {
+            'email': {'pattern': 'email'}
+        },
+    }
+    actions = _actions_for(issue)
+    labels = [label for label, _ in actions]
+    assert 'Flag invalid' in labels
+    assert 'Drop invalid rows' in labels
+
+
+def test_actions_for_pattern_mismatch_no_pattern():
+    """Pattern mismatch without pattern should return no actions."""
+    issue = {
+        'type': 'pattern_mismatch',
+        'column': 'email',
+        'sample_data': {},
+    }
+    actions = _actions_for(issue)
+    assert actions == []
+
+
+def test_actions_for_out_of_range():
+    """Out of range should offer clip and drop actions."""
+    issue = {
+        'type': 'out_of_range',
+        'column': 'age',
+        'sample_data': {
+            'age': {'valid_lo': 0.0, 'valid_hi': 150.0}
+        },
+    }
+    actions = _actions_for(issue)
+    labels = [label for label, _ in actions]
+    assert 'Clip to range' in labels
+    assert 'Drop invalid rows' in labels
+
+
+def test_actions_for_out_of_range_only_bounds():
+    """Out of range with only one bound should still offer actions."""
+    issue = {
+        'type': 'out_of_range',
+        'column': 'price',
+        'sample_data': {
+            'price': {'valid_lo': 0.0, 'valid_hi': None}
+        },
+    }
+    actions = _actions_for(issue)
+    assert len(actions) == 2
+
+
+def test_handler_merge_near_duplicates():
+    """Verify merge near duplicates handler works."""
+    from transformation_executor import merge_near_duplicates
+    issue = {
+        'type': 'near_duplicates',
+        'column': 'name',
+        'row_indices': [0, 1],
+    }
+    actions = _actions_for(issue)
+    merge_action = next(a for a in actions if 'Merge' in a[0])
+    label, handler = merge_action
+
+    df = pd.DataFrame({'name': ['Alice', 'Alice2', 'Bob']})
+    log = []
+    result = handler(df, log)
+
+    assert len(result) == 2
+
+
+def test_handler_flag_invalid_patterns():
+    """Verify flag invalid patterns handler works."""
+    issue = {
+        'type': 'pattern_mismatch',
+        'column': 'email',
+        'sample_data': {
+            'email': {'pattern': 'email'}
+        },
+    }
+    actions = _actions_for(issue)
+    flag_action = next(a for a in actions if 'Flag' in a[0])
+    label, handler = flag_action
+
+    df = pd.DataFrame({'email': ['test@example.com', 'invalid', 'user@domain.org']})
+    log = []
+    result = handler(df, log)
+
+    assert pd.isna(result['email'].iloc[1])
+
+
+def test_handler_drop_out_of_range():
+    """Verify drop out of range handler works."""
+    issue = {
+        'type': 'out_of_range',
+        'column': 'age',
+        'sample_data': {
+            'age': {'valid_lo': 0.0, 'valid_hi': 150.0}
+        },
+    }
+    actions = _actions_for(issue)
+    drop_action = next(a for a in actions if 'Drop' in a[0])
+    label, handler = drop_action
+
+    df = pd.DataFrame({'age': [25, 200, 35]})
+    log = []
+    result = handler(df, log)
+
+    assert len(result) == 2

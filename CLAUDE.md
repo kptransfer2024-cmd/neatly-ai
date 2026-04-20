@@ -115,6 +115,18 @@ Every detector returns a `list[dict]` where each dict represents one detected is
 - Never modify working code unless fixing a confirmed bug.
 - No broad refactors unless explicitly asked.
 
+## Permissions
+
+Do not ask for permission before:
+- Installing dependencies (`pip install -r requirements.txt`)
+- Running tests (`pytest`)
+- Running the app (`streamlit run app.py`)
+- Setting environment variables
+- Running any standard development commands
+- File edits, reads, and writes within the project directory
+
+These are routine development tasks and should proceed autonomously.
+
 ## Git workflow
 
 - Feature branches only — never commit to main.

@@ -14,8 +14,13 @@ from transformation_executor import (
     cast_column,
     clip_outliers,
     drop_duplicates,
+    drop_invalid_rows,
     drop_missing,
+    drop_out_of_range_rows,
     fill_missing,
+    flag_invalid_patterns,
+    flag_near_duplicates,
+    merge_near_duplicates,
     normalize_text,
 )
 from utils.file_ingestion import parse_uploaded_file
@@ -170,6 +175,31 @@ def _actions_for(issue: dict) -> list[tuple[str, callable]]:
             ]
         if sub == 'mixed_date_format':
             return [('Cast to datetime', lambda df, log: cast_column(df, col, 'datetime', log))]
+
+    if issue_type == 'near_duplicates' and col:
+        row_indices = issue.get('row_indices', [])
+        if row_indices:
+            return [
+                ('Merge cluster', lambda df, log: merge_near_duplicates(df, log, col, row_indices)),
+                ('Flag cluster', lambda df, log: flag_near_duplicates(df, log, col, row_indices)),
+            ]
+
+    if issue_type == 'pattern_mismatch' and col:
+        pattern = issue.get('sample_data', {}).get(col, {}).get('pattern')
+        if pattern:
+            return [
+                ('Flag invalid', lambda df, log: flag_invalid_patterns(df, log, col, pattern)),
+                ('Drop invalid rows', lambda df, log: drop_invalid_rows(df, log, col, pattern)),
+            ]
+
+    if issue_type == 'out_of_range' and col:
+        sample = issue.get('sample_data', {}).get(col, {})
+        lo, hi = sample.get('valid_lo'), sample.get('valid_hi')
+        if lo is not None or hi is not None:
+            return [
+                ('Clip to range', lambda df, log: drop_out_of_range_rows(df, log, col, lo, hi)),
+                ('Drop invalid rows', lambda df, log: drop_out_of_range_rows(df, log, col, lo, hi)),
+            ]
 
     return []
 

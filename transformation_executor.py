@@ -194,6 +194,147 @@ def clip_outliers(
     return result
 
 
+def merge_near_duplicates(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    row_indices: list,
+) -> pd.DataFrame:
+    """Drop all but first row in a near-duplicate cluster and log the action."""
+    if not row_indices or len(row_indices) < 2:
+        return df
+
+    result = df.copy()
+    dropped_indices = set(row_indices[1:])
+    result = result.drop(index=dropped_indices).reset_index(drop=True)
+
+    _log(cleaning_log, 'merge_near_duplicates', {
+        'column': column,
+        'rows_merged': len(dropped_indices),
+        'sample_indices': row_indices[:3],
+    })
+
+    return result
+
+
+def flag_near_duplicates(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    row_indices: list,
+) -> pd.DataFrame:
+    """Add a boolean flag column marking near-duplicate rows and log the action."""
+    result = df.copy()
+    flag_col = f'{column}_near_duplicate_flag'
+    result[flag_col] = False
+    result.loc[row_indices, flag_col] = True
+
+    _log(cleaning_log, 'flag_near_duplicates', {
+        'column': column,
+        'flag_column': flag_col,
+        'flagged_count': len(row_indices),
+    })
+
+    return result
+
+
+def flag_invalid_patterns(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    pattern: str,
+) -> pd.DataFrame:
+    """Replace values not matching the pattern with NaN and log the action."""
+    import re
+
+    pattern_regexes = {
+        'email': r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+        'us_phone': r'^[\+1\-\.\s]*(\(?\d{3}\)?[\-\.\s]?\d{3}[\-\.\s]?\d{4})$',
+        'url': r'^https?://[^\s]+$',
+        'us_zip': r'^\d{5}(-\d{4})?$',
+    }
+
+    if pattern not in pattern_regexes:
+        raise ValueError(f"Unknown pattern: {pattern}")
+
+    result = df.copy()
+    regex = re.compile(pattern_regexes[pattern])
+    mask = result[column].astype(str).str.match(regex, na=False)
+    invalid_count = (~mask).sum()
+
+    result.loc[~mask, column] = None
+
+    _log(cleaning_log, 'flag_invalid_patterns', {
+        'column': column,
+        'pattern': pattern,
+        'flagged_as_null_count': int(invalid_count),
+    })
+
+    return result
+
+
+def drop_invalid_rows(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    pattern: str,
+) -> pd.DataFrame:
+    """Drop rows where column doesn't match the pattern and log the action."""
+    import re
+
+    pattern_regexes = {
+        'email': r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+        'us_phone': r'^[\+1\-\.\s]*(\(?\d{3}\)?[\-\.\s]?\d{3}[\-\.\s]?\d{4})$',
+        'url': r'^https?://[^\s]+$',
+        'us_zip': r'^\d{5}(-\d{4})?$',
+    }
+
+    if pattern not in pattern_regexes:
+        raise ValueError(f"Unknown pattern: {pattern}")
+
+    before_count = len(df)
+    regex = re.compile(pattern_regexes[pattern])
+    mask = df[column].astype(str).str.match(regex, na=False)
+    result = df[mask].reset_index(drop=True)
+    after_count = len(result)
+
+    _log(cleaning_log, 'drop_invalid_rows', {
+        'column': column,
+        'pattern': pattern,
+        'rows_dropped': before_count - after_count,
+    })
+
+    return result
+
+
+def drop_out_of_range_rows(
+    df: pd.DataFrame,
+    cleaning_log: list,
+    column: str,
+    lo: float | None,
+    hi: float | None,
+) -> pd.DataFrame:
+    """Drop rows where column values fall outside [lo, hi] range and log the action."""
+    before_count = len(df)
+    result = df.copy()
+
+    if lo is not None:
+        result = result[result[column] >= lo]
+    if hi is not None:
+        result = result[result[column] <= hi]
+
+    result = result.reset_index(drop=True)
+    after_count = len(result)
+
+    _log(cleaning_log, 'drop_out_of_range_rows', {
+        'column': column,
+        'valid_range': [lo, hi],
+        'rows_dropped': before_count - after_count,
+    })
+
+    return result
+
+
 def _log(cleaning_log: list, action: str, details: dict) -> None:
     """Append one log entry to the caller's cleaning_log list."""
     cleaning_log.append({'action': action, **details})

@@ -1,22 +1,8 @@
 import pandas as pd
 import pytest
-import streamlit as st
 from unittest.mock import MagicMock, patch
 
-if 'issues' not in st.session_state:
-    st.session_state['issues'] = []
-if 'stage' not in st.session_state:
-    st.session_state['stage'] = 'upload'
-
 from orchestrator import run_diagnosis, _collect_df_stats
-
-
-@pytest.fixture(autouse=True)
-def reset_state():
-    """Reset session state before each test."""
-    st.session_state['issues'] = []
-    st.session_state['stage'] = 'upload'
-    yield
 
 
 # --- _collect_df_stats tests ---
@@ -88,21 +74,27 @@ def test_collect_stats_mixed_dtypes():
 
 # --- run_diagnosis tests ---
 
-def test_run_diagnosis_sets_stage():
-    """Verify run_diagnosis advances stage to 'decide'."""
+def test_run_diagnosis_returns_result():
+    """Verify run_diagnosis returns a DiagnosisResult dict."""
     df = pd.DataFrame({'a': [1, 2, 3]})
     with patch('orchestrator.explain_issues', return_value=[]):
-        run_diagnosis(df)
-    assert st.session_state['stage'] == 'decide'
+        result = run_diagnosis(df)
+    assert isinstance(result, dict)
+    assert 'issues' in result
+    assert 'quality_score' in result
+    assert 'diagnosed_at' in result
+    assert 'row_count' in result
+    assert 'column_count' in result
 
 
-def test_run_diagnosis_sets_issues():
-    """Verify run_diagnosis populates session_state['issues']."""
+def test_run_diagnosis_returns_issues():
+    """Verify run_diagnosis populates issues in the returned dict."""
     df = pd.DataFrame({'a': [1, None, 3]})
     with patch('orchestrator.explain_issues') as mock_explain:
-        mock_explain.return_value = [{'type': 'missing_value', 'explanation': 'test'}]
-        run_diagnosis(df)
-    assert len(st.session_state['issues']) > 0
+        mock_explain.return_value = [{'type': 'missing_value', 'explanation': 'test', 'summary': 'test'}]
+        result = run_diagnosis(df)
+    assert len(result['issues']) > 0
+    assert result['issues'][0]['summary'] == 'test'
 
 
 def test_run_diagnosis_calls_all_detectors():
@@ -140,8 +132,8 @@ def test_run_diagnosis_handles_detector_exception():
          patch('orchestrator.detect_outliers', return_value=[]), \
          patch('orchestrator.explain_issues', return_value=[]):
 
-        run_diagnosis(df)
-        assert st.session_state['stage'] == 'decide'
+        result = run_diagnosis(df)
+        assert result['row_count'] == 3
 
 
 def test_run_diagnosis_injects_missing_type_key():
@@ -238,10 +230,11 @@ def test_run_diagnosis_empty_detector_results():
          patch('orchestrator.detect_outliers', return_value=[]), \
          patch('orchestrator.explain_issues', return_value=[]):
 
-        run_diagnosis(df)
+        result = run_diagnosis(df)
 
-        assert st.session_state['issues'] == []
-        assert st.session_state['stage'] == 'decide'
+        assert result['issues'] == []
+        assert 'quality_score' in result
+        assert result['row_count'] == 3
 
 
 def test_run_diagnosis_empty_dataframe():
@@ -254,9 +247,9 @@ def test_run_diagnosis_empty_dataframe():
          patch('orchestrator.detect_outliers', return_value=[]), \
          patch('orchestrator.explain_issues', return_value=[]):
 
-        run_diagnosis(df)
-
-        assert st.session_state['stage'] == 'decide'
+        result = run_diagnosis(df)
+        assert result['row_count'] == 0
+        assert result['column_count'] == 0
 
 
 # --- Integration test ---
@@ -277,17 +270,20 @@ def test_run_diagnosis_full_flow():
                 'column': 'age',
                 'missing_count': 1,
                 'explanation': 'The age column has 1 missing value (33.3%).',
+                'summary': 'The age column has 1 missing value (33.3%).',
             },
             {
                 'type': 'duplicates',
                 'duplicate_count': 1,
                 'explanation': 'One row is a duplicate.',
+                'summary': 'One row is a duplicate.',
             },
         ]
 
-        run_diagnosis(df)
+        result = run_diagnosis(df)
 
-        assert st.session_state['stage'] == 'decide'
-        assert len(st.session_state['issues']) == 2
-        assert st.session_state['issues'][0]['type'] == 'missing_value'
-        assert st.session_state['issues'][1]['type'] == 'duplicates'
+        assert len(result['issues']) == 2
+        assert result['issues'][0]['type'] == 'missing_value'
+        assert result['issues'][1]['type'] == 'duplicates'
+        assert 'quality_score' in result
+        assert result['row_count'] == 3
