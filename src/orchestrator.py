@@ -4,6 +4,7 @@ Pure function: takes DataFrame, returns DiagnosisResult dict.
 """
 import logging
 import traceback
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 import pandas as pd
@@ -168,11 +169,8 @@ def _compute_quality_score(issues: list[dict], df: pd.DataFrame) -> float:
     if df.empty:
         return 0.0
 
-    high_severity = sum(1 for i in issues if i.get('severity') == 'high')
-    medium_severity = sum(1 for i in issues if i.get('severity') == 'medium')
-    low_severity = sum(1 for i in issues if i.get('severity') == 'low')
-
-    deduction = high_severity * 15 + medium_severity * 8 + low_severity * 3
+    counts = Counter(i.get('severity') for i in issues)
+    deduction = counts['high'] * 15 + counts['medium'] * 8 + counts['low'] * 3
     return max(0.0, min(100.0, 100.0 - deduction))
 
 

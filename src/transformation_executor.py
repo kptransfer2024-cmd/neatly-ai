@@ -6,7 +6,15 @@ RULE: No LLM calls — pure pandas/Python only.
 The cleaning_log parameter is a plain list — the Streamlit layer passes
 st.session_state['cleaning_log']; tests pass [] and inspect the result.
 """
+import re
 import pandas as pd
+
+_PATTERN_REGEXES: dict[str, re.Pattern] = {
+    'email': re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$'),
+    'us_phone': re.compile(r'^[\+1\-\.\s]*(\(?\d{3}\)?[\-\.\s]?\d{3}[\-\.\s]?\d{4})$'),
+    'url': re.compile(r'^https?://[^\s]+$'),
+    'us_zip': re.compile(r'^\d{5}(-\d{4})?$'),
+}
 
 
 def drop_duplicates(df: pd.DataFrame, cleaning_log: list) -> pd.DataFrame:
@@ -146,7 +154,7 @@ def normalize_text(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df
+    result = df.copy()
     if operation == 'strip_whitespace':
         result[column] = result[column].str.strip()
     elif operation == 'lowercase':
@@ -293,7 +301,7 @@ def flag_all_near_duplicates(
     if not flagged:
         return df
 
-    result = df
+    result = df.copy()
     flag_col = 'near_duplicate_flag'
     result[flag_col] = False
     valid = flagged & set(result.index)
@@ -315,23 +323,13 @@ def flag_invalid_patterns(
     pattern: str,
 ) -> pd.DataFrame:
     """Replace values not matching the pattern with NaN and log the action."""
-    import re
-
-    pattern_regexes = {
-        'email': r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-        'us_phone': r'^[\+1\-\.\s]*(\(?\d{3}\)?[\-\.\s]?\d{3}[\-\.\s]?\d{4})$',
-        'url': r'^https?://[^\s]+$',
-        'us_zip': r'^\d{5}(-\d{4})?$',
-    }
-
-    if pattern not in pattern_regexes:
+    if pattern not in _PATTERN_REGEXES:
         raise ValueError(f"Unknown pattern: {pattern}")
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df
-    regex = re.compile(pattern_regexes[pattern])
-    mask = result[column].astype(str).str.match(regex, na=False)
+    result = df.copy()
+    mask = result[column].astype(str).str.match(_PATTERN_REGEXES[pattern], na=False)
     invalid_count = (~mask).sum()
 
     result.loc[~mask, column] = None
@@ -352,23 +350,13 @@ def drop_invalid_rows(
     pattern: str,
 ) -> pd.DataFrame:
     """Drop rows where column doesn't match the pattern and log the action."""
-    import re
-
-    pattern_regexes = {
-        'email': r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-        'us_phone': r'^[\+1\-\.\s]*(\(?\d{3}\)?[\-\.\s]?\d{3}[\-\.\s]?\d{4})$',
-        'url': r'^https?://[^\s]+$',
-        'us_zip': r'^\d{5}(-\d{4})?$',
-    }
-
-    if pattern not in pattern_regexes:
+    if pattern not in _PATTERN_REGEXES:
         raise ValueError(f"Unknown pattern: {pattern}")
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
     before_count = len(df)
-    regex = re.compile(pattern_regexes[pattern])
-    mask = df[column].astype(str).str.match(regex, na=False)
+    mask = df[column].astype(str).str.match(_PATTERN_REGEXES[pattern], na=False)
     result = df[mask].reset_index(drop=True)
     after_count = len(result)
 
@@ -424,7 +412,7 @@ def clip_to_range(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df
+    result = df.copy()
     clipped = result[column].clip(lower=lo, upper=hi)
     changed_mask = (result[column] != clipped) & result[column].notna()
     changed_count = int(changed_mask.sum())
@@ -477,11 +465,10 @@ def coerce_to_numeric(df: pd.DataFrame, cleaning_log: list, column: str) -> pd.D
     before_nulls = int(result[column].isna().sum())
     result[column] = pd.to_numeric(result[column], errors='coerce')
     coerced_to_null = int(result[column].isna().sum()) - before_nulls
-    if coerced_to_null > 0:
-        _log(cleaning_log, 'coerce_to_numeric', {
-            'column': column,
-            'values_coerced_to_null': coerced_to_null,
-        })
+    _log(cleaning_log, 'coerce_to_numeric', {
+        'column': column,
+        'values_coerced_to_null': coerced_to_null,
+    })
     return result
 
 
@@ -555,7 +542,7 @@ def mask_pii(
     if column not in df.columns:
         raise KeyError(f"Column '{column}' not found in DataFrame")
 
-    result = df
+    result = df.copy()
     series = result[column]
 
     # Count non-null values to mask
