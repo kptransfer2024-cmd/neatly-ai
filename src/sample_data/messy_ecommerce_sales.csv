@@ -1,0 +1,913 @@
+order_id,date,product,category,quantity,unit_price,revenue,region,channel
+ORD-1130,2024-02-18,Bookshelf,furniture,4,307.21,1232.79,north,retail
+ORD-1894,2024-12-28, Wireless Mouse ,Electronics,4,898.34,3597.89,South,Online
+ORD-1607,2024-09-03,Data Science 101,Books,,42.94,38.99,South,online
+ORD-1371,2024-05-27,Cotton Tee,Clothing,3,38.72,115.87,South,retail
+ORD-1166,2024-03-01,Laptop Pro,Electronics,5,665.39,3331.18,NORTH,Online
+ORD-1135,2024-02-19,Office Chair,FURNITURE,5,93.47,466.22,East,online
+ORD-1644,2024-09-18,Desk Lamp,FURNITURE,4,124.9,496.55,West,online
+ORD-1531,2024-08-01,USB-C Hub,Electronics,5,729.61,3644.99,South,online
+ORD-1539,2024-08-04,Bookshelf,Furniture,1,59.26,64.0,West,retail
+ORD-1170,2024-03-03,SQL Guide,Books,1,28.5,27.46,South,online
+ORD-1216,2024-03-22,ML Fundamentals,Books,2,14.1,26.18,,retail
+ORD-1337,2024-05-13,Moisturizer,Beauty,1,17.23,15.08,South,retail
+ORD-1634,2024-09-13,Standing Desk,FURNITURE,4,28.1,110.13,South,marketplace
+ORD-1455,2024-07-01,Yoga Mat,Sports,,120.04,123.06,West,retail
+ORD-1005,2024-01-03,SQL Guide,books,2,35.4,67.43,West,Online
+ORD-1759,2024-11-04,Python Cookbook,Books,1,18.87,18.97,South,online
+ORD-1672,2024-09-28,Bookshelf,furniture,5,131.41,657.79,North,
+ORD-1330,2024-05-09,Resistance Bands,sports,4,114.48,459.39,South,retail
+ORD-1783,2024-11-14,Standing Desk,furniture,5,279.26,1396.64,East,Online
+ORD-1092,2024-02-04,Cotton Tee,clothing,,71.32,71.36,north,marketplace
+ORD-1468,2024-07-06,Jump Rope,Sports,3,91.0,268.33,East,retail
+ORD-1407,2024-06-10,Bookshelf,Furniture,2,127.79,257.92,West,marketplace
+ORD-1019,2024-01-08,Desk Lamp,FURNITURE,5,228.33,1143.27,North,online
+ORD-1569,2024-08-18,Moisturizer,Beauty,1,59.65,62.89,West,retail
+ORD-1801,2024-11-21,SQL Guide,books,1,28.0,29.21,North,marketplace
+ORD-1567,2024-08-17,Running Jacket,Clothing,4,73.49,292.84,South,
+ORD-1348,2024-05-17,ML Fundamentals,books,,10.9,11.63,North,Online
+ORD-1538,2024-08-04,Moisturizer,Beauty,5,33.36,164.22,North,Online
+ORD-1004,2024-01-03,Sunscreen SPF50,beauty,4,70.39,282.92,South,online
+ORD-1357,2024-05-21,Resistance Bands,Sports,2,173.17,345.81,East,online
+ORD-1091,2024-02-03,Data Science 101,books,2,15.27,31.43,East,online
+ORD-1316,2024-05-03,Jump Rope,Sports,3,88.61,265.36,West,marketplace
+ORD-1009,2024-01-04,Face Serum,beauty,,56.98,60.83,North,online
+ORD-1311,2024-05-02,Cotton Tee,clothing,,91.59,94.18,NORTH,marketplace
+ORD-1444,2024-06-27,Bookshelf,Furniture,4,559.59,2241.33,north,Online
+ORD-1327,2024-05-07,Data Science 101,Books,2,14.59,33.22,South,Online
+ORD-1702,2024-10-10,Data Science 101,Books,3,37.9,114.75,East,online
+ORD-1258,2024-04-09,Bookshelf,Furniture,,110.97,113.02,South,retail
+ORD-1413,2024-06-13,Monitor 27in,Electronics,3,623.54,1869.07,,retail
+ORD-1502,2024-07-17,Sunscreen SPF50,beauty,,32.18,32.87,East,retail
+ORD-1779,2024-11-13,Winter Gloves,Clothing,1,53.37,57.33,East,retail
+ORD-1028,2024-01-11,Sunscreen SPF50,beauty,2,74.65,154.06,South,marketplace
+ORD-1400,2024-06-07,Running Jacket,clothing,4,56.09,227.58,East,Online
+ORD-1647,2024-09-19,Running Jacket,Clothing,1,82.53,87.28,West,Retail
+ORD-1351,2024-05-18,Monitor 27in,Electronics,,585.46,582.48,North,retail
+ORD-1506,2024-07-19,Foam Roller,Sports,5,98.7,496.03,South,online
+ORD-1382,2024-05-31,SQL Guide,Books,5,33.9,168.85,East,Retail
+ORD-1734,2024-10-24,Cotton Tee,clothing,1,116.63,114.11,East,online
+ORD-1674,2024-09-29,Office Chair,Furniture,2,193.86,385.05,East,online
+ORD-1459,2024-07-03,Dumbbell Set,Sports,5,94.76,476.67,North,Online
+ORD-1530,2024-07-31,Winter Gloves,Clothing,5,21.75,104.34,South,online
+ORD-1869,2024-12-17,Running Jacket,Clothing,4,112.6,455.23,West,marketplace
+ORD-1220,2024-03-25,Winter Gloves,clothing,4,83.24,332.48,South,retail
+ORD-1738,2024-10-26,Yoga Pants,Clothing,4,51.64,201.82,North,online
+ORD-1690,2024-10-04,Bookshelf,Furniture,1,588.57,586.92,West,retail
+ORD-1255,2024-04-08,Sunscreen SPF50,beauty,4,49.45,196.35,,Online
+ORD-1748,2024-11-01,Cotton Tee,Clothing,2,116.97,237.26,South,retail
+ORD-1095,2024-02-05,Webcam HD,Electronics,4,920.84,3687.24,South,marketplace
+ORD-1060,2024-01-23,Office Chair,Furniture,1,161.67,158.24,South,online
+ORD-1773,2024-11-09,Desk Lamp,Furniture,3,570.54,1706.83,West,retail
+ORD-1469,2024-07-06,Webcam HD,Electronics,3,1183.58,3550.39,West,retail
+ORD-1884,2024-12-23,Foam Roller,Sports,3,122.81,369.96,north,online
+ORD-1205,2024-03-18,Bookshelf,Furniture,5,283.39,1418.85,north,online
+ORD-1576,2024-08-22,Standing Desk,Furniture,2,33.24,67.66,East,Online
+ORD-1623,2024-09-09,Yoga Mat,sports,1,15.39,19.09,north,Online
+ORD-1096,2024-02-05,Standing Desk,FURNITURE,1,437.15,440.47,,marketplace
+ORD-1195,2024-03-14,Cotton Tee,Clothing,,96.13,92.0,North,retail
+ORD-1834,2024-12-03,Running Jacket,Clothing,5,65.28,325.23,,Online
+ORD-1352,2024-05-18,Winter Gloves,clothing,5,79.98,399.93,West,online
+ORD-1194,2024-03-14,Python Cookbook,Books,,38.52,35.06,North,retail
+ORD-1696,2024-10-08,Standing Desk,Furniture,5,395.04,1974.68,North,marketplace
+ORD-1552,2024-08-10, Wireless Mouse ,Electronics,5,447.61,2233.9,East,online
+ORD-1340,2024-05-13,Resistance Bands,sports,1,179.89,182.16,East,marketplace
+ORD-1798,2024-11-20,Bookshelf,furniture,1,364.51,364.5,North,online
+ORD-1099,2024-02-06,Dumbbell Set,sports,5,139.87,703.64,West,online
+ORD-1423,2024-06-18, Filing Cabinet,furniture,5,556.9,2784.83,North,marketplace
+ORD-1466,2024-07-05,Yoga Mat,Sports,2,136.72,269.29,West,retail
+ORD-1551,2024-08-09,Laptop Pro,Electronics,5,328.2,1636.27,South,online
+ORD-1650,2024-09-20,Cotton Tee,clothing,,78.78,73.9,north,marketplace
+ORD-1715,2024-10-15,Winter Gloves,Clothing,4,118.72,479.43,North,online
+ORD-1434,2024-06-23,Cotton Tee,Clothing,3,93.02,280.32,West,online
+ORD-1173,2024-03-04,Face Serum,beauty,4,62.44,251.49,South,marketplace
+ORD-1896,2024-12-29,USB-C Hub,Electronics,3,1137.22,3415.89,South,marketplace
+ORD-1602,2024-08-31,Winter Gloves,clothing,5,110.91,558.08,West,Retail
+ORD-1053,2024-01-20,Yoga Mat,Sports,4,117.71,472.3,West,online
+ORD-1103,2024-02-08,Monitor 27in,Electronics,,1184.45,1181.49,North,online
+ORD-1843,2024-12-07,Jump Rope,Sports,5,146.07,726.41,West,retail
+ORD-1335,2024-05-12, Wireless Mouse ,Electronics,3,948.3,2842.02,West,online
+ORD-1594,2024-08-29,Wool Socks,Clothing,3,95.74,285.63,NORTH,online
+ORD-1180,2024-03-06,Sunscreen SPF50,Beauty,5,65.93,326.82,South,Retail
+ORD-1021,2024-01-08, Wireless Mouse ,Electronics,5,603.78,3016.36,East,Online
+ORD-1043,2024-01-17,Cotton Tee,clothing,,63.58,61.94,East,online
+ORD-1774,2024-11-10,Wool Socks,Clothing,1,110.91,113.15,South,online
+ORD-1329,2024-05-09,Running Jacket,Clothing,5,114.82,574.43,South,Online
+ORD-1262,2024-04-10,Office Chair,Furniture,3,507.26,1521.25,South,online
+ORD-1788,2024-11-16,Cotton Tee,clothing,1,64.4,62.27,East,marketplace
+ORD-1372,2024-05-28,Wool Socks,Clothing,2,47.96,100.71,East,marketplace
+ORD-1155,2024-02-26,Dumbbell Set,Sports,4,53.36,213.69,South,Retail
+ORD-1571,2024-08-19, Wireless Mouse ,Electronics,2,449.6,902.67,West,retail
+ORD-1693,2024-10-06,Yoga Mat,Sports,1,134.89,132.18,North,online
+ORD-1867,2024-12-16, Wireless Mouse ,Electronics,4,716.26,2861.4,West,Online
+ORD-1575,2024-08-22,Moisturizer,Beauty,2,28.73,56.77,West,marketplace
+ORD-1157,2024-02-27,Cotton Tee,Clothing,3,76.05,226.03,South,Retail
+ORD-1649,2024-09-20, Filing Cabinet,Furniture,4,171.32,684.12,NORTH,retail
+ORD-1090,2024-02-03,Python Cookbook,Books,,23.14,407.25,South,online
+ORD-1637,2024-09-14,Sunscreen SPF50,Beauty,,54.54,54.31,West,Retail
+ORD-1892,2024-12-26,Yoga Mat,sports,5,146.93,732.58,West,online
+ORD-1609,2024-09-04,Standing Desk,FURNITURE,4,43.51,172.65,East,marketplace
+ORD-1498,2024-07-16,Yoga Mat,sports,1,107.04,102.58,West,online
+ORD-1464,2024-07-04,Business Analytics,Books,1,14.39,11.74,South,retail
+ORD-1115,2024-02-11,Foam Roller,Sports,3,72.27,219.94,East,Online
+ORD-1741,2024-10-28,Data Science 101,Books,4,16.83,64.13,north,Online
+ORD-1749,2024-11-01,ML Fundamentals,Books,5,18.7,96.76,East,Online
+ORD-1243,2024-04-03,Desk Lamp,Furniture,2,579.82,1161.76,West,retail
+ORD-1317,2024-05-04,Dumbbell Set,Sports,5,132.03,662.29,NORTH,marketplace
+ORD-1540,2024-08-04,ML Fundamentals,Books,,36.94,40.29,East,retail
+ORD-1580,2024-08-24,Laptop Pro,Electronics,3,1178.52,3538.04,West,Retail
+ORD-1442,2024-06-27,Resistance Bands,Sports,4,162.92,647.13,West,Online
+ORD-1622,2024-09-09,Cotton Tee,Clothing,2,50.33,97.08,north,Retail
+ORD-1059,2024-01-23,Yoga Mat,Sports,5,98.35,496.65,NORTH,marketplace
+ORD-1544,2024-08-06, Wireless Mouse ,Electronics,4,538.63,2150.75,East,marketplace
+ORD-1699,2024-10-09,Yoga Pants,clothing,,111.61,115.23,East,retail
+ORD-1595,2024-08-29,ML Fundamentals,books,,31.38,27.55,north,Online
+ORD-1643,2024-09-17,Jump Rope,sports,3,95.02,281.28,North,retail
+ORD-1889,2024-12-25,Yoga Pants,Clothing,2,54.31,105.94,north,marketplace
+ORD-1160,2024-02-28,Foam Roller,Sports,2,193.44,385.95,NORTH,online
+ORD-1303,2024-04-29,ML Fundamentals,books,2,42.0,80.13,North,
+ORD-1558,2024-08-13,Yoga Mat,Sports,5,64.57,326.38,South,online
+ORD-1628,2024-09-11,Dumbbell Set,Sports,4,74.28,300.74,,retail
+ORD-1863,2024-12-15,Desk Lamp,furniture,3,440.95,1322.53,North,retail
+ORD-1519,2024-07-25,Sunscreen SPF50,beauty,2,34.85,70.04,West,
+ORD-1616,2024-09-06,Running Jacket,Clothing,4,95.66,380.62,,
+ORD-1570,2024-08-19,Running Jacket,clothing,2,96.2,193.7,West,retail
+ORD-1697,2024-10-08,Yoga Pants,Clothing,5,67.07,337.7,South,online
+ORD-1034,2024-01-12,Wool Socks,Clothing,5,52.62,259.37,West,Retail
+ORD-1012,2024-01-05,Face Serum,Beauty,5,60.7,306.16,South,Online
+ORD-1635,2024-09-13,Standing Desk,FURNITURE,3,162.53,483.49,north,
+ORD-1362,2024-05-23,Eye Cream,Beauty,5,28.48,140.88,North,Online
+ORD-1680,2024-10-01,Winter Gloves,Clothing,1,32.12,32.16,South,online
+ORD-1175,2024-03-04,Data Science 101,Books,,19.79,19.18,NORTH,online
+ORD-1815,2024-11-25,ML Fundamentals,books,5,18.47,91.16,NORTH,online
+ORD-1787,2024-11-15,USB-C Hub,Electronics,1,341.28,341.97,West,online
+ORD-1405,2024-06-09,Running Jacket,Clothing,5,118.3,587.85,South,
+ORD-1679,2024-10-01,Laptop Pro,Electronics,3,439.7,1322.93,north,marketplace
+ORD-1185,2024-03-09,Data Science 101,Books,1,47.81,46.93,North,marketplace
+ORD-1058,2024-01-23,Laptop Pro,Electronics,3,351.73,1051.04,East,retail
+ORD-1000,2024-01-01,USB-C Hub,Electronics,,444.89,440.91,North,Online
+ORD-1823,2024-11-28,Webcam HD,Electronics,,322.68,320.3,north,marketplace
+ORD-1219,2024-03-24,Desk Lamp,furniture,2,557.76,1117.53,South,retail
+ORD-1701,2024-10-10,Jump Rope,Sports,3,109.28,329.8,North,online
+ORD-1681,2024-10-01,Monitor 27in,Electronics,2,581.16,1161.29,South,Retail
+ORD-1146,2024-02-23,Winter Gloves,Clothing,2,61.81,126.75,NORTH,online
+ORD-1812,2024-11-25,ML Fundamentals,books,5,26.56,132.06,East,
+ORD-1813,2024-11-25,Python Cookbook,Books,4,31.71,128.18,North,online
+ORD-1893,2024-12-27,Wool Socks,Clothing,3,90.55,267.43,East,online
+ORD-1874,2024-12-19,Business Analytics,books,4,36.24,147.11,South,marketplace
+ORD-1534,2024-08-02,Running Jacket,Clothing,,31.66,26.83,NORTH,retail
+ORD-1162,2024-02-29,Bookshelf,Furniture,,535.91,536.59,East,
+ORD-1888,2024-12-25,Data Science 101,Books,2,25.48,50.26,north,retail
+ORD-1847,2024-12-08,SQL Guide,Books,1,34.3,36.11,North,online
+ORD-1315,2024-05-03,Eye Cream,Beauty,1,20.5,19.37,NORTH,retail
+ORD-1481,2024-07-10,Office Chair,Furniture,4,441.74,1768.56,West,
+ORD-1314,2024-05-03,Sunscreen SPF50,beauty,,77.4,79.76,north,Online
+ORD-1689,2024-10-04,Eye Cream,beauty,5,20.35,99.99,West,
+ORD-1270,2024-04-15,Resistance Bands,Sports,5,117.42,586.29,East,Retail
+ORD-1872,2024-12-18,Monitor 27in,Electronics,5,320.13,1598.68,north,online
+ORD-1259,2024-04-09,Yoga Mat,Sports,3,123.41,366.59,West,
+ORD-1683,2024-10-02,ML Fundamentals,Books,1,16.74,18.51,North,online
+ORD-1406,2024-06-09,Jump Rope,Sports,5,185.04,929.46,North,retail
+ORD-1598,2024-08-30, Wireless Mouse ,Electronics,4,1102.42,4414.32,East,online
+ORD-1420,2024-06-17,USB-C Hub,Electronics,1,1078.68,1083.12,South,retail
+ORD-1268,2024-04-14,Wool Socks,Clothing,3,67.09,197.18,South,Retail
+ORD-1648,2024-09-19,Monitor 27in,Electronics,4,254.79,1014.82,South,online
+ORD-1553,2024-08-10,ML Fundamentals,books,3,32.72,93.36,East,retail
+ORD-1093,2024-02-05,Data Science 101,Books,4,12.43,48.98,South,Retail
+ORD-1810,2024-11-24,Resistance Bands,sports,5,132.34,657.67,North,Online
+ORD-1473,2024-07-07,Bookshelf,FURNITURE,,87.39,84.14,,retail
+ORD-1108,2024-02-09,Standing Desk,Furniture,2,213.1,428.8,East,marketplace
+ORD-1304,2024-04-30,Yoga Mat,Sports,3,48.53,146.7,East,Retail
+ORD-1069,2024-01-27,Cotton Tee,clothing,4,70.89,288.36,north,retail
+ORD-1841,2024-12-05,Desk Lamp,FURNITURE,3,197.43,594.4,,Online
+ORD-1541,2024-08-05,Office Chair,furniture,3,122.59,369.82,North,retail
+ORD-1279,2024-04-19,Standing Desk,Furniture,4,515.23,2056.43,East,retail
+ORD-1633,2024-09-13,Standing Desk,Furniture,2,95.94,192.26,East,online
+ORD-1056,2024-01-22,Cotton Tee,Clothing,3,21.41,59.69,West,
+ORD-1142,2024-02-22,SQL Guide,Books,5,16.17,79.23,North,Retail
+ORD-1472,2024-07-07,USB-C Hub,Electronics,3,1008.9,3026.55,South,marketplace
+ORD-1088,2024-02-02,Yoga Pants,Clothing,,105.55,107.41,North,retail
+ORD-1228,2024-03-28,Wool Socks,Clothing,,106.0,102.0,NORTH,retail
+ORD-1605,2024-09-02,Jump Rope,Sports,1,94.66,95.28,West,marketplace
+ORD-1151,2024-02-24, Filing Cabinet,furniture,3,152.69,454.7,,retail
+ORD-1296,2024-04-27,Moisturizer,Beauty,5,63.53,322.6,East,Online
+ORD-1482,2024-07-11,Office Chair,FURNITURE,,224.19,223.08,North,marketplace
+ORD-1717,2024-10-17,Lip Balm,Beauty,2,14.51,33.34,West,retail
+ORD-1196,2024-03-15,Business Analytics,Books,,44.55,43.69,South,
+ORD-1804,2024-11-22,Python Cookbook,Books,3,38.09,113.82,East,online
+ORD-1389,2024-06-03,Bookshelf,Furniture,1,504.97,509.72,South,
+ORD-1657,2024-09-23,Laptop Pro,Electronics,2,399.12,802.09,North,Online
+ORD-1707,2024-10-12,Office Chair,Furniture,2,469.96,937.51,West,Online
+ORD-1864,2024-12-15,Lip Balm,beauty,,14.37,18.44,West,retail
+ORD-1489,2024-07-13,Running Jacket,clothing,4,99.27,397.42,North,
+ORD-1309,2024-05-01,Running Jacket,clothing,1,118.07,114.1,North,online
+ORD-1178,2024-03-05,Yoga Pants,Clothing,2,95.44,188.89,NORTH,Online
+ORD-1793,2024-11-17,Webcam HD,Electronics,4,764.8,3054.66,South,retail
+ORD-1001,2024-01-02,Running Jacket,clothing,5,76.12,379.8,West,Retail
+ORD-1803,2024-11-22,Running Jacket,clothing,,38.03,42.63,North,retail
+ORD-1221,2024-03-25,Wool Socks,Clothing,,52.73,55.47,South,Online
+ORD-1037,2024-01-13,Monitor 27in,Electronics,4,811.27,3244.22,East,marketplace
+ORD-1822,2024-11-27,Python Cookbook,Books,4,39.05,158.9,West,
+ORD-1306,2024-04-30,Moisturizer,beauty,5,45.38,222.85,West,retail
+ORD-1754,2024-11-03,Wool Socks,clothing,3,99.98,302.45,West,marketplace
+ORD-1652,2024-09-20,Business Analytics,books,2,22.45,41.37,North,retail
+ORD-1891,2024-12-26,Sunscreen SPF50,beauty,1,51.64,53.21,,marketplace
+ORD-1369,2024-05-27,Winter Gloves,clothing,5,48.03,236.43,North,
+ORD-1182,2024-03-08, Filing Cabinet,FURNITURE,4,539.06,2158.86,North,retail
+ORD-1785,2024-11-15,Yoga Pants,Clothing,,49.47,53.0,North,marketplace
+ORD-1833,2024-12-03,Foam Roller,Sports,4,121.18,482.9,East,marketplace
+ORD-1708,2024-10-12,Bookshelf,Furniture,,124.57,120.21,West,retail
+ORD-1706,2024-10-11,Wool Socks,Clothing,2,85.45,167.66,East,retail
+ORD-1494,2024-07-15,Dumbbell Set,Sports,5,45.53,223.06,North,marketplace
+ORD-1083,2024-01-31,Yoga Mat,sports,3,193.97,584.95,South,marketplace
+ORD-1458,2024-07-02,Running Jacket,Clothing,4,99.24,397.87,East,online
+ORD-1631,2024-09-12, Filing Cabinet,Furniture,5,134.66,672.15,East,retail
+ORD-1632,2024-09-13,Data Science 101,Books,1,20.77,18.23,North,retail
+ORD-1063,2024-01-24,ML Fundamentals,Books,,13.22,12.54,NORTH,online
+ORD-1629,2024-09-12,Laptop Pro,Electronics,2,741.78,1481.12,North,retail
+ORD-1131,2024-02-18,Yoga Mat,Sports,2,29.6,59.65,South,Online
+ORD-1237,2024-04-02,Resistance Bands,sports,1,83.02,86.96,North,marketplace
+ORD-1536,2024-08-03,Foam Roller,Sports,4,29.38,112.95,North,online
+ORD-1345,2024-05-16,Jump Rope,sports,4,122.05,489.74,South,retail
+ORD-1379,2024-05-30,Bookshelf,Furniture,1,569.03,566.14,East,
+ORD-1480,2024-07-10,Sunscreen SPF50,Beauty,1,76.44,72.3,West,marketplace
+ORD-1174,2024-03-04,Office Chair,FURNITURE,5,96.75,486.41,North,online
+ORD-1241,2024-04-03,Resistance Bands,Sports,4,100.83,408.3,North,marketplace
+ORD-1704,2024-10-11,SQL Guide,books,4,48.71,195.7,North,Retail
+ORD-1610,2024-09-04,Yoga Mat,Sports,5,184.83,927.1,North,online
+ORD-1654,2024-09-21,ML Fundamentals,books,5,33.99,170.61,North,retail
+ORD-1165,2024-02-29,Yoga Pants,Clothing,4,20.68,85.26,North,marketplace
+ORD-1392,2024-06-05,Foam Roller,Sports,4,194.23,778.8,West,retail
+ORD-1094,2024-02-05, Filing Cabinet,furniture,3,409.2,1226.41,East,retail
+ORD-1576,2024-08-22,Standing Desk,Furniture,2,33.24,67.66,East,Online
+ORD-1682,2024-10-02,Running Jacket,clothing,4,74.84,295.76,North,online
+ORD-1266,2024-04-13,Winter Gloves,Clothing,3,92.2,278.21,East,retail
+ORD-1465,2024-07-05,ML Fundamentals,books,3,15.56,50.08,North,online
+ORD-1068,2024-01-27,Python Cookbook,Books,1,38.39,38.91,North,retail
+ORD-1460,2024-07-03,ML Fundamentals,Books,3,14.57,44.26,North,
+ORD-1555,2024-08-11,Dumbbell Set,sports,3,54.6,168.76,North,marketplace
+ORD-1276,2024-04-18,Desk Lamp,Furniture,1,558.83,557.21,,marketplace
+ORD-1563,2024-08-16,Winter Gloves,clothing,3,114.97,344.87,South,marketplace
+ORD-1677,2024-09-30,Lip Balm,beauty,2,12.61,25.48,West,Online
+ORD-1858,2024-12-12,Eye Cream,beauty,4,48.19,190.64,South,online
+ORD-1821,2024-11-27,Data Science 101,Books,,39.69,39.23,north,online
+ORD-1752,2024-11-02,Business Analytics,Books,4,14.35,54.02,north,retail
+ORD-1865,2024-12-16,Monitor 27in,Electronics,4,325.94,1306.83,North,online
+ORD-1564,2024-08-17,Resistance Bands,Sports,1,188.07,184.82,East,online
+ORD-1212,2024-03-21,Winter Gloves,clothing,2,89.34,179.23,East,retail
+ORD-1070,2024-01-28,Moisturizer,Beauty,3,63.63,195.23,East,online
+ORD-1769,2024-11-07,Standing Desk,FURNITURE,,357.99,356.46,West,online
+ORD-1086,2024-02-01,Cotton Tee,clothing,,84.92,80.37,East,online
+ORD-1511,2024-07-22,SQL Guide,books,2,44.85,87.9,North,retail
+ORD-1768,2024-11-07,Python Cookbook,Books,3,18.96,52.27,West,online
+ORD-1018,2024-01-07,SQL Guide,books,2,43.44,83.54,North,retail
+ORD-1504,2024-07-18,Sunscreen SPF50,Beauty,3,50.59,146.92,South,retail
+ORD-1517,2024-07-24,Office Chair,FURNITURE,2,157.14,315.47,North,online
+ORD-1418,2024-06-16,Lip Balm,Beauty,2,70.41,137.81,North,marketplace
+ORD-1450,2024-06-29,Winter Gloves,clothing,1,31.58,33.45,North,retail
+ORD-1873,2024-12-18,Wool Socks,clothing,3,47.69,143.08,East,Retail
+ORD-1732,2024-10-24,Webcam HD,Electronics,1,738.98,741.52,West,Retail
+ORD-1411,2024-06-12,Bookshelf,furniture,1,122.92,123.4,West,retail
+ORD-1403,2024-06-08,Desk Lamp,Furniture,5,342.44,1717.18,NORTH,retail
+ORD-1499,2024-07-17,Laptop Pro,Electronics,1,1124.86,1124.71,South,Online
+ORD-1344,2024-05-15,Running Jacket,Clothing,3,86.86,259.46,North,Online
+ORD-1374,2024-05-28, Filing Cabinet,FURNITURE,,104.81,101.44,North,marketplace
+ORD-1866,2024-12-16,Business Analytics,books,5,33.77,168.66,West,marketplace
+ORD-1052,2024-01-20,Standing Desk,Furniture,3,264.51,797.33,NORTH,online
+ORD-1040,2024-01-15,Jump Rope,Sports,2,156.68,311.11,South,online
+ORD-1870,2024-12-17,ML Fundamentals,Books,,15.85,12.27,West,retail
+ORD-1505,2024-07-19,Face Serum,Beauty,,38.08,42.99,South,retail
+ORD-1765,2024-11-06,Winter Gloves,Clothing,3,99.09,299.24,West,Online
+ORD-1604,2024-09-01,Yoga Mat,Sports,1,71.18,76.17,North,Online
+ORD-1488,2024-07-12,Business Analytics,books,3,37.84,113.39,North,online
+ORD-1574,2024-08-21,Sunscreen SPF50,beauty,,76.2,78.39,North,Online
+ORD-1253,2024-04-08,ML Fundamentals,Books,3,23.76,70.16,north,online
+ORD-1662,2024-09-25,Webcam HD,Electronics,5,588.12,2939.34,East,marketplace
+ORD-1524,2024-07-28,Cotton Tee,Clothing,3,21.22,68.44,East,marketplace
+ORD-1421,2024-06-17,Dumbbell Set,Sports,2,192.71,384.59,West,retail
+ORD-1465,2024-07-05,ML Fundamentals,books,3,15.56,50.08,North,online
+ORD-1002,2024-01-02,Cotton Tee,Clothing,3,35.55,102.67,South,retail
+ORD-1339,2024-05-13,Bookshelf,FURNITURE,4,149.84,598.99,North,Online
+ORD-1824,2024-11-29,Running Jacket,clothing,1,61.37,58.47,North,retail
+ORD-1402,2024-06-08, Filing Cabinet,Furniture,,295.9,297.29,north,Online
+ORD-1364,2024-05-25,Eye Cream,beauty,3,42.82,133.07,North,Online
+ORD-1861,2024-12-15,Running Jacket,Clothing,5,109.3,544.61,West,Online
+ORD-1313,2024-05-03,Standing Desk,Furniture,,452.73,451.87,East,marketplace
+ORD-1471,2024-07-07,Cotton Tee,Clothing,,48.92,53.15,East,online
+ORD-1591,2024-08-28,Winter Gloves,clothing,1,28.4,32.47,north,online
+ORD-1250,2024-04-06,Bookshelf,furniture,1,143.71,140.39,West,online
+ORD-1029,2024-01-11,Resistance Bands,Sports,1,64.36,63.19,north,online
+ORD-1579,2024-08-24, Filing Cabinet,furniture,2,35.48,71.0,East,retail
+ORD-1288,2024-04-24,Bookshelf,Furniture,2,420.31,843.06,South,online
+ORD-1265,2024-04-12,Laptop Pro,Electronics,4,537.95,2153.85,North,retail
+ORD-1851,2024-12-10,Office Chair,Furniture,5,388.88,1939.41,North,online
+ORD-1204,2024-03-18,Lip Balm,beauty,4,77.61,306.5,East,marketplace
+ORD-1071,2024-01-28,Yoga Pants,clothing,3,64.65,194.47,North,retail
+ORD-1678,2024-10-01,Cotton Tee,Clothing,2,59.11,117.37,West,retail
+ORD-1404,2024-06-09,Wool Socks,Clothing,2,102.62,205.87,NORTH,online
+ORD-1301,2024-04-29,Foam Roller,Sports,3,172.67,517.27,North,online
+ORD-1492,2024-07-14,Webcam HD,Electronics,1,370.69,366.83,South,online
+ORD-1105,2024-02-08,Running Jacket,clothing,5,106.21,530.09,NORTH,retail
+ORD-1085,2024-02-01,Business Analytics,Books,1,14.33,15.53,West,Online
+ORD-1338,2024-05-13,Resistance Bands,Sports,3,119.63,363.48,West,marketplace
+ORD-1521,2024-07-25,Python Cookbook,Books,4,41.98,166.31,West,online
+ORD-1638,2024-09-14,Data Science 101,Books,4,31.55,127.92,North,retail
+ORD-1842,2024-12-06,Face Serum,beauty,4,23.3,96.39,East,online
+ORD-1430,2024-06-22,Wool Socks,clothing,5,49.44,251.24,North,retail
+ORD-1462,2024-07-04,Winter Gloves,Clothing,3,64.72,192.16,West,
+ORD-1325,2024-05-06,Business Analytics,Books,3,29.62,84.59,East,
+ORD-1890,2024-12-25,Data Science 101,Books,1,44.93,40.7,South,online
+ORD-1242,2024-04-03,Webcam HD,Electronics,1,546.42,8263.95,North,marketplace
+ORD-1188,2024-03-10,Foam Roller,Sports,5,84.01,417.48,North,marketplace
+ORD-1226,2024-03-27,Foam Roller,Sports,2,197.81,395.4,North,marketplace
+ORD-1509,2024-07-21,Python Cookbook,Books,,41.51,45.32,West,
+ORD-1396,2024-06-06,Cotton Tee,Clothing,5,74.16,369.59,West,Retail
+ORD-1600,2024-08-31,Winter Gloves,clothing,4,113.53,451.44,East,Online
+ORD-1346,2024-05-16,Cotton Tee,clothing,4,101.72,6161.25,East,online
+ORD-1113,2024-02-11,Cotton Tee,Clothing,,87.89,89.2,South,Online
+ORD-1229,2024-03-28,Bookshelf,furniture,5,415.2,2077.0,West,Retail
+ORD-1054,2024-01-20,ML Fundamentals,Books,5,32.14,159.01,North,online
+ORD-1277,2024-04-18,Sunscreen SPF50,beauty,4,17.68,73.46,East,online
+ORD-1189,2024-03-11,Monitor 27in,Electronics,1,577.17,579.2,NORTH,retail
+ORD-1199,2024-03-16,Wool Socks,Clothing,5,101.55,504.11,NORTH,retail
+ORD-1252,2024-04-07,Wool Socks,Clothing,5,39.95,197.24,South,online
+ORD-1559,2024-08-13,Bookshelf,Furniture,1,181.63,182.97,North,online
+ORD-1194,2024-03-14,Python Cookbook,Books,,38.52,35.06,North,retail
+ORD-1124,2024-02-16,USB-C Hub,Electronics,,437.64,435.02,East,marketplace
+ORD-1484,2024-07-11,Office Chair,FURNITURE,3,117.92,356.53,North,Online
+ORD-1271,2024-04-15,Face Serum,Beauty,5,44.15,222.53,North,marketplace
+ORD-1144,2024-02-23,Running Jacket,Clothing,4,88.86,355.28,West,marketplace
+ORD-1543,2024-08-05,Python Cookbook,books,1,10.51,9.47,West,retail
+ORD-1141,2024-02-21,Eye Cream,Beauty,3,72.43,214.25,West,Online
+ORD-1477,2024-07-09,Webcam HD,Electronics,4,837.42,3350.78,,online
+ORD-1673,2024-09-29,Webcam HD,Electronics,3,1161.94,3481.75,West,online
+ORD-1453,2024-06-30,Office Chair,Furniture,5,241.92,1209.04,North,Online
+ORD-1046,2024-01-18,Data Science 101,books,2,40.17,83.73,North,retail
+ORD-1542,2024-08-05,Business Analytics,Books,2,37.48,75.5,,online
+ORD-1148,2024-02-24,Office Chair,FURNITURE,3,520.53,1563.87,East,retail
+ORD-1191,2024-03-13,ML Fundamentals,Books,5,47.15,233.15,South,Retail
+ORD-1239,2024-04-02,Standing Desk,Furniture,3,296.45,892.61,North,Online
+ORD-1619,2024-09-08,Winter Gloves,Clothing,4,60.28,244.84,NORTH,Online
+ORD-1380,2024-05-30,Dumbbell Set,Sports,,156.52,154.14,South,retail
+ORD-1760,2024-11-05,Office Chair,FURNITURE,,174.51,176.11,West,online
+ORD-1050,2024-01-19,Lip Balm,Beauty,5,58.93,299.3,East,retail
+ORD-1710,2024-10-13,Lip Balm,Beauty,3,62.5,186.21,West,
+ORD-1232,2024-03-30, Wireless Mouse ,Electronics,,239.83,242.72,West,retail
+ORD-1557,2024-08-13,Desk Lamp,Furniture,5,73.73,365.46,South,Online
+ORD-1642,2024-09-17,Moisturizer,Beauty,5,21.81,110.19,West,retail
+ORD-1010,2024-01-04,Jump Rope,Sports,5,194.8,978.13,West,Online
+ORD-1260,2024-04-10, Filing Cabinet,Furniture,3,503.52,1506.83,NORTH,retail
+ORD-1467,2024-07-06,ML Fundamentals,Books,4,30.38,120.37,East,online
+ORD-1475,2024-07-08,Python Cookbook,books,3,18.43,50.83,East,retail
+ORD-1158,2024-02-27,Resistance Bands,Sports,1,68.73,67.19,South,retail
+ORD-1308,2024-05-01,Cotton Tee,Clothing,4,25.04,99.19,East,marketplace
+ORD-1656,2024-09-23,Foam Roller,sports,,82.12,77.42,East,online
+ORD-1507,2024-07-20,USB-C Hub,Electronics,5,361.8,1811.47,north,marketplace
+ORD-1827,2024-12-01,Desk Lamp,FURNITURE,,183.6,185.68,East,marketplace
+ORD-1047,2024-01-18,Cotton Tee,clothing,5,96.69,488.09,East,retail
+ORD-1076,2024-01-30,Bookshelf,Furniture,,549.78,552.74,East,online
+ORD-1695,2024-10-07,Sunscreen SPF50,beauty,5,17.04,88.51,West,online
+ORD-1275,2024-04-18,Desk Lamp,FURNITURE,2,377.45,752.65,north,online
+ORD-1778,2024-11-12,Cotton Tee,Clothing,4,85.54,344.03,South,
+ORD-1401,2024-06-08, Wireless Mouse ,Electronics,,1160.59,1162.84,South,retail
+ORD-1210,2024-03-20,SQL Guide,Books,1,25.55,24.03,South,marketplace
+ORD-1431,2024-06-22,Eye Cream,Beauty,4,17.74,66.21,North,Retail
+ORD-1636,2024-09-14,Moisturizer,Beauty,4,53.73,212.65,NORTH,online
+ORD-1256,2024-04-08,Face Serum,Beauty,5,58.65,293.89,north,
+ORD-1036,2024-01-13,Business Analytics,books,3,30.62,87.79,,retail
+ORD-1782,2024-11-14,Bookshelf,furniture,4,597.28,2387.65,West,
+ORD-1042,2024-01-16,Dumbbell Set,sports,,85.37,83.89,West,retail
+ORD-1137,2024-02-20,Dumbbell Set,Sports,2,115.3,232.72,North,retail
+ORD-1377,2024-05-29,Moisturizer,Beauty,4,38.37,156.97,South,online
+ORD-1066,2024-01-27,USB-C Hub,Electronics,4,523.27,2096.73,East,Retail
+ORD-1203,2024-03-18,Business Analytics,Books,5,38.07,191.73,West,retail
+ORD-1424,2024-06-19,Lip Balm,Beauty,3,77.21,228.15,NORTH,online
+ORD-1192,2024-03-13,Office Chair,furniture,1,340.41,336.39,West,Online
+ORD-1062,2024-01-24, Wireless Mouse ,Electronics,5,992.63,4967.36,East,online
+ORD-1829,2024-12-02,Lip Balm,Beauty,3,50.94,154.05,South,Online
+ORD-1138,2024-02-20,Desk Lamp,furniture,3,93.67,280.68,North,Retail
+ORD-1016,2024-01-06,Monitor 27in,Electronics,1,554.3,556.03,South,retail
+ORD-1125,2024-02-16,SQL Guide,Books,,19.68,18.97,West,retail
+ORD-1805,2024-11-23,USB-C Hub,Electronics,2,989.56,1974.66,West,online
+ORD-1321,2024-05-05,Dumbbell Set,Sports,3,86.94,262.75,West,retail
+ORD-1414,2024-06-14,Yoga Pants,Clothing,1,39.97,36.09,,Retail
+ORD-1011,2024-01-05,SQL Guide,Books,4,46.74,182.15,North,online
+ORD-1153,2024-02-25,Dumbbell Set,Sports,5,121.86,609.1,,retail
+ORD-1747,2024-10-31,Python Cookbook,Books,5,36.98,188.94,South,online
+ORD-1417,2024-06-15,Data Science 101,books,3,12.66,41.62,South,online
+ORD-1020,2024-01-08,USB-C Hub,Electronics,5,257.17,1290.04,,retail
+ORD-1764,2024-11-06, Wireless Mouse ,Electronics,5,618.21,3095.8,north,marketplace
+ORD-1806,2024-11-23,Monitor 27in,Electronics,4,281.71,1130.55,North,marketplace
+ORD-1254,2024-04-08,Monitor 27in,Electronics,2,729.43,1463.6,north,marketplace
+ORD-1781,2024-11-13,Resistance Bands,Sports,,158.89,155.37,North,marketplace
+ORD-1533,2024-08-01,Yoga Pants,Clothing,2,30.24,63.8,NORTH,Online
+ORD-1384,2024-06-02,Wool Socks,Clothing,1,99.8,100.28,West,online
+ORD-1436,2024-06-24,Python Cookbook,Books,5,45.29,229.65,South,online
+ORD-1017,2024-01-07, Filing Cabinet,Furniture,3,313.28,939.47,,marketplace
+ORD-1667,2024-09-27,Business Analytics,books,3,22.11,63.24,West,Retail
+ORD-1126,2024-02-16,Face Serum,beauty,5,76.65,383.79,NORTH,Online
+ORD-1373,2024-05-28,Standing Desk,Furniture,,325.95,325.17,South,retail
+ORD-1791,2024-11-17,ML Fundamentals,books,3,43.09,130.74,West,online
+ORD-1676,2024-09-29,Desk Lamp,Furniture,2,176.86,354.76,West,retail
+ORD-1611,2024-09-04,Face Serum,Beauty,2,32.36,64.06,North,Retail
+ORD-1627,2024-09-10,Running Jacket,clothing,2,32.03,68.68,,marketplace
+ORD-1549,2024-08-09,Sunscreen SPF50,Beauty,,43.39,45.55,West,Online
+ORD-1081,2024-01-31,Standing Desk,Furniture,2,402.86,807.0,East,retail
+ORD-1435,2024-06-24,Wool Socks,clothing,,74.35,78.18,East,retail
+ORD-1486,2024-07-12, Wireless Mouse ,Electronics,4,203.31,809.45,North,online
+ORD-1887,2024-12-25,Yoga Pants,Clothing,,22.14,24.88,West,Retail
+ORD-1365,2024-05-25, Wireless Mouse ,Electronics,3,876.91,2629.85,South,marketplace
+ORD-1720,2024-10-19,Resistance Bands,Sports,2,111.15,3275.55,South,marketplace
+ORD-1419,2024-06-17,Wool Socks,Clothing,,94.44,96.28,NORTH,
+ORD-1762,2024-11-05,SQL Guide,Books,2,24.86,50.56,West,Online
+ORD-1826,2024-11-30,Webcam HD,Electronics,,229.56,229.68,South,online
+ORD-1449,2024-06-29,Desk Lamp,Furniture,3,460.87,1379.04,North,Online
+ORD-1184,2024-03-08,Business Analytics,Books,4,20.29,80.77,East,online
+ORD-1106,2024-02-09,Jump Rope,sports,2,31.3,61.96,West,Retail
+ORD-1618,2024-09-07,Jump Rope,sports,,99.05,98.31,North,retail
+ORD-1837,2024-12-04,Face Serum,beauty,1,68.7,63.99,South,online
+ORD-1333,2024-05-12,Running Jacket,Clothing,2,67.4,137.27,South,Online
+ORD-1031,2024-01-11,Data Science 101,Books,2,14.61,30.03,South,Online
+ORD-1281,2024-04-21,Desk Lamp,FURNITURE,2,105.82,215.21,North,retail
+ORD-1726,2024-10-22,Standing Desk,Furniture,,462.37,464.63,NORTH,online
+ORD-1390,2024-06-03,Office Chair,Furniture,4,350.99,1402.85,West,marketplace
+ORD-1508,2024-07-21,Data Science 101,Books,,44.42,48.35,South,retail
+ORD-1705,2024-10-11,Resistance Bands,Sports,4,64.77,3916.05,North,retail
+ORD-1584,2024-08-26,Data Science 101,Books,4,31.04,128.36,South,online
+ORD-1880,2024-12-21,Standing Desk,Furniture,4,544.51,2178.72,NORTH,Online
+ORD-1685,2024-10-02,Moisturizer,Beauty,1,73.43,72.65,West,online
+ORD-1876,2024-12-20,ML Fundamentals,Books,,12.7,15.03,South,Online
+ORD-1408,2024-06-10,Eye Cream,Beauty,,54.24,57.32,north,retail
+ORD-1708,2024-10-12,Bookshelf,Furniture,,124.57,120.21,West,retail
+ORD-1367,2024-05-25,Standing Desk,Furniture,3,202.13,603.46,North,Online
+ORD-1009,2024-01-04,Face Serum,beauty,,56.98,60.83,North,online
+ORD-1274,2024-04-17,Yoga Pants,Clothing,1,76.66,80.91,East,online
+ORD-1307,2024-04-30,Dumbbell Set,sports,1,180.03,181.46,North,Retail
+ORD-1065,2024-01-26,Wool Socks,clothing,2,53.33,104.96,,
+ORD-1167,2024-03-01,Standing Desk,Furniture,5,328.65,1641.99,,marketplace
+ORD-1310,2024-05-02,Eye Cream,Beauty,3,22.89,67.3,East,retail
+ORD-1312,2024-05-02,Running Jacket,clothing,2,24.58,52.38,North,online
+ORD-1055,2024-01-21,Resistance Bands,Sports,3,50.44,153.57,North,online
+ORD-1814,2024-11-25,Laptop Pro,Electronics,4,816.26,3267.54,East,Online
+ORD-1397,2024-06-06,Dumbbell Set,Sports,4,166.52,668.74,South,retail
+ORD-1104,2024-02-08,Yoga Pants,Clothing,5,58.02,290.69,West,retail
+ORD-1272,2024-04-16,Resistance Bands,Sports,,22.9,24.73,South,Online
+ORD-1671,2024-09-28,Yoga Pants,Clothing,4,61.91,250.27,East,Online
+ORD-1445,2024-06-28,Wool Socks,clothing,,112.78,112.99,East,online
+ORD-1732,2024-10-24,Webcam HD,Electronics,1,738.98,741.52,West,Retail
+ORD-1112,2024-02-10,USB-C Hub,Electronics,,1182.39,1183.85,West,retail
+ORD-1479,2024-07-10,Winter Gloves,Clothing,2,30.39,63.03,North,Online
+ORD-1621,2024-09-09,Moisturizer,Beauty,,74.36,77.88,East,online
+ORD-1156,2024-02-27,Python Cookbook,Books,3,48.29,142.12,South,online
+ORD-1022,2024-01-08,Bookshelf,Furniture,3,204.12,611.93,East,Online
+ORD-1756,2024-11-03,Monitor 27in,Electronics,4,489.47,1955.36,West,online
+ORD-1712,2024-10-14,Sunscreen SPF50,Beauty,4,34.53,138.27,NORTH,Online
+ORD-1620,2024-09-09,Resistance Bands,sports,4,108.57,430.57,East,online
+ORD-1588,2024-08-27,Face Serum,Beauty,4,9.48,40.71,East,online
+ORD-1370,2024-05-27,Resistance Bands,sports,,99.58,99.76,South,Online
+ORD-1767,2024-11-07,Webcam HD,Electronics,5,417.81,2088.6,South,online
+ORD-1485,2024-07-12,Bookshelf,FURNITURE,5,550.4,2754.08,West,retail
+ORD-1026,2024-01-10,Desk Lamp,Furniture,1,366.87,362.99,South,online
+ORD-1463,2024-07-04,Eye Cream,beauty,4,8.58,37.8,NORTH,Retail
+ORD-1474,2024-07-08,Winter Gloves,clothing,1,106.2,110.87,East,marketplace
+ORD-1202,2024-03-17,Python Cookbook,Books,4,20.11,83.33,East,retail
+ORD-1215,2024-03-22,Winter Gloves,clothing,,31.32,34.07,North,marketplace
+ORD-1224,2024-03-26,Moisturizer,Beauty,3,19.45,54.28,West,Online
+ORD-1412,2024-06-12,Yoga Pants,clothing,2,68.79,138.19,South,online
+ORD-1554,2024-08-10,Monitor 27in,Electronics,3,300.06,900.15,NORTH,online
+ORD-1529,2024-07-30,USB-C Hub,Electronics,5,693.05,3467.71,West,Retail
+ORD-1161,2024-02-28,Data Science 101,Books,1,36.09,40.22,NORTH,Retail
+ORD-1343,2024-05-15,Yoga Pants,clothing,2,76.64,155.64,East,online
+ORD-1132,2024-02-18,Wool Socks,Clothing,,55.15,58.85,NORTH,
+ORD-1164,2024-02-29,Python Cookbook,books,4,17.02,71.35,North,Online
+ORD-1393,2024-06-05,Face Serum,beauty,5,12.3,64.41,West,
+ORD-1285,2024-04-23,Yoga Pants,Clothing,1,71.73,74.78,West,Online
+ORD-1825,2024-11-30,SQL Guide,books,,44.19,42.62,East,online
+ORD-1207,2024-03-19,Foam Roller,Sports,1,19.18,20.95,North,online
+ORD-1398,2024-06-06,Data Science 101,books,,43.41,47.14,East,online
+ORD-1790,2024-11-16,Sunscreen SPF50,beauty,1,61.51,58.7,,marketplace
+ORD-1586,2024-08-27,Data Science 101,Books,,23.18,24.4,West,Retail
+ORD-1686,2024-10-03,Resistance Bands,Sports,,148.94,149.07,West,Online
+ORD-1257,2024-04-09,Office Chair,Furniture,2,126.93,249.06,,Online
+ORD-1799,2024-11-21, Wireless Mouse ,Electronics,4,910.66,3647.42,NORTH,
+ORD-1147,2024-02-23,Lip Balm,Beauty,5,9.67,47.92,South,online
+ORD-1013,2024-01-06,Eye Cream,beauty,3,62.38,186.13,East,Retail
+ORD-1729,2024-10-23,Yoga Mat,Sports,3,65.91,192.85,north,Online
+ORD-1349,2024-05-17,Desk Lamp,Furniture,1,391.67,395.46,West,online
+ORD-1208,2024-03-20,Desk Lamp,Furniture,4,407.48,1628.88,North,retail
+ORD-1776,2024-11-12,Foam Roller,sports,5,52.43,266.07,South,retail
+ORD-1739,2024-10-26,Laptop Pro,Electronics,3,562.82,1684.92,NORTH,online
+ORD-1585,2024-08-26,Face Serum,beauty,1,36.38,39.75,West,marketplace
+ORD-1410,2024-06-12,Yoga Pants,clothing,4,35.32,145.99,East,online
+ORD-1427,2024-06-20,Foam Roller,Sports,4,47.76,194.71,South,retail
+ORD-1883,2024-12-23,Cotton Tee,Clothing,3,26.8,76.15,South,retail
+ORD-1775,2024-11-11,Foam Roller,Sports,3,39.45,114.78,NORTH,
+ORD-1394,2024-06-05,Yoga Mat,Sports,,150.64,149.42,West,online
+ORD-1064,2024-01-25,Moisturizer,beauty,2,49.49,98.69,West,Online
+ORD-1753,2024-11-02,Office Chair,Furniture,3,149.51,452.54,West,retail
+ORD-1603,2024-08-31,Cotton Tee,Clothing,2,99.6,200.42,North,online
+ORD-1354,2024-05-19,Cotton Tee,Clothing,1,67.71,65.54,West,online
+ORD-1176,2024-03-05,Business Analytics,Books,5,19.48,94.61,north,
+ORD-1057,2024-01-22,Laptop Pro,Electronics,4,774.06,3094.65,North,Retail
+ORD-1336,2024-05-12,Webcam HD,Electronics,5,1052.25,5260.86,North,online
+ORD-1721,2024-10-19,Python Cookbook,books,,34.06,35.71,NORTH,retail
+ORD-1470,2024-07-06,Webcam HD,Electronics,1,998.1,1002.14,north,retail
+ORD-1660,2024-09-24,Desk Lamp,Furniture,4,154.37,622.25,North,Online
+ORD-1761,2024-11-05,Desk Lamp,FURNITURE,1,269.06,270.75,,retail
+ORD-1432,2024-06-22,Python Cookbook,books,,38.73,34.87,South,retail
+ORD-1251,2024-04-07,Moisturizer,Beauty,1,28.15,29.29,East,Retail
+ORD-1849,2024-12-10,SQL Guide,Books,,21.52,18.37,West,Retail
+ORD-1454,2024-07-01,Winter Gloves,Clothing,4,109.13,437.68,East,Online
+ORD-1426,2024-06-19,Wool Socks,Clothing,,69.14,66.07,East,online
+ORD-1687,2024-10-04,Face Serum,Beauty,,24.73,22.96,South,online
+ORD-1854,2024-12-11,Webcam HD,Electronics,,928.22,933.01,South,retail
+ORD-1222,2024-03-25,Python Cookbook,Books,4,48.73,192.61,East,Online
+ORD-1612,2024-09-05,Winter Gloves,Clothing,3,107.35,4892.1,north,retail
+ORD-1807,2024-11-23,Cotton Tee,Clothing,4,36.45,145.62,north,retail
+ORD-1487,2024-07-12,Business Analytics,books,1,31.39,34.8,East,online
+ORD-1363,2024-05-24,Desk Lamp,FURNITURE,5,343.24,1714.14,,Retail
+ORD-1399,2024-06-06,SQL Guide,books,1,34.96,33.62,South,
+ORD-1496,2024-07-15,ML Fundamentals,Books,1,19.57,20.53,South,marketplace
+ORD-1550,2024-08-09,ML Fundamentals,Books,1,32.49,31.4,NORTH,retail
+ORD-1297,2024-04-28,Yoga Pants,clothing,1,40.55,38.56,North,Online
+ORD-1780,2024-11-13,Bookshelf,furniture,1,404.87,402.58,north,online
+ORD-1305,2024-04-30,Lip Balm,Beauty,3,11.31,29.05,West,marketplace
+ORD-1719,2024-10-18,Python Cookbook,Books,5,44.13,223.02,South,online
+ORD-1748,2024-11-01,Cotton Tee,Clothing,2,116.97,237.26,South,retail
+ORD-1355,2024-05-20,Wool Socks,clothing,3,85.45,255.44,South,Online
+ORD-1860,2024-12-14,Resistance Bands,Sports,5,199.24,1000.38,South,
+ORD-1387,2024-06-02, Filing Cabinet,furniture,3,91.51,272.22,East,online
+ORD-1723,2024-10-20,Foam Roller,Sports,4,185.78,745.39,North,online
+ORD-1714,2024-10-14,Running Jacket,clothing,2,93.43,188.98,North,marketplace
+ORD-1566,2024-08-17,Eye Cream,beauty,1,10.51,12.42,South,Online
+ORD-1640,2024-09-16,Desk Lamp,Furniture,,204.05,203.98,West,
+ORD-1211,2024-03-20, Wireless Mouse ,Electronics,1,513.19,510.02,North,retail
+ORD-1497,2024-07-16, Filing Cabinet,Furniture,5,587.93,2939.73,North,online
+ORD-1067,2024-01-27,Winter Gloves,clothing,1,95.64,92.68,North,marketplace
+ORD-1441,2024-06-27,Wool Socks,clothing,5,69.25,343.58,East,online
+ORD-1003,2024-01-03,ML Fundamentals,Books,5,13.15,69.6,West,online
+ORD-1217,2024-03-22,Sunscreen SPF50,beauty,3,23.11,72.94,West,Online
+ORD-1523,2024-07-27,Monitor 27in,Electronics,5,877.06,4384.24,West,online
+ORD-1089,2024-02-02,Yoga Mat,sports,5,31.96,164.51,West,
+ORD-1201,2024-03-17,SQL Guide,books,2,11.08,21.54,East,marketplace
+ORD-1133,2024-02-19,Yoga Pants,Clothing,,115.28,116.36,West,online
+ORD-1846,2024-12-08,Wool Socks,Clothing,,70.79,68.52,South,retail
+ORD-1503,2024-07-18,Eye Cream,Beauty,5,19.29,100.51,East,online
+ORD-1190,2024-03-12, Filing Cabinet,Furniture,,327.26,323.0,north,online
+ORD-1491,2024-07-14,Running Jacket,clothing,1,67.12,64.55,north,Online
+ORD-1670,2024-09-28,Yoga Mat,Sports,5,53.77,264.15,East,marketplace
+ORD-1711,2024-10-13,USB-C Hub,Electronics,1,1073.08,1072.65,West,online
+ORD-1269,2024-04-15,Cotton Tee,Clothing,1,42.62,39.13,,Online
+ORD-1198,2024-03-16,Yoga Mat,Sports,1,124.85,1818.0,South,marketplace
+ORD-1223,2024-03-25,Running Jacket,Clothing,4,24.59,93.52,NORTH,retail
+ORD-1383,2024-06-01,Cotton Tee,Clothing,1,61.22,56.22,North,retail
+ORD-1581,2024-08-24,Bookshelf,FURNITURE,4,107.31,431.88,North,marketplace
+ORD-1249,2024-04-06,Desk Lamp,Furniture,1,273.56,274.38,north,online
+ORD-1008,2024-01-04,Running Jacket,clothing,2,106.11,215.14,NORTH,retail
+ORD-1035,2024-01-12,Data Science 101,Books,5,22.15,111.82,East,Online
+ORD-1193,2024-03-14,USB-C Hub,Electronics,2,983.55,1965.66,West,Online
+ORD-1323,2024-05-06,Dumbbell Set,Sports,2,151.61,301.16,East,online
+ORD-1736,2024-10-25,Eye Cream,beauty,3,47.75,139.53,South,online
+ORD-1101,2024-02-07,Bookshelf,Furniture,5,455.23,2277.11,North,marketplace
+ORD-1440,2024-06-26,Winter Gloves,clothing,3,113.39,339.44,West,Online
+ORD-1885,2024-12-23,Bookshelf,Furniture,1,560.57,557.93,West,marketplace
+ORD-1763,2024-11-05,Sunscreen SPF50,beauty,1,21.89,17.64,NORTH,marketplace
+ORD-1737,2024-10-25,Running Jacket,Clothing,2,114.47,229.3,North,marketplace
+ORD-1520,2024-07-25,Sunscreen SPF50,Beauty,5,8.31,39.86,NORTH,online
+ORD-1802,2024-11-22,Winter Gloves,Clothing,,59.93,58.81,West,retail
+ORD-1901,2024-12-30,SQL Guide,Books,,18.71,23.1,North,online
+ORD-1845,2024-12-07,Monitor 27in,Electronics,,387.03,388.65,North,
+ORD-1856,2024-12-12,Bookshelf,FURNITURE,4,541.76,2171.49,West,Online
+ORD-1159,2024-02-28, Filing Cabinet,furniture,1,465.26,466.96,West,retail
+ORD-1836,2024-12-04,Jump Rope,Sports,1,73.68,74.24,East,marketplace
+ORD-1075,2024-01-29,Face Serum,Beauty,3,52.46,162.35,West,online
+ORD-1225,2024-03-26,Python Cookbook,Books,,27.17,23.12,East,Online
+ORD-1794,2024-11-18,Wool Socks,Clothing,1,92.57,90.88,West,retail
+ORD-1698,2024-10-09,Python Cookbook,Books,4,32.11,128.08,North,Online
+ORD-1118,2024-02-12,Resistance Bands,Sports,,148.42,147.06,West,marketplace
+ORD-1868,2024-12-17,Python Cookbook,Books,,14.59,15.63,East,online
+ORD-1139,2024-02-20,Yoga Mat,Sports,5,112.25,556.99,South,Online
+ORD-1087,2024-02-01,Winter Gloves,Clothing,2,61.91,127.67,South,
+ORD-1713,2024-10-14,Data Science 101,Books,4,48.78,192.46,NORTH,retail
+ORD-1653,2024-09-21,Webcam HD,Electronics,1,1019.18,1018.4,West,Retail
+ORD-1439,2024-06-25,Yoga Pants,Clothing,3,32.2,96.87,West,online
+ORD-1593,2024-08-29,Office Chair,FURNITURE,,167.89,170.3,East,online
+ORD-1121,2024-02-13,Desk Lamp,Furniture,,550.76,550.13,South,retail
+ORD-1111,2024-02-10,ML Fundamentals,Books,1,28.51,28.01,North,retail
+ORD-1300,2024-04-29,Office Chair,furniture,,485.35,487.59,South,
+ORD-1886,2024-12-24,Eye Cream,Beauty,5,61.23,305.94,South,retail
+ORD-1709,2024-10-13,Foam Roller,Sports,1,138.08,134.05,NORTH,Online
+ORD-1528,2024-07-29,Bookshelf,Furniture,4,577.13,2304.76,north,online
+ORD-1758,2024-11-04,Standing Desk,Furniture,2,288.67,581.63,East,online
+ORD-1645,2024-09-19,Sunscreen SPF50,beauty,1,22.18,23.44,East,marketplace
+ORD-1848,2024-12-09,Business Analytics,Books,4,19.06,75.16,South,online
+ORD-1286,2024-04-24,Desk Lamp,FURNITURE,5,290.39,1454.03,South,marketplace
+ORD-1850,2024-12-10,Python Cookbook,books,2,17.49,39.6,NORTH,online
+ORD-1800,2024-11-21,Cotton Tee,clothing,5,105.9,533.67,NORTH,marketplace
+ORD-1818,2024-11-26,ML Fundamentals,Books,2,19.67,40.5,East,
+ORD-1495,2024-07-15, Wireless Mouse ,Electronics,5,1126.14,5634.57,South,marketplace
+ORD-1006,2024-01-03,Resistance Bands,Sports,4,167.03,665.8,West,retail
+ORD-1772,2024-11-09,ML Fundamentals,Books,4,16.23,63.61,North,online
+ORD-1740,2024-10-27,Foam Roller,Sports,3,47.51,143.42,East,retail
+ORD-1547,2024-08-07,Data Science 101,Books,4,36.44,148.69,South,online
+ORD-1039,2024-01-15,Lip Balm,Beauty,5,52.11,259.82,,online
+ORD-1606,2024-09-03,Dumbbell Set,sports,,126.79,122.29,NORTH,marketplace
+ORD-1027,2024-01-10,Running Jacket,Clothing,1,50.83,54.82,West,online
+ORD-1171,2024-03-03,Face Serum,beauty,3,79.0,236.09,East,Online
+ORD-1646,2024-09-19,Cotton Tee,Clothing,3,44.72,137.49,North,online
+ORD-1560,2024-08-14,Running Jacket,Clothing,,35.0,37.97,East,
+ORD-1209,2024-03-20,Office Chair,FURNITURE,5,380.22,1897.97,,online
+ORD-1097,2024-02-06,ML Fundamentals,books,4,24.14,100.24,East,retail
+ORD-1143,2024-02-22,Jump Rope,Sports,4,135.46,543.02,South,Online
+ORD-1283,2024-04-23,Yoga Pants,clothing,5,66.67,332.32,,Online
+ORD-1655,2024-09-22,Running Jacket,clothing,4,83.88,336.76,West,retail
+ORD-1817,2024-11-26,Monitor 27in,Electronics,,232.67,235.58,South,marketplace
+ORD-1733,2024-10-24,Cotton Tee,clothing,,32.3,29.36,North,Retail
+ORD-1881,2024-12-21,Python Cookbook,Books,4,43.3,173.21,East,marketplace
+ORD-1293,2024-04-26,Python Cookbook,Books,3,19.05,53.44,,online
+ORD-1172,2024-03-04,Wool Socks,clothing,5,57.56,284.13,South,
+ORD-1808,2024-11-23,Dumbbell Set,sports,1,159.87,162.1,,Online
+ORD-1830,2024-12-02, Wireless Mouse ,Electronics,3,1089.45,3269.22,South,
+ORD-1493,2024-07-15,Winter Gloves,Clothing,2,74.59,151.82,North,online
+ORD-1278,2024-04-18,Wool Socks,Clothing,1,95.95,96.1,North,retail
+ORD-1292,2024-04-25,Wool Socks,Clothing,,58.33,55.32,,retail
+ORD-1692,2024-10-06,Standing Desk,furniture,5,413.86,2074.19,West,retail
+ORD-1168,2024-03-02,SQL Guide,Books,,38.15,38.79,East,retail
+ORD-1289,2024-04-25,Webcam HD,Electronics,4,780.31,3125.13,North,online
+ORD-1353,2024-05-18,Lip Balm,Beauty,1,45.59,47.57,South,marketplace
+ORD-1100,2024-02-07,Yoga Pants,Clothing,4,106.99,423.66,South,retail
+ORD-1730,2024-10-23,SQL Guide,Books,1,29.18,32.12,East,Online
+ORD-1624,2024-09-10,Dumbbell Set,sports,,39.57,40.93,North,marketplace
+ORD-1811,2024-11-24,Yoga Pants,Clothing,1,117.17,115.87,,online
+ORD-1282,2024-04-22,Yoga Pants,clothing,1,84.74,81.98,South,marketplace
+ORD-1526,2024-07-28,Business Analytics,Books,4,12.64,46.44,West,Online
+ORD-1437,2024-06-24,Webcam HD,Electronics,1,1038.01,1033.5,West,Online
+ORD-1213,2024-03-21,Running Jacket,Clothing,4,68.46,278.48,East,Online
+ORD-1877,2024-12-20,Resistance Bands,Sports,4,34.5,140.56,North,Online
+ORD-1838,2024-12-04,Yoga Pants,Clothing,3,28.8,89.56,North,Online
+ORD-1181,2024-03-07,Yoga Mat,Sports,2,184.17,367.31,East,online
+ORD-1324,2024-05-06,Winter Gloves,Clothing,3,46.42,134.32,East,
+ORD-1391,2024-06-04,Bookshelf,FURNITURE,2,183.34,371.41,West,online
+ORD-1328,2024-05-08,Winter Gloves,Clothing,,92.4,92.57,East,retail
+ORD-1290,2024-04-25,Standing Desk,furniture,4,258.19,1029.19,South,online
+ORD-1840,2024-12-05,Yoga Pants,Clothing,4,95.3,382.57,East,online
+ORD-1659,2024-09-24,Yoga Pants,Clothing,5,114.12,574.42,north,online
+ORD-1899,2024-12-30, Wireless Mouse ,Electronics,5,971.34,4855.65,West,Online
+ORD-1777,2024-11-12, Filing Cabinet,FURNITURE,1,144.0,144.45,South,online
+ORD-1525,2024-07-28,Jump Rope,Sports,4,45.3,183.49,South,online
+ORD-1572,2024-08-19,Business Analytics,books,4,41.98,166.6,East,marketplace
+ORD-1048,2024-01-19,Yoga Pants,Clothing,2,27.6,51.22,NORTH,online
+ORD-1731,2024-10-23,Laptop Pro,Electronics,5,913.77,4565.7,East,Online
+ORD-1500,2024-07-17,Business Analytics,books,,19.2,16.48,north,online
+ORD-1302,2024-04-29,Wool Socks,Clothing,1,115.51,114.24,East,retail
+ORD-1235,2024-04-01,Resistance Bands,Sports,5,106.84,537.03,West,online
+ORD-1098,2024-02-06,Python Cookbook,books,5,43.89,218.13,,marketplace
+ORD-1284,2024-04-23,SQL Guide,books,4,21.31,80.88,West,online
+ORD-1596,2024-08-30,Winter Gloves,Clothing,4,56.07,227.33,,online
+ORD-1809,2024-11-24,Monitor 27in,Electronics,3,1133.82,3397.6,North,retail
+ORD-1179,2024-03-06,Cotton Tee,Clothing,4,40.33,164.79,West,online
+ORD-1446,2024-06-28,Moisturizer,Beauty,,12.77,16.18,North,retail
+ORD-1326,2024-05-07,Winter Gloves,Clothing,2,60.34,122.31,West,
+ORD-1386,2024-06-02,Standing Desk,FURNITURE,3,523.81,1567.53,East,marketplace
+ORD-1718,2024-10-17,Winter Gloves,Clothing,2,116.62,230.48,West,online
+ORD-1795,2024-11-18,Yoga Mat,Sports,3,123.48,367.05,NORTH,Online
+ORD-1376,2024-05-29,Bookshelf,Furniture,4,264.66,1061.39,East,Online
+ORD-1668,2024-09-27,Bookshelf,FURNITURE,4,79.3,321.66,NORTH,Online
+ORD-1601,2024-08-31,ML Fundamentals,books,3,14.68,43.52,East,marketplace
+ORD-1007,2024-01-04,Standing Desk,furniture,3,208.25,627.22,NORTH,retail
+ORD-1154,2024-02-25,Data Science 101,Books,4,17.63,67.03,north,marketplace
+ORD-1084,2024-02-01,Eye Cream,beauty,1,34.34,31.98,South,marketplace
+ORD-1516,2024-07-24,Winter Gloves,clothing,3,104.19,313.24,South,marketplace
+ORD-1597,2024-08-30,Office Chair,Furniture,2,66.08,131.52,East,online
+ORD-1186,2024-03-10,Webcam HD,Electronics,1,1112.75,1107.82,South,retail
+ORD-1136,2024-02-19,Desk Lamp,FURNITURE,,184.09,179.83,NORTH,marketplace
+ORD-1483,2024-07-11,Sunscreen SPF50,beauty,4,51.94,203.84,North,Online
+ORD-1294,2024-04-27,Winter Gloves,clothing,2,79.64,157.71,NORTH,online
+ORD-1443,2024-06-27,USB-C Hub,Electronics,1,706.69,702.83,NORTH,Online
+ORD-1457,2024-07-01,Monitor 27in,Electronics,2,312.89,623.6,East,retail
+ORD-1788,2024-11-16,Cotton Tee,clothing,1,64.4,62.27,East,marketplace
+ORD-1875,2024-12-19,Lip Balm,Beauty,2,35.11,70.98,South,online
+ORD-1745,2024-10-29,USB-C Hub,Electronics,1,754.16,758.78,East,marketplace
+ORD-1361,2024-05-22, Wireless Mouse ,Electronics,1,855.02,859.99,East,retail
+ORD-1074,2024-01-29,Jump Rope,Sports,1,77.63,81.15,West,retail
+ORD-1045,2024-01-18,Yoga Mat,Sports,4,66.48,263.44,NORTH,Online
+ORD-1109,2024-02-09,Yoga Mat,Sports,5,141.01,703.28,East,retail
+ORD-1625,2024-09-10,ML Fundamentals,Books,5,19.31,92.01,North,online
+ORD-1816,2024-11-26,Lip Balm,Beauty,2,8.55,17.18,north,Retail
+ORD-1819,2024-11-26,Yoga Pants,Clothing,2,60.31,119.99,West,Online
+ORD-1844,2024-12-07,Running Jacket,Clothing,3,47.78,147.85,North,retail
+ORD-1342,2024-05-14,Desk Lamp,FURNITURE,,340.58,339.22,NORTH,
+ORD-1120,2024-02-13,Resistance Bands,Sports,,176.51,176.32,North,retail
+ORD-1770,2024-11-08,Winter Gloves,Clothing,1,49.49,52.73,East,
+ORD-1245,2024-04-05,Jump Rope,Sports,1,73.84,78.28,East,online
+ORD-1565,2024-08-17,Running Jacket,Clothing,2,51.65,107.93,,marketplace
+ORD-1409,2024-06-11,Sunscreen SPF50,Beauty,1,61.83,63.17,South,retail
+ORD-1897,2024-12-29,Wool Socks,Clothing,1,98.26,101.33,NORTH,online
+ORD-1360,2024-05-22,Yoga Pants,Clothing,5,105.06,523.16,South,retail
+ORD-1429,2024-06-21,Sunscreen SPF50,Beauty,1,45.35,45.93,South,online
+ORD-1395,2024-06-05,ML Fundamentals,Books,3,17.59,51.01,North,Retail
+ORD-1537,2024-08-03,Laptop Pro,Electronics,5,954.55,4769.8,North,retail
+ORD-1522,2024-07-26,Yoga Pants,Clothing,,64.6,60.15,NORTH,online
+ORD-1134,2024-02-19,Winter Gloves,Clothing,4,23.24,97.45,South,retail
+ORD-1073,2024-01-29,Data Science 101,Books,5,44.97,228.95,NORTH,Retail
+ORD-1716,2024-10-16,Laptop Pro,Electronics,4,360.24,1443.62,north,retail
+ORD-1700,2024-10-09,Yoga Mat,Sports,5,105.57,523.56,North,
+ORD-1023,2024-01-09,Yoga Pants,clothing,2,113.33,225.36,NORTH,Online
+ORD-1438,2024-06-24,SQL Guide,Books,5,17.1,84.1,,Retail
+ORD-1033,2024-01-12,Resistance Bands,Sports,,82.38,84.02,West,Retail
+ORD-1128,2024-02-17,Yoga Mat,sports,2,196.45,396.01,North,online
+ORD-1102,2024-02-07,Wool Socks,Clothing,3,68.57,202.87,West,online
+ORD-1828,2024-12-01,Moisturizer,Beauty,3,20.45,65.97,South,online
+ORD-1562,2024-08-15,Cotton Tee,Clothing,4,106.72,430.85,,marketplace
+ORD-1267,2024-04-13,Laptop Pro,Electronics,5,627.61,3137.85,NORTH,Online
+ORD-1744,2024-10-29,Running Jacket,Clothing,3,114.75,347.7,North,online
+ORD-1122,2024-02-14,Cotton Tee,Clothing,3,43.58,127.99,South,marketplace
+ORD-1169,2024-03-03,Yoga Mat,sports,5,36.5,182.39,North,online
+ORD-1014,2024-01-06,Laptop Pro,Electronics,2,788.31,1571.69,North,online
+ORD-1461,2024-07-04,Running Jacket,Clothing,5,29.05,149.28,North,online
+ORD-1183,2024-03-08,Foam Roller,Sports,5,63.24,318.4,East,online
+ORD-1200,2024-03-16,Desk Lamp,FURNITURE,3,583.24,1748.48,East,online
+ORD-1641,2024-09-16, Filing Cabinet,FURNITURE,5,117.91,591.27,West,Online
+ORD-1898,2024-12-29,Winter Gloves,Clothing,4,96.9,387.27,South,Retail
+ORD-1796,2024-11-19,Resistance Bands,Sports,5,157.23,786.31,West,retail
+ORD-1150,2024-02-24,Cotton Tee,Clothing,5,95.5,476.51,,marketplace
+ORD-1751,2024-11-01,Python Cookbook,Books,1,26.43,22.99,South,retail
+ORD-1428,2024-06-20,Monitor 27in,Electronics,5,920.2,4601.94,East,retail
+ORD-1415,2024-06-14,Foam Roller,Sports,3,71.45,211.44,South,retail
+ORD-1082,2024-01-31,USB-C Hub,Electronics,2,526.72,1049.76,,Retail
+ORD-1119,2024-02-12,Desk Lamp,Furniture,5,550.07,2755.19,East,retail
+ORD-1319,2024-05-04,Foam Roller,sports,,111.71,108.16,North,marketplace
+ORD-1347,2024-05-16,Standing Desk,furniture,1,268.36,269.97,West,online
+ORD-1291,2024-04-25,Running Jacket,Clothing,2,20.47,41.7,East,online
+ORD-1264,2024-04-12,Office Chair,Furniture,,495.58,490.78,north,retail
+ORD-1614,2024-09-05,USB-C Hub,Electronics,2,589.99,1180.18,South,retail
+ORD-1140,2024-02-21,Resistance Bands,Sports,1,95.03,98.34,NORTH,online
+ORD-1675,2024-09-29,Yoga Mat,sports,2,87.35,175.06,,
+ORD-1592,2024-08-29,Running Jacket,Clothing,5,75.1,371.58,East,Online
+ORD-1684,2024-10-02,Office Chair,Furniture,1,514.98,513.89,West,online
+ORD-1831,2024-12-02,Bookshelf,Furniture,2,303.28,602.29,North,marketplace
+ORD-1248,2024-04-05,Desk Lamp,Furniture,5,524.39,2619.45,,online
+ORD-1545,2024-08-06,Yoga Mat,Sports,4,80.88,328.4,North,retail
+ORD-1127,2024-02-16,Laptop Pro,Electronics,1,544.8,547.52,East,online
+ORD-1577,2024-08-23,Lip Balm,Beauty,4,57.45,232.16,South,online
+ORD-1746,2024-10-30,Winter Gloves,Clothing,1,39.02,41.16,NORTH,marketplace
+ORD-1786,2024-11-15,Sunscreen SPF50,beauty,,35.18,39.83,,online
+ORD-1456,2024-07-01,Yoga Pants,clothing,3,34.37,107.24,north,marketplace
+ORD-1233,2024-03-31,Bookshelf,FURNITURE,2,121.09,242.54,North,Online
+ORD-1613,2024-09-05,Yoga Pants,clothing,5,108.76,545.32,North,retail
+ORD-1490,2024-07-13,Foam Roller,Sports,5,90.02,449.68,north,Online
+ORD-1663,2024-09-26,Winter Gloves,clothing,5,60.09,301.95,South,online
+ORD-1755,2024-11-03,Office Chair,furniture,,492.21,490.65,East,marketplace
+ORD-1077,2024-01-30,Resistance Bands,Sports,4,47.39,190.76,South,retail
+ORD-1512,2024-07-23,Winter Gloves,clothing,5,102.96,516.58,West,Online
+ORD-1568,2024-08-18,Yoga Pants,Clothing,4,111.59,449.25,East,marketplace
+ORD-1358,2024-05-21,Data Science 101,Books,1,16.43,19.47,North,Online
+ORD-1080,2024-01-31, Filing Cabinet,FURNITURE,1,529.84,533.95,South,marketplace
+ORD-1766,2024-11-07,Winter Gloves,clothing,2,107.03,213.44,West,retail
+ORD-1416,2024-06-15,Foam Roller,Sports,5,84.67,418.78,West,marketplace
+ORD-1784,2024-11-14,Resistance Bands,Sports,1,145.07,142.1,North,retail
+ORD-1452,2024-06-30,Office Chair,FURNITURE,1,578.31,575.38,West,online
+ORD-1244,2024-04-04,SQL Guide,Books,1,15.34,16.26,,online
+ORD-1703,2024-10-10,Office Chair,Furniture,4,480.91,1922.62,East,online
+ORD-1117,2024-02-12,Dumbbell Set,Sports,5,157.61,783.43,North,retail
+ORD-1757,2024-11-03,Sunscreen SPF50,beauty,4,55.98,225.98,NORTH,online
+ORD-1320,2024-05-05,Office Chair,furniture,5,439.11,2190.87,West,Retail
+ORD-1463,2024-07-04,Eye Cream,beauty,4,8.58,37.8,NORTH,Retail
+ORD-1234,2024-03-31,Resistance Bands,Sports,,25.71,25.05,West,marketplace
+ORD-1368,2024-05-26,ML Fundamentals,books,5,34.55,177.33,north,retail
+ORD-1246,2024-04-05,USB-C Hub,Electronics,3,1164.63,3493.52,South,marketplace
+ORD-1334,2024-05-12,Moisturizer,beauty,,76.93,80.68,South,Online
+ORD-1247,2024-04-05,Python Cookbook,Books,1,43.44,45.55,South,online
+ORD-1298,2024-04-28,Webcam HD,Electronics,,317.73,313.79,East,online
+ORD-1583,2024-08-25,Running Jacket,clothing,1,104.58,103.08,West,marketplace
+ORD-1197,2024-03-16,Bookshelf,Furniture,1,236.59,233.26,South,marketplace
+ORD-1273,2024-04-16,Foam Roller,Sports,3,86.8,263.97,East,marketplace
+ORD-1878,2024-12-20,USB-C Hub,Electronics,2,806.53,1611.27,East,
+ORD-1448,2024-06-29,Bookshelf,Furniture,1,171.01,173.79,East,online
+ORD-1527,2024-07-28,Standing Desk,furniture,4,512.79,2046.58,East,Online
+ORD-1532,2024-08-01,Jump Rope,sports,3,65.22,191.62,South,retail
+ORD-1669,2024-09-28,Standing Desk,Furniture,5,114.35,574.33,South,marketplace
+ORD-1478,2024-07-10,Yoga Pants,clothing,2,93.43,187.06,North,online
+ORD-1835,2024-12-03,Moisturizer,Beauty,1,17.44,21.4,North,Online
+ORD-1051,2024-01-19,Standing Desk,FURNITURE,,511.98,515.8,South,Online
+ORD-1535,2024-08-03,Bookshelf,Furniture,2,33.23,62.75,NORTH,online
+ORD-1123,2024-02-15,Desk Lamp,FURNITURE,,441.96,444.02,South,online
+ORD-1742,2024-10-28,Business Analytics,Books,2,10.38,22.34,north,online
+ORD-1546,2024-08-07,Python Cookbook,Books,1,11.19,11.17,South,Online
+ORD-1425,2024-06-19,SQL Guide,Books,1,19.24,17.83,West,retail
+ORD-1743,2024-10-28,Yoga Pants,Clothing,4,87.82,348.11,East,online
+ORD-1556,2024-08-12,Business Analytics,Books,4,12.69,50.03,East,marketplace
+ORD-1895,2024-12-28,Webcam HD,Electronics,,583.94,582.77,West,retail
+ORD-1582,2024-08-25,Desk Lamp,Furniture,4,75.36,297.6,NORTH,retail
+ORD-1510,2024-07-21,USB-C Hub,Electronics,,665.35,664.01,North,marketplace
+ORD-1573,2024-08-20,Eye Cream,Beauty,4,53.12,209.46,East,retail
+ORD-1227,2024-03-28,Standing Desk,furniture,1,413.62,6208.95,West,marketplace
+ORD-1852,2024-12-11,Dumbbell Set,sports,1,108.08,104.08,South,retail
+ORD-1079,2024-01-30,Wool Socks,Clothing,,105.33,104.14,North,marketplace
+ORD-1658,2024-09-24,Face Serum,Beauty,,67.86,69.41,East,online
+ORD-1771,2024-11-08,Dumbbell Set,Sports,4,34.69,143.22,East,online
+ORD-1388,2024-06-03,Yoga Mat,Sports,1,199.62,197.92,North,marketplace
+ORD-1820,2024-11-27,Resistance Bands,sports,1,190.51,185.77,East,Online
+ORD-1735,2024-10-24,Cotton Tee,clothing,3,72.27,217.87,North,online
+ORD-1666,2024-09-26,Laptop Pro,Electronics,5,494.52,2474.04,North,online
+ORD-1032,2024-01-12,SQL Guide,Books,2,14.63,26.81,East,
+ORD-1590,2024-08-28,Dumbbell Set,Sports,1,49.48,44.88,West,online
+ORD-1385,2024-06-02,Resistance Bands,sports,2,63.65,127.47,West,online
+ORD-1218,2024-03-23,SQL Guide,Books,3,21.24,68.51,East,
+ORD-1350,2024-05-18,Desk Lamp,Furniture,2,392.44,786.11,north,Online
+ORD-1722,2024-10-19,Eye Cream,beauty,4,42.44,167.67,North,marketplace
+ORD-1589,2024-08-28,Eye Cream,Beauty,3,17.45,52.48,East,Online
+ORD-1792,2024-11-17,USB-C Hub,Electronics,,362.76,359.88,north,online
+ORD-1515,2024-07-23,Business Analytics,Books,,17.56,20.58,East,retail
+ORD-1750,2024-11-01,Business Analytics,Books,,21.93,20.43,East,online
+ORD-1789,2024-11-16,Yoga Mat,sports,5,117.52,587.62,NORTH,online
+ORD-1725,2024-10-21, Filing Cabinet,furniture,,530.24,534.59,East,retail
+ORD-1853,2024-12-11,Business Analytics,books,,24.57,23.1,north,Retail
+ORD-1318,2024-05-04,Business Analytics,Books,5,38.41,191.85,,marketplace
+ORD-1214,2024-03-22, Filing Cabinet,Furniture,3,96.05,283.48,East,marketplace
+ORD-1617,2024-09-07,Cotton Tee,Clothing,5,86.69,435.17,South,online
+ORD-1107,2024-02-09,Foam Roller,Sports,,109.44,109.54,,marketplace
+ORD-1025,2024-01-10,Cotton Tee,clothing,1,110.53,111.87,North,retail
+ORD-1599,2024-08-30,Laptop Pro,Electronics,4,302.66,1215.43,South,Online
+ORD-1152,2024-02-25,Running Jacket,clothing,4,56.84,228.2,East,online
+ORD-1295,2024-04-27,Yoga Pants,Clothing,2,42.43,87.2,West,retail
+ORD-1862,2024-12-15, Filing Cabinet,furniture,3,183.75,551.92,north,retail
+ORD-1375,2024-05-29,Winter Gloves,Clothing,3,75.75,222.45,East,online
+ORD-1163,2024-02-29,Eye Cream,Beauty,1,41.7,40.01,South,online
+ORD-1030,2024-01-11,Resistance Bands,sports,4,56.24,223.24,South,Online
+ORD-1630,2024-09-12,Running Jacket,Clothing,1,91.33,89.53,,retail
+ORD-1299,2024-04-28,Jump Rope,Sports,2,44.67,91.22,North,online
+ORD-1476,2024-07-09,Wool Socks,Clothing,,67.46,71.16,NORTH,Online
+ORD-1381,2024-05-31,Standing Desk,furniture,3,94.86,288.22,North,Online
+ORD-1661,2024-09-25,Running Jacket,Clothing,2,82.95,169.42,East,online
+ORD-1414,2024-06-14,Yoga Pants,Clothing,1,39.97,36.09,,Retail
+ORD-1341,2024-05-14,Eye Cream,Beauty,5,26.76,133.52,West,online
+ORD-1366,2024-05-25,Cotton Tee,Clothing,4,27.6,108.54,West,online
+ORD-1797,2024-11-19,Wool Socks,Clothing,4,24.0,93.39,NORTH,Online
+ORD-1615,2024-09-06,Webcam HD,Electronics,3,792.5,2379.77,South,online
+ORD-1332,2024-05-11,SQL Guide,Books,1,12.53,14.54,South,marketplace
+ORD-1024,2024-01-09,Webcam HD,Electronics,2,499.38,996.4,South,online
+ORD-1145,2024-02-23,Sunscreen SPF50,beauty,1,62.77,60.96,North,online
+ORD-1287,2024-04-24,Jump Rope,Sports,5,108.85,541.06,,online
+ORD-1433,2024-06-23,Wool Socks,Clothing,3,24.39,73.82,North,Retail
+ORD-1651,2024-09-20,Cotton Tee,clothing,4,62.1,245.26,East,online
+ORD-1072,2024-01-29,Desk Lamp,Furniture,4,102.7,409.66,North,retail
+ORD-1422,2024-06-18,Standing Desk,Furniture,2,382.14,767.91,NORTH,online
+ORD-1691,2024-10-05, Filing Cabinet,Furniture,,474.65,472.01,North,online
+ORD-1832,2024-12-02,USB-C Hub,Electronics,3,413.77,1245.3,East,Online
+ORD-1839,2024-12-04,Laptop Pro,Electronics,,1147.14,1145.43,North,online
+ORD-1378,2024-05-30,ML Fundamentals,Books,3,20.85,65.03,,online
+ORD-1578,2024-08-23,Eye Cream,Beauty,5,75.63,380.25,South,retail
+ORD-1331,2024-05-10,Bookshelf,Furniture,2,370.2,744.51,South,retail
+ORD-1206,2024-03-18,Resistance Bands,sports,2,79.44,159.09,East,marketplace
+ORD-1240,2024-04-02,Running Jacket,clothing,,115.41,115.06,North,Online
+ORD-1857,2024-12-12,Monitor 27in,Electronics,3,766.66,2297.86,East,Online
+ORD-1518,2024-07-24,Sunscreen SPF50,Beauty,,19.61,24.55,South,retail
+ORD-1114,2024-02-11,Dumbbell Set,sports,5,176.56,884.44,West,Online
+ORD-1451,2024-06-30,USB-C Hub,Electronics,2,838.85,1674.63,North,retail
+ORD-1514,2024-07-23,Yoga Mat,Sports,1,42.84,40.77,South,online
+ORD-1078,2024-01-30,Monitor 27in,Electronics,2,1101.21,2198.16,West,
+ORD-1110,2024-02-10,Business Analytics,Books,4,30.29,116.54,NORTH,Online
+ORD-1356,2024-05-21,ML Fundamentals,Books,5,40.2,200.82,South,online
+ORD-1238,2024-04-02,Laptop Pro,Electronics,2,671.76,1340.31,West,marketplace
+ORD-1608,2024-09-04,Foam Roller,Sports,2,43.54,83.31,,online
+ORD-1044,2024-01-17,Data Science 101,Books,1,46.28,42.12,South,online
+ORD-1728,2024-10-23,Office Chair,Furniture,5,205.24,1030.75,West,Online
+ORD-1548,2024-08-08,Face Serum,Beauty,1,79.33,78.17,North,retail
+ORD-1359,2024-05-22,Laptop Pro,Electronics,4,924.49,3699.1,,
+ORD-1859,2024-12-13,Running Jacket,clothing,1,63.03,58.53,NORTH,retail
+ORD-1855,2024-12-12,Running Jacket,Clothing,1,39.38,44.03,NORTH,retail
+ORD-1688,2024-10-04, Filing Cabinet,FURNITURE,,271.87,269.06,North,
+ORD-1015,2024-01-06,Cotton Tee,clothing,2,86.9,176.03,East,online
+ORD-1261,2024-04-10,Webcam HD,Electronics,5,518.22,2588.31,South,marketplace
+ORD-1900,2024-12-30,Data Science 101,Books,3,22.28,70.32,North,online
+ORD-1724,2024-10-20,Wool Socks,Clothing,4,119.03,471.84,West,Retail
+ORD-1061,2024-01-23,Foam Roller,sports,5,142.17,712.46,West,Online
+ORD-1231,2024-03-29,Moisturizer,beauty,5,17.5,86.71,NORTH,retail
+ORD-1727,2024-10-22,Foam Roller,sports,2,32.77,69.99,East,retail
+ORD-1561,2024-08-14,Bookshelf,Furniture,3,52.83,160.08,North,retail
+ORD-1041,2024-01-15,Standing Desk,furniture,2,279.18,554.0,South,retail
+ORD-1322,2024-05-05,Face Serum,beauty,5,8.93,48.34,West,online
+ORD-1587,2024-08-27,Moisturizer,Beauty,,31.27,26.98,North,retail
+ORD-1447,2024-06-28,Office Chair,Furniture,3,529.59,1590.87,South,Retail
+ORD-1871,2024-12-17,Cotton Tee,clothing,4,86.75,345.67,East,marketplace
+ORD-1513,2024-07-23,Foam Roller,Sports,1,49.85,45.65,North,
+ORD-1694,2024-10-07,Resistance Bands,Sports,3,127.49,379.31,NORTH,retail
+ORD-1187,2024-03-10,Monitor 27in,Electronics,1,1006.17,1010.35,South,Online
+ORD-1038,2024-01-14,Face Serum,Beauty,5,64.05,319.9,East,online
+ORD-1664,2024-09-26,Yoga Pants,Clothing,5,113.55,563.6,South,retail
+ORD-1116,2024-02-12,Running Jacket,clothing,2,56.26,110.94,North,
+ORD-1236,2024-04-01,Face Serum,Beauty,5,32.12,156.24,East,online
+ORD-1049,2024-01-19,Wool Socks,Clothing,,86.15,87.63,East,retail
+ORD-1665,2024-09-26,Cotton Tee,clothing,4,62.61,249.12,East,online
+ORD-1626,2024-09-10,USB-C Hub,Electronics,,761.04,761.63,East,online
+ORD-1882,2024-12-22,Python Cookbook,Books,1,41.3,41.29,,online
+ORD-1149,2024-02-24,Data Science 101,Books,5,25.45,125.05,South,
+ORD-1177,2024-03-05,ML Fundamentals,Books,,32.23,30.67,West,retail
+ORD-1639,2024-09-15,Bookshelf,furniture,2,198.4,399.23,,online
+ORD-1230,2024-03-29,Jump Rope,Sports,2,134.54,269.03,East,Online
+ORD-1129,2024-02-17,USB-C Hub,Electronics,5,715.38,3576.63,North,Retail
+ORD-1501,2024-07-17,Data Science 101,Books,,45.62,49.9,West,online
+ORD-1879,2024-12-21,Cotton Tee,clothing,4,42.55,173.34,West,Online
+ORD-1263,2024-04-11,Monitor 27in,Electronics,4,932.58,3730.25,East,online
+ORD-1280,2024-04-20,Python Cookbook,books,2,24.9,54.41,,retail

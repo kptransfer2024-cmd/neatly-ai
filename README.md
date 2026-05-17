@@ -1,6 +1,6 @@
-# Neatly — AI Data Cleaning Copilot
+# Neatly — AI E-Commerce Data Quality & Insight Copilot
 
-Upload a dataset, get automated issue detection with plain-English explanations, apply deterministic fixes with one click, and export a cleaned dataset with a full audit log.
+Upload a messy sales dataset, clean it interactively, then get deterministic KPI analysis, trend detection, anomaly alerts, driver decomposition, and an executive summary — all privacy-safe, all exportable.
 
 ---
 
@@ -10,188 +10,210 @@ Upload a dataset, get automated issue detection with plain-English explanations,
 # Install dependencies
 pip install -r requirements.txt
 
+# Optional: set API key for AI executive summary
+export ANTHROPIC_API_KEY="sk-ant-..."
+
 # Run the app
 streamlit run src/app.py
 ```
 
 Open [http://localhost:8501](http://localhost:8501) in your browser.
 
-> `ANTHROPIC_API_KEY` is **not required** for normal operation — explanations use static templates.
+> `ANTHROPIC_API_KEY` is **not required**. If absent, the executive summary uses a deterministic fallback template. All KPI metrics, charts, and anomaly detection are always fully functional.
 
 ---
 
-## Admin Dashboard
+## Test with Sample Data
 
-The analytics dashboard lets you see session activity, which detectors fire most, and what actions users take. It is **not** bundled with the public app — it's a private script you run separately.
+A realistic 900-row messy e-commerce CSV is included:
 
-### Open locally (dev sessions only)
-
-```bash
-streamlit run src/admin_app.py --server.port 8502
+```
+src/sample_data/messy_ecommerce_sales.csv
 ```
 
-Open [http://localhost:8502](http://localhost:8502). This reads `neatly_logs.jsonl` from the local filesystem and shows only sessions from your own machine.
+It contains:
+- Inconsistent category casing (`furniture`, `Furniture`, `FURNITURE`)
+- Missing values in `quantity`, `region`, `channel`
+- Duplicate rows (~2% rate)
+- Whitespace in product names
+- Numeric revenue outliers
+- A visible revenue drop in August–September (Furniture category decline)
+- 12-month date span (2024)
 
-### Open with Supabase (cloud + local sessions together)
-
-When `SUPABASE_URL` and `SUPABASE_KEY` are set, every event — from both the deployed public app and local dev — is written to a shared `neatly_events` Postgres table. The admin dashboard reads from the same table, so you see **all users in one place**.
-
-**Step 1 — Create the table** (run once in Supabase SQL Editor):
-
-```sql
-CREATE TABLE neatly_events (
-  id          BIGSERIAL PRIMARY KEY,
-  session_id  TEXT        NOT NULL,
-  event       TEXT        NOT NULL,
-  ts          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  data        JSONB       NOT NULL DEFAULT '{}'
-);
-ALTER TABLE neatly_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "anon_all" ON neatly_events FOR ALL TO anon USING (true) WITH CHECK (true);
-```
-
-**Step 2 — Set env vars** (local `.env` or Streamlit secrets):
-
-```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-key
-```
-
-**Step 3 — Run the dashboard:**
-
-```bash
-streamlit run src/admin_app.py --server.port 8502
-```
-
-> **Password gate (optional):** Add `ADMIN_PASSWORD = "your-password"` to `.streamlit/secrets.toml` to require login before viewing the dashboard.
+Upload it on the first screen to get an immediate end-to-end demo.
 
 ---
 
-## Loading Data
-
-### File upload
-CSV, TSV, JSON, Excel (.xlsx/.xls), Parquet — up to **2 million rows**.
-
-### Database (direct connection)
-Connect directly without exporting a file first.
-
-| Database | Notes |
-|---|---|
-| **MySQL Workbench (Local)** | Use `localhost` / `3306` / `root` — same credentials as your Workbench connection |
-| **MySQL (remote)** | Any remote MySQL server |
-| **PostgreSQL** | Local or cloud (Supabase, Neon, RDS) |
-| **SQLite** | Provide the local file path |
-| **SQL Server** | Requires ODBC Driver 17 installed |
-
-Row limit: up to **2 million rows** via a slider before loading.
-
----
-
-## Exporting Cleaned Data
-
-**When you loaded from a database:** the done stage leads with a pre-filled "Save to Database" tab — same host/port/user/password/database, output table defaults to `{source_table}_cleaned`. Just confirm and push.
-
-**When you uploaded a file:** CSV + JSON log downloads appear first. An optional "Save to Database" expander lets you push to any database.
-
----
-
-## Detectors
-
-| Detector | What it finds |
-|---|---|
-| Missing values | Null / NaN cells |
-| Whitespace values | Cells that are only spaces / tabs |
-| Duplicate rows | Exact duplicate records |
-| Near-duplicate rows | Fuzzy text matches (edit distance) |
-| Duplicate columns | Columns with identical values |
-| Outliers | Statistical outliers via Tukey IQR |
-| Type mismatches | Columns with mixed / wrong types |
-| Pattern violations | Values not matching expected regex patterns |
-| Out-of-range values | Numeric values outside defined bounds |
-| Format inconsistencies | Inconsistent date/phone/currency formats |
-| Constant columns | Columns with a single unique value |
-| PII detection | Emails, phone numbers, SSNs, credit cards |
-| Schema analysis | Column type inference and anomalies |
-| Range validator | Min/max constraint checks |
-
----
-
-## Project Structure
+## Workflow
 
 ```
-product/
-├── src/
-│   ├── app.py                    # Streamlit UI — main app
-│   ├── admin_app.py              # Analytics dashboard (local only)
-│   ├── orchestrator.py           # Wires detectors → explanation → transforms
-│   ├── explanation_layer.py      # Plain-English issue summaries (static templates)
-│   ├── transformation_executor.py# All data mutations (deterministic, pandas only)
-│   ├── detectors/                # 14 detector modules
-│   ├── utils/
-│   │   ├── analytics.py          # Event logging (local JSONL + Supabase)
-│   │   ├── db_ingestion.py       # SQLAlchemy database helpers
-│   │   ├── file_ingestion.py     # CSV/Excel/Parquet parsing
-│   │   └── diff_engine.py        # Before/after diff rendering
-│   ├── core/connectors/          # DB connector classes (MySQL, Postgres, S3, BigQuery)
-│   └── tests/                    # 597 tests across all modules
-├── requirements.txt
-├── CLAUDE.md                     # Development guidelines
-└── README.md                     # This file
+Upload → Diagnose → Review & Fix → Insights → Export
 ```
 
----
-
-## Running Tests
-
-```bash
-# All tests
-cd src && python -m pytest tests/ -v
-
-# Single module
-python -m pytest tests/test_missing_value_detector.py -v
-
-# With coverage
-python -m pytest tests/ --cov=. --cov-report=html
-```
-
-**597 tests, all passing.**
+1. **Upload** — CSV, TSV, JSON, Excel, Parquet, or direct database connection
+2. **Diagnose** — 16 detectors scan for missing values, duplicates, outliers, PII, format issues, and more
+3. **Review & Fix** — One-click deterministic transforms with full undo and audit log
+4. **Insights** — Automatic KPI analysis, trend detection, anomaly alerts, driver decomposition, executive summary
+5. **Export** — Download cleaned CSV + cleaning log JSON + insight report JSON
 
 ---
 
 ## Architecture
 
-All business logic lives in `detectors/` and flows through `orchestrator.py → explanation_layer.py → transformation_executor.py`. `app.py` only reads and writes `st.session_state`.
+```
+src/
+├── app.py                        # Streamlit UI — stage router
+├── orchestrator.py               # Diagnosis pipeline + insight pipeline
+├── explanation_layer.py          # Static template explanations (zero API calls)
+├── transformation_executor.py    # Deterministic pandas transforms
+├── context_interpreter.py        # Column role/domain inference
+│
+├── detectors/                    # 16 independent issue detectors
+│   ├── missing_value_detector.py
+│   ├── duplicate_detector.py
+│   ├── outlier_detector.py
+│   ├── pii_detector.py
+│   └── ...                       # (13 more)
+│
+├── insights/
+│   └── ecommerce/
+│       ├── schema_mapper.py      # Rule-based column → semantic field mapping
+│       ├── kpi_calculator.py     # Revenue, orders, AOV, units, return rate, top-N tables
+│       ├── eda_analyzer.py       # Dataset-level EDA summaries
+│       ├── trend_analyzer.py     # Period revenue trends + labels (improving/declining/flat/volatile)
+│       ├── anomaly_detector.py   # Z-score, IQR, pct-change anomalies
+│       ├── driver_analyzer.py    # Revenue change decomposition by category/product/region/channel
+│       └── insight_reporter.py   # Executive summary builder with privacy guard
+│
+├── utils/
+│   ├── privacy_guards.py         # Validates no raw rows in any external payload
+│   ├── formatting.py             # Currency/pct/number formatters for the UI
+│   └── ...                       # (8 existing utils)
+│
+├── sample_data/
+│   └── messy_ecommerce_sales.csv
+│
+└── tests/                        # 828 tests
+```
 
-**Hard rules:**
-- All data mutations are deterministic pandas/numpy — no LLM-generated code
-- No LLM calls during normal operation — explanations use static templates
-- Every transform appends to `cleaning_log`
+### Data Flow
 
----
-
-## Development
-
-```bash
-# Feature branches only — never commit to main
-git checkout -b feat/your-feature
-
-# Run tests before pushing
-cd src && python -m pytest tests/
-
-# Commit format
-git commit -m "feat: add X" # or "fix: repair Y"
+```
+User uploads CSV
+      ↓
+orchestrator.run_diagnosis(df)
+  → 16 detectors → issues[]
+  → explanation_layer.explain_issues()
+  → context_interpreter.build_column_contexts()
+  → quality_score
+      ↓
+User reviews and fixes issues (transformation_executor)
+      ↓
+orchestrator.build_executive_report(df)
+  → insights/ecommerce/schema_mapper   → semantic field mapping
+  → insights/ecommerce/kpi_calculator  → KPI aggregates
+  → insights/ecommerce/eda_analyzer    → dataset summary
+  → insights/ecommerce/trend_analyzer  → period trends
+  → insights/ecommerce/anomaly_detector → anomalies
+  → insights/ecommerce/driver_analyzer → driver decomposition
+  → insights/ecommerce/insight_reporter → executive summary
+      ↓
+Export: cleaned_data.csv + cleaning_log.json + insight_report.json
 ```
 
 ---
 
-## Dependencies
+## Privacy Guardrails
 
-| Package | Purpose |
-|---|---|
-| `streamlit` | Web UI |
-| `pandas`, `numpy` | All data operations |
-| `sqlalchemy`, `pymysql`, `psycopg2-binary` | Database connectivity |
-| `supabase` | Cloud analytics log storage |
-| `anthropic` | Claude API (optional, explanations only) |
+**Hard rule: No raw DataFrame rows are ever sent to any LLM or external service.**
 
-See `requirements.txt` for the full list.
+This is enforced in two places:
+
+### 1. `utils/privacy_guards.py`
+Called before any external API invocation:
+```python
+from utils.privacy_guards import validate_no_raw_rows
+validate_no_raw_rows(payload, context="my_operation")
+# Raises ValueError if payload contains: row_indices, raw_rows, sample_rows,
+# individual_records, or any list of >500 dicts (likely raw records)
+```
+
+### 2. `insights/ecommerce/insight_reporter.py`
+`validate_no_raw_rows_in_insight_payload(payload)` is called automatically inside `build_insight_payload()` and before every `generate_executive_summary()` API call. The AI always receives only aggregate summaries (totals, means, top-N lists, trend labels).
+
+### What the AI receives
+```json
+{
+  "kpis": { "total_revenue": 127450.0, "total_orders": 892, "average_order_value": 142.9 },
+  "trends": { "revenue_trend": { "trend_label": "declining", "latest_period": "2024-09" } },
+  "anomalies": [{ "metric": "revenue", "period": "2024-08", "severity": "high", "explanation_ready_summary": "..." }],
+  "drivers": { "overall_change": { "change": -12400.0, "change_pct": -9.7 } }
+}
+```
+
+### What the AI never receives
+- Individual row values
+- Customer IDs or names
+- Raw transaction records
+- Any column with cardinality > threshold treated as row-level data
+
+---
+
+## What the AI Does and Does Not Do
+
+| Task | Handled by | LLM involved? |
+|------|-----------|--------------|
+| Detect data quality issues | Python/pandas detectors | No |
+| Explain issues in plain English | Static templates | No |
+| Apply data transforms | Deterministic pandas | No |
+| Calculate KPIs (revenue, AOV, etc.) | pandas aggregations | No |
+| Detect trends and anomalies | Statistical methods (z-score, IQR) | No |
+| Decompose revenue drivers | pandas groupby + arithmetic | No |
+| Write executive narrative | Claude API (optional) | Yes — aggregate data only |
+
+---
+
+## How to Run Tests
+
+```bash
+# From src/ directory
+cd src
+pytest                          # All 828 tests
+pytest tests/ -v                # Verbose
+pytest tests/test_kpi_calculator.py -v    # Specific module
+pytest tests/ -k "privacy"     # Filter by name
+pytest tests/ --tb=short -q    # Summary mode
+```
+
+---
+
+## Limitations and Future Roadmap
+
+**Current limitations:**
+- Schema mapping is rule-based (column name aliases only); unusual column names may not map correctly
+- Trend analysis requires at least 4 time periods for meaningful output
+- Anomaly detection works best with ≥12 months of data
+- Driver analysis compares only the two most recent completed periods
+- Executive summary quality depends on `ANTHROPIC_API_KEY` availability
+
+**Roadmap:**
+- Interactive column re-mapping UI when auto-detection confidence is low
+- Cohort analysis (new vs. returning customers)
+- Category forecasting (next-period revenue projection)
+- Slack / email summary delivery
+- Multi-dataset comparison (month-over-month vs. year-over-year toggle)
+- PDF executive report export
+
+---
+
+## Admin Dashboard
+
+```bash
+streamlit run src/admin_app.py --server.port 8502
+```
+
+Shows session activity, detector fire rates, and user action patterns. Requires Supabase or local JSONL logs.
+
+---
+
+© 2026 Kunpeng Liu · [liukunpeng267@gmail.com](mailto:liukunpeng267@gmail.com)

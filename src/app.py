@@ -155,7 +155,8 @@ footer { display: none; }
 </script>
 """, unsafe_allow_html=True)
 
-from orchestrator import run_diagnosis
+from orchestrator import run_diagnosis, build_executive_report
+from utils.formatting import fmt_currency, fmt_pct, fmt_number, fmt_delta, severity_emoji, trend_emoji, shorten_label
 from transformation_executor import (
     cast_column,
     clip_outliers,
@@ -243,8 +244,8 @@ init_session()   # generates session_id and fires session_started once per brows
 
 def _render_stage_bar(current: str) -> None:
     """Render numbered progress stepper across all stages."""
-    stages = ['upload', 'diagnose', 'decide', 'done']
-    labels = ['Upload', 'Diagnose', 'Review', 'Done']
+    stages = ['upload', 'diagnose', 'decide', 'insights', 'done']
+    labels = ['Upload', 'Diagnose', 'Review', 'Insights', 'Done']
     current_idx = stages.index(current)
 
     steps_html = '<div class="stepper">'
@@ -669,9 +670,9 @@ def render_decide() -> None:
         _render_column_context_panel()
         if not issues:
             st.info('No issues found — your data looks clean.')
-            if st.button('Finish', key='finish_btn', type='primary'):
+            if st.button('Continue to Insights', key='finish_btn', type='primary'):
                 log_event("session_completed", n_actions=len(st.session_state["cleaning_log"]), issues_remaining=0)
-                st.session_state["stage"] = "done"
+                st.session_state["stage"] = "insights"
                 st.rerun()
         else:
             grouped = _group_issues_by_category(issues)
@@ -702,9 +703,9 @@ def render_decide() -> None:
 
             st.divider()
             col1, col2 = st.columns([3, 1])
-            if col1.button('Done Reviewing', key='done_review_btn', type='primary', use_container_width=True):
+            if col1.button('Done Reviewing — View Insights', key='done_review_btn', type='primary', use_container_width=True):
                 log_event("session_completed", n_actions=len(st.session_state["cleaning_log"]), issues_remaining=len(issues))
-                st.session_state["stage"] = "done"
+                st.session_state["stage"] = "insights"
                 st.rerun()
             if col2.button('Start Over', key='restart_decide_btn', use_container_width=True):
                 _reset_to_upload()
@@ -2149,6 +2150,290 @@ def _humanize(s: str) -> str:
     return s.replace('_', ' ').title()
 
 # ---------------------------------------------------------------------------
+# Stage: insights
+# ---------------------------------------------------------------------------
+
+def render_insights() -> None:
+    """Run and display the e-commerce insight pipeline on the cleaned DataFrame."""
+    _render_stage_bar('insights')
+
+    st.markdown(
+        '<h2 style="margin:0 0 0.25rem 0;">Sales Insights</h2>'
+        '<p style="color:var(--muted);margin:0 0 1.5rem 0;font-size:0.95rem;">'
+        'Deterministic KPI analysis on your cleaned data. AI narrative requires ANTHROPIC_API_KEY.</p>',
+        unsafe_allow_html=True,
+    )
+
+    df = st.session_state.get('df')
+    if df is None or df.empty:
+        st.warning('No data available for analysis. Please upload and clean data first.')
+        return
+
+    if 'executive_report' not in st.session_state:
+        with st.spinner('Running insight pipeline…'):
+            report = build_executive_report(df)
+        st.session_state['executive_report'] = report
+        st.session_state['schema'] = report['insights']['schema']
+        st.session_state['insights'] = report['insights']
+
+    report = st.session_state['executive_report']
+    insights = report['insights']
+    schema = insights.get('schema', {})
+    kpis = insights.get('kpis', {})
+    trends = insights.get('trends', {})
+    anomalies = insights.get('anomalies', {})
+    drivers = insights.get('drivers', {})
+    eda = insights.get('eda', {})
+    summary = report.get('executive_summary', '')
+
+    _render_schema_summary(schema)
+    st.divider()
+    _render_kpi_cards(kpis)
+    st.divider()
+    _render_trend_section(trends, kpis)
+    st.divider()
+    _render_top_performers(kpis)
+    st.divider()
+    _render_anomaly_section(anomalies)
+    st.divider()
+    _render_driver_section(drivers)
+    st.divider()
+    _render_executive_summary_section(summary)
+    st.divider()
+    _render_insights_export(df, report)
+    st.divider()
+
+    col_next, col_skip = st.columns([2, 1])
+    if col_next.button('Continue to Export', key='insights_next_btn', type='primary', use_container_width=True):
+        st.session_state['stage'] = 'done'
+        st.rerun()
+    if col_skip.button('Start Over', key='insights_restart_btn', use_container_width=True):
+        _reset_to_upload()
+        st.rerun()
+
+
+def _render_schema_summary(schema: dict) -> None:
+    """Show which columns were mapped to e-commerce semantic fields."""
+    mapped = {k: v for k, v in schema.items() if k not in ('confidence', 'missing_recommended_fields') and v}
+    missing = schema.get('missing_recommended_fields', [])
+    confidence = schema.get('confidence', {})
+
+    st.markdown('**Column Mapping**')
+    cols = st.columns(min(len(mapped), 5) or 1)
+    for i, (field, col_name) in enumerate(list(mapped.items())[:10]):
+        conf = confidence.get(field, 'low')
+        conf_color = {'high': 'var(--success)', 'medium': 'var(--warning)', 'low': 'var(--muted)'}.get(conf, 'var(--muted)')
+        cols[i % len(cols)].markdown(
+            f'<div style="padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:5px;margin-bottom:0.4rem;">'
+            f'<div style="font-size:11px;color:{conf_color};font-weight:600;text-transform:uppercase;">{field}</div>'
+            f'<div style="font-size:13px;color:#e2e8f0;">{col_name}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    if missing:
+        st.caption(f'Recommended fields not detected: {", ".join(missing)}. Results will be limited to available columns.')
+
+
+def _render_kpi_cards(kpis: dict) -> None:
+    """Display primary KPI metrics as styled cards."""
+    st.markdown('**Key Performance Indicators**')
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric('Total Revenue', fmt_currency(kpis.get('total_revenue')))
+    c2.metric('Total Orders', fmt_number(kpis.get('total_orders')))
+    c3.metric('Avg Order Value', fmt_currency(kpis.get('average_order_value')))
+    c4.metric('Unique Customers', fmt_number(kpis.get('unique_customers')))
+
+    if any(k in kpis for k in ('total_units_sold', 'return_rate', 'discount_rate', 'revenue_per_customer')):
+        c5, c6, c7, c8 = st.columns(4)
+        c5.metric('Units Sold', fmt_number(kpis.get('total_units_sold')))
+        c6.metric('Return Rate', fmt_pct(kpis.get('return_rate')))
+        c7.metric('Discount Rate', fmt_pct(kpis.get('discount_rate')))
+        c8.metric('Revenue / Customer', fmt_currency(kpis.get('revenue_per_customer')))
+
+
+def _render_trend_section(trends: dict, kpis: dict) -> None:
+    """Render revenue trend chart and trend label."""
+    rev_trend = trends.get('revenue_trend', {})
+    if not rev_trend or 'error' in rev_trend:
+        st.info('Trend analysis requires a date column and revenue column.')
+        return
+
+    label = rev_trend.get('trend_label', 'unknown')
+    st.markdown(f'**Revenue Trend** {trend_emoji(label)} `{label.upper()}`')
+
+    period_data = kpis.get('revenue_by_period', [])
+    if period_data:
+        chart_df = pd.DataFrame(period_data).set_index('period')
+        st.bar_chart(chart_df, height=220, use_container_width=True)
+
+    col1, col2 = st.columns(2)
+    if rev_trend.get('best_period'):
+        col1.metric('Best Period', rev_trend['best_period'])
+    if rev_trend.get('worst_period'):
+        col2.metric('Worst Period', rev_trend['worst_period'])
+
+    if rev_trend.get('largest_drop'):
+        d = rev_trend['largest_drop']
+        st.markdown(
+            f'<div class="neat-card sev-medium" style="margin-top:0.5rem;">'
+            f'<span style="font-size:13px;color:var(--warning);">📉 Largest drop: '
+            f'<strong>{d["pct_change"]:.1f}%</strong> in <strong>{d["period"]}</strong></span></div>',
+            unsafe_allow_html=True,
+        )
+
+    for note in rev_trend.get('notes', [])[:2]:
+        st.caption(note)
+
+
+def _render_top_performers(kpis: dict) -> None:
+    """Render top categories/products/regions/channels tables."""
+    tabs_data = [
+        ('Categories', kpis.get('top_categories_by_revenue', [])),
+        ('Products', kpis.get('top_products_by_revenue', [])),
+        ('Regions', kpis.get('top_regions_by_revenue', [])),
+        ('Channels', kpis.get('top_channels_by_revenue', [])),
+    ]
+    available = [(name, data) for name, data in tabs_data if data]
+    if not available:
+        return
+
+    st.markdown('**Top Performers by Revenue**')
+    if len(available) == 1:
+        _render_top_table(available[0][1])
+        return
+
+    tab_labels = [t[0] for t in available]
+    tabs = st.tabs(tab_labels)
+    for tab, (_, data) in zip(tabs, available):
+        with tab:
+            _render_top_table(data)
+
+
+def _render_top_table(data: list[dict]) -> None:
+    """Render a compact top-N revenue table."""
+    if not data:
+        st.caption('No data available.')
+        return
+    df = _pd.DataFrame(data)
+    df.columns = [c.replace('_', ' ').title() for c in df.columns]
+    if 'Revenue' in df.columns:
+        df['Revenue'] = df['Revenue'].apply(lambda v: fmt_currency(float(v)) if v else 'N/A')
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def _render_anomaly_section(anomalies: dict | list) -> None:
+    """Render anomaly alerts with severity badges."""
+    if isinstance(anomalies, list):
+        anomaly_list = anomalies
+    else:
+        anomaly_list = [a for v in anomalies.values() if isinstance(v, list) for a in v]
+
+    st.markdown(f'**Anomalies Detected** ({len(anomaly_list)} total)')
+    if not anomaly_list:
+        st.success('No anomalies detected.')
+        return
+
+    high = [a for a in anomaly_list if a.get('severity') == 'high']
+    if high:
+        st.warning(f'{len(high)} high-severity anomaly(s) require attention.')
+
+    for a in anomaly_list[:10]:
+        sev = a.get('severity', 'low')
+        sev_color = {'high': 'var(--danger)', 'medium': 'var(--warning)', 'low': 'var(--success)'}.get(sev, 'var(--muted)')
+        st.markdown(
+            f'<div class="neat-card sev-{sev}" style="margin-bottom:0.4rem;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            f'<span style="font-size:13px;">{severity_emoji(sev)} <strong>{a.get("metric","").replace("_"," ").title()}</strong> — {a.get("period","")}</span>'
+            f'<span class="sev-badge" style="color:{sev_color};background:transparent;">{sev.upper()}</span></div>'
+            f'<div style="font-size:12px;color:var(--muted);margin-top:0.2rem;">{a.get("explanation_ready_summary","")}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+
+def _render_driver_section(drivers: dict) -> None:
+    """Render revenue driver decomposition table."""
+    if not drivers or 'error' in drivers:
+        st.info('Driver analysis requires date and revenue columns with ≥2 time periods.')
+        return
+
+    overall = drivers.get('overall_change', {})
+    if overall and 'error' not in overall:
+        st.markdown('**Revenue Driver Analysis**')
+        change = overall.get('change', 0)
+        pct = overall.get('change_pct')
+        prev_p = overall.get('previous_period', '')
+        curr_p = overall.get('latest_period', '')
+        direction = 'increase' if change >= 0 else 'decline'
+        delta_str = f'{fmt_delta(change, "$")}' + (f' ({pct:+.1f}%)' if pct else '')
+        st.markdown(
+            f'<div class="neat-card sev-{"low" if change >= 0 else "medium"}">'
+            f'Revenue **{direction}** of {delta_str} from {prev_p} → {curr_p}</div>',
+            unsafe_allow_html=True,
+        )
+
+    for dim in ('category', 'product', 'region', 'channel'):
+        dim_drivers = drivers.get(f'drivers_by_{dim}', [])
+        if dim_drivers:
+            with st.expander(f'By {dim.title()} ({len(dim_drivers)} entries)', expanded=(dim == 'category')):
+                df = pd.DataFrame(dim_drivers)
+                df.columns = [c.replace('_', ' ').title() for c in df.columns]
+                for col in ('Previous Revenue', 'Latest Revenue', 'Absolute Change'):
+                    if col in df.columns:
+                        df[col] = df[col].apply(lambda v: fmt_currency(float(v)) if v is not None else 'N/A')
+                if 'Contribution To Total Change Pct' in df.columns:
+                    df['Contribution To Total Change Pct'] = df['Contribution To Total Change Pct'].apply(
+                        lambda v: f'{float(v):+.1f}%' if v is not None else 'N/A'
+                    )
+                st.dataframe(df, use_container_width=True, hide_index=True)
+
+    mech = drivers.get('mechanism_summary', {})
+    if mech:
+        c1, c2, c3 = st.columns(3)
+        if 'units_effect' in mech:
+            c1.metric('Units Effect', fmt_currency(mech['units_effect']))
+        if 'price_effect' in mech:
+            c2.metric('Price / AOV Effect', fmt_currency(mech['price_effect']))
+        if 'return_effect' in mech:
+            c3.metric('Return Rate Δ', fmt_pct(abs(mech['return_effect'])))
+
+
+def _render_executive_summary_section(summary: str) -> None:
+    """Render the executive summary text with a styled card."""
+    st.markdown('**Executive Summary**')
+    if not summary:
+        st.info('Summary unavailable.')
+        return
+    st.markdown(
+        f'<div class="neat-card" style="line-height:1.7;white-space:pre-wrap;">{summary}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_insights_export(df, report: dict) -> None:
+    """Provide download buttons for cleaned data and insight report."""
+    st.markdown('**Export**')
+    col1, col2 = st.columns(2)
+    csv_bytes = df.to_csv(index=False).encode('utf-8')
+    col1.download_button(
+        '📥 Download Cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv',
+        use_container_width=True,
+    )
+    report_bytes = json.dumps({
+        'kpis': report['insights']['kpis'],
+        'trends': report['insights']['trends'],
+        'anomalies': report['insights']['anomalies'],
+        'drivers': report['insights']['drivers'],
+        'executive_summary': report['executive_summary'],
+    }, indent=2, default=str).encode('utf-8')
+    col2.download_button(
+        '📊 Download Insight Report (JSON)', report_bytes, 'insight_report.json', 'application/json',
+        use_container_width=True,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Stage: done — helpers
 # ---------------------------------------------------------------------------
 
@@ -2312,7 +2597,8 @@ def _reset_to_upload() -> None:
     st.session_state['_undo_stack'] = []
     for _key in ('_upload_cache_key', '_upload_cached_df', '_db_loaded_df',
                  '_db_conn_str', '_db_tables', '_db_connected_type',
-                 '_db_source_config', '_db_source_table', '_input_source'):
+                 '_db_source_config', '_db_source_table', '_input_source',
+                 'executive_report', 'schema', 'insights'):
         st.session_state.pop(_key, None)
     st.session_state['_highlight_cols'] = []
     st.session_state['_last_action_label'] = ''
@@ -2327,6 +2613,7 @@ STAGE_RENDERERS = {
     'upload': render_upload,
     'diagnose': render_diagnose,
     'decide': render_decide,
+    'insights': render_insights,
     'done': render_done,
 }
 
