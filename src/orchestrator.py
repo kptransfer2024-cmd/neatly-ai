@@ -1,6 +1,7 @@
 """Wires detectors → explanation_layer → returns diagnosis result.
 
-Pure function: takes DataFrame, returns DiagnosisResult dict.
+Also runs ecommerce insight pipeline: schema_mapper → kpi_calculator → eda/trend/anomaly/driver.
+Pure functions: take DataFrame, return structured dicts.
 """
 import logging
 import traceback
@@ -182,3 +183,111 @@ def _extract_column_profiles(df_stats: dict) -> dict[str, Any]:
             col_name = key.replace('_stats', '')
             profiles[col_name] = df_stats[key]
     return profiles
+
+
+# ---------------------------------------------------------------------------
+# E-commerce insight pipeline
+# ---------------------------------------------------------------------------
+
+def run_ecommerce_insights(df: pd.DataFrame) -> dict[str, Any]:
+    """Run full e-commerce KPI and EDA insight pipeline on a cleaned DataFrame."""
+    from insights.ecommerce.schema_mapper import infer_ecommerce_schema
+    from insights.ecommerce.kpi_calculator import calculate_kpis, calculate_period_kpis
+    from insights.ecommerce.eda_analyzer import summarize_dataset, generic_business_eda
+    from insights.ecommerce.trend_analyzer import analyze_kpi_trends
+    from insights.ecommerce.anomaly_detector import detect_kpi_anomalies
+    from insights.ecommerce.driver_analyzer import analyze_revenue_drivers, analyze_static_drivers
+
+    schema = infer_ecommerce_schema(df)
+    kpis: dict = {}
+    period_kpis: dict = {}
+    eda: dict = {}
+    generic_eda: dict = {}
+    trends: dict = {}
+    anomalies: dict = {}
+    drivers: dict = {}
+    static_drivers: dict = {}
+
+    try:
+        kpis = calculate_kpis(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] kpi_calculator failed: %s", exc)
+
+    try:
+        period_kpis = calculate_period_kpis(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] period kpis failed: %s", exc)
+
+    try:
+        eda = summarize_dataset(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] eda_analyzer failed: %s", exc)
+
+    try:
+        generic_eda = generic_business_eda(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] generic_business_eda failed: %s", exc)
+
+    try:
+        trends = analyze_kpi_trends(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] trend_analyzer failed: %s", exc)
+
+    try:
+        anomalies = detect_kpi_anomalies(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] anomaly_detector failed: %s", exc)
+
+    try:
+        drivers = analyze_revenue_drivers(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] driver_analyzer failed: %s", exc)
+
+    # Always run static drivers — useful even when time-based fails
+    try:
+        static_drivers = analyze_static_drivers(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] static_driver_analyzer failed: %s", exc)
+
+    return {
+        "schema": schema,
+        "kpis": {**kpis, **period_kpis},
+        "eda": eda,
+        "generic_eda": generic_eda,
+        "trends": trends,
+        "anomalies": anomalies,
+        "drivers": drivers,
+        "static_drivers": static_drivers,
+    }
+
+
+def build_executive_report(df: pd.DataFrame) -> dict[str, Any]:
+    """Build the full insight payload and generate an executive summary."""
+    from insights.ecommerce.insight_reporter import build_insight_payload, generate_executive_summary
+
+    insights = run_ecommerce_insights(df)
+    try:
+        payload = build_insight_payload(
+            kpis=insights["kpis"],
+            eda=insights["eda"],
+            trends=insights["trends"],
+            anomalies=insights["anomalies"],
+            drivers=insights["drivers"],
+            static_drivers=insights.get("static_drivers"),
+            generic_eda=insights.get("generic_eda"),
+        )
+    except Exception as exc:
+        logger.error("[orchestrator] build_insight_payload failed: %s", exc)
+        payload = insights
+
+    try:
+        summary = generate_executive_summary(payload, use_ai=True)
+    except Exception as exc:
+        logger.error("[orchestrator] executive summary failed: %s", exc)
+        summary = "Executive summary unavailable. Please review the KPI metrics and charts above."
+
+    return {
+        "insights": insights,
+        "executive_summary": summary,
+        "payload": payload,
+    }

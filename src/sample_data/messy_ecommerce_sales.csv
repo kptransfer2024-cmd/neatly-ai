@@ -1,0 +1,185 @@
+Transaction ID,Customer Name,Customer ID,Purchase Date,Product Category,Product Name,Quantity,Product Price,Transaction Value,Payment Method,Region,Return Status,Churn Status
+TXN-1001,Grace Smith,CUST-0038,2024-01-21,Electronics,Wireless Mouse,2.0,235.39,470.78,Credit Card,North,Returned,Active
+TXN-1002,Alice Williams,CUST-0052,2024-01-20,Electronics,Mechanical Keyboard,5.0,99.71,498.55,Cash,East,No,Active
+TXN-1003,Alice Anderson,CUST-0052,2024-01-07,Books,Data Science 101,1.0,15.99,15.99,PayPal,East,No,Churned
+TXN-1004,David Jones,CUST-0055,2024-01-10,Beauty,Vitamin C Cream,1.0,58.3,52.88,PayPal,north,No,Active
+TXN-1005,David Williams,CUST-0035,2024-01-12,Clothing,Hoodie,3.0,55.53,166.59,Credit Card,South,No,Active
+TXN-1006,Emma Jones,CUST-0026,2024-01-21,Beauty,Lip Balm Set,1.0,66.35,66.35,Credit Card,East,FALSE,Active
+TXN-1007,Iris Thomas,CUST-0048,2024-01-11,Clothing,Running Shorts,4.0,59.56,238.24,Debit Card,South,FALSE,Active
+TXN-1008,Bob Williams,CUST-0056,2024-01-19,Furniture,Standing Desk,2.0,194.05,388.1,Credit Card,North,FALSE,Active
+TXN-1009,Iris Davis,CUST-0044,2024-01-03,Furniture,Lamp Set,4.0,389.86,1559.44,Credit Card,North,No,Churned
+TXN-1010,Emma Thomas,CUST-0056,2024-01-14,Clothing,Running Shorts,3.0,20.32,60.96,Debit Card,North,Not Returned,Active
+TXN-1011,Frank Davis,CUST-0060,2024-01-06,Beauty,Sunscreen SPF50,5.0,83.89,419.45,Credit Card,North,Not Returned,Active
+TXN-1012,Carol Davis,CUST-0036,2024-01-03,Electronics,Webcam HD,5.0,254.01,1270.05,Debit Card,West,FALSE,Active
+TXN-1013,Iris Anderson,CUST-0058,2024-01-07,  Beauty  ,Lip Balm Set,4.0,68.47,273.88,PayPal,West,Not Returned,Churned
+TXN-1014,Alice Wilson,CUST-0005,2024-01-01,Beauty,Sunscreen SPF50,2.0,32.26,66.26,Credit Card,South,Returned,Active
+TXN-1015,Grace Brown,CUST-0052,2024-01-16,Clothing,Wool Sweater,5.0,33.23,166.15,Debit Card,West,TRUE,Active
+TXN-1016,Frank Jones,CUST-0026,2024-01-14,Furniture,Lamp Set,1.0,529.2,529.2,Credit Card,North,Not Returned,Active
+TXN-1017,Iris Jones,CUST-0052,2024-01-05,Furniture,Office Chair,2.0,224.84,449.68,Credit Card,West,TRUE,Active
+TXN-1018,Grace Smith,CUST-0011,2024-01-03,Clothing,Slim Jeans,4.0,60.64,242.56,Cash,North,No,Active
+TXN-1019,Emma Brown,CUST-0013,2024-01-26,Furniture,Standing Desk,5.0,299.96,1499.8,Cash,South,FALSE,Active
+TXN-1020,Bob Williams,CUST-0033,2024-01-02,Books,Data Science 101,4.0,14.16,56.64,Debit Card,North,Returned,Active
+TXN-1021,Jack Jackson,CUST-0027,2024-01-08,Furniture,Bookshelf,5.0,569.63,2848.15,Credit Card,North,No,Active
+TXN-1022,Bob Smith,CUST-0021,2024-01-23,Books,Clean Code,2.0,23.42,46.84,PayPal,West,FALSE,Active
+TXN-1023,Emma Williams,CUST-0024,2024-01-03,Beauty,Lip Balm Set,2.0,52.94,0.99,Credit Card,South,FALSE,Active
+TXN-1024,Bob Jones,CUST-0017,2024-01-20,  Beauty  ,Face Serum,5.0,65.09,325.45,Credit Card,South,Not Returned,Active
+TXN-1025,Grace Davis,CUST-0006,2024-01-20,Clothing,Hoodie,,,121.08,PayPal,,Yes,Active
+TXN-1026,Carol Thomas,CUST-0005,2024-01-21,Books,Clean Code,5.0,43.87,219.35,Credit Card,north,Yes,Active
+TXN-1027,David Jones,CUST-0014,2024-01-05,Furniture,Office Chair,3.0,101.75,305.25,Credit Card,East,FALSE,Active
+TXN-1028,Carol Wilson,CUST-0002,2024-01-14,Beauty,Lip Balm Set,2.0,84.43,168.86,Debit Card,West,No,Active
+TXN-1029,David Anderson,CUST-0015,2024-01-28,Clothing,Hoodie,1.0,35.92,35.92,Credit Card,West,Not Returned,Active
+TXN-1030,Iris Taylor,CUST-0042,2024-01-22,Clothing,Running Shorts,1.0,52.83,52.83,PayPal,East,FALSE,Active
+TXN-1031,Jack Thomas,CUST-0028,2024-01-01,Electronics,Bluetooth Speaker,3.0,94.64,283.68,PayPal,East,TRUE,Active
+TXN-1032,Bob Wilson,CUST-0028,2024-01-02,Furniture,Bookshelf,5.0,350.36,1751.8,Debit Card,East,FALSE,Active
+TXN-1033,Grace Taylor,CUST-0013,2024-01-24,Books,Deep Work,,25.3,101.2,PayPal,South,Not Returned,Active
+TXN-1034,Henry Anderson,CUST-0030,2024-01-10,Furniture,Storage Cabinet,3.0,513.54,1540.62,Cash,East,FALSE,Active
+TXN-1035,David Williams,CUST-0015,2024-01-26,Clothing,Cotton Tee,5.0,48.38,241.9,Debit Card,East,Returned,Active
+TXN-1036,David Williams,CUST-0026,2024-01-20,Electronics,Webcam HD,5.0,153.61,768.05,Cash,West,Not Returned,Active
+TXN-1037,Carol Anderson,CUST-0030,2024-01-28,Electronics,Webcam HD,5.0,104.71,523.55,Debit Card,North,FALSE,Active
+TXN-1038,Henry Anderson,CUST-0048,2024-01-25,Furniture,Storage Cabinet,5.0,503.8,2519.0,Cash,South,Not Returned,Active
+TXN-1039,Frank Wilson,CUST-0018,2024-01-09,Beauty,Hair Mask,3.0,62.01,186.03,PayPal,South,Not Returned,Churned
+TXN-1040,Alice Brown,CUST-0027,2024-01-08,Furniture,Office Chair,1.0,447.34,447.34,PayPal,West,No,Active
+TXN-1041,Grace Thomas,CUST-0055,2024-01-19,Electronics,Mechanical Keyboard,1.0,145.1,145.1,PayPal,West,FALSE,Active
+TXN-1042,Henry Williams,CUST-0054,2024-01-08,Furniture,Office Chair,4.0,221.93,829.16,Cash,South,FALSE,Churned
+TXN-1043,Alice Davis,CUST-0012,2024-01-13,Beauty,Sunscreen SPF50,1.0,64.72,64.72,Debit Card,West,Not Returned,Active
+TXN-1044,Iris Smith,CUST-0002,2024-01-11,Furniture,Standing Desk,4.0,471.05,1884.2,Credit Card,West,No,Active
+TXN-1045,Henry Jones,CUST-0009,2024-01-03,Electronics,Wireless Mouse,2.0,287.4,574.8,Debit Card,South,Not Returned,Active
+TXN-1046,Jack Smith,CUST-0007,2024-01-09,Books,Clean Code,1.0,38.05,38.05,Debit Card,East,FALSE,Active
+TXN-1047,Jack Smith,CUST-0051,2024-01-13,Furniture,Office Chair,2.0,119.52,239.04,PayPal,North,No,Active
+TXN-1048,Henry Williams,CUST-0024,2024-01-03,Beauty,Vitamin C Cream,4.0,15.95,63.8,Credit Card,west,FALSE,Active
+TXN-1049,Jack Davis,CUST-0053,2024-01-21,BOOKS,Deep Work,5.0,46.75,233.75,Cash,West,Not Returned,Active
+TXN-1050,Henry Wilson,CUST-0002,2024-01-03,Books,The Lean Startup,4.0,22.49,89.96,Cash,East,Not Returned,Active
+TXN-1051,Grace Anderson,CUST-0016,2024-01-09,Books,Atomic Habits,3.0,49.85,149.55,Debit Card,North,Not Returned,Active
+TXN-1052,Jack Wilson,CUST-0020,2024-01-21,Furniture,Lamp Set,1.0,492.33,492.33,Cash,South,FALSE,Active
+TXN-1053,David Wilson,CUST-0008,2024-01-24,Beauty,Vitamin C Cream,4.0,41.39,165.56,PayPal,South,TRUE,Active
+TXN-1054,David Davis,CUST-0054,2024-01-23,CLOTHING,Slim Jeans,4.0,41.64,166.56,PayPal,North,Not Returned,Active
+TXN-1055,Alice Jackson,CUST-0007,2024-01-23,Beauty,Lip Balm Set,1.0,35.57,35.57,Debit Card,West,No,Active
+TXN-1056,Bob Jackson,CUST-0032,2024-01-06,Electronics,Bluetooth Speaker,4.0,285.27,1141.08,Credit Card,West,Not Returned,Active
+TXN-1057,Iris Taylor,CUST-0050,2024-01-26,Beauty,Vitamin C Cream,2.0,21.39,42.78,Cash,South,No,Active
+TXN-1058,David Davis,CUST-0041,2024-01-19,Furniture,Standing Desk,1.0,375.69,375.69,Credit Card,South,Not Returned,Active
+TXN-1059,David Davis,CUST-0003,2024-01-18,Electronics,USB-C Hub,4.0,50.67,202.68,Cash,East,FALSE,Active
+TXN-1060,Iris Brown,CUST-0008,2024-01-03,Clothing,Hoodie,5.0,98.78,493.9,Debit Card,West,No,Active
+TXN-1061,Henry Davis,CUST-0008,2024-02-03,Electronics,USB-C Hub,5.0,218.38,1091.9,PayPal,West,No,Active
+TXN-1062,David Jackson,CUST-0006,2024-02-16,Furniture,Bookshelf,4.0,344.06,1376.24,PayPal,North,Not Returned,Active
+TXN-1063,Jack Taylor,CUST-0012,2024-02-22,Books,Deep Work,2.0,12.08,24.16,Cash,East,No,Active
+TXN-1064,Henry Davis,CUST-0045,2024-02-16,Books,The Lean Startup,1.0,23.17,23.17,PayPal,West,No,Active
+TXN-1065,Iris Anderson,CUST-0043,2024-02-18,electronics,Webcam HD,3.0,63.37,190.11,Cash,North,Not Returned,Active
+TXN-1066,Henry Jones,CUST-0029,2024-02-20,Furniture,Lamp Set,,,836.34,Debit Card,,TRUE,Active
+TXN-1067,Bob Williams,CUST-0030,2024-02-08,Clothing,Hoodie,5.0,66.07,330.35,Debit Card,North,FALSE,Active
+TXN-1068,Jack Thomas,CUST-0013,2024-02-23,Books,The Lean Startup,4.0,42.15,168.6,Debit Card,West,Not Returned,Active
+TXN-1069,Emma Jackson,CUST-0047,2024-02-09,Furniture,Standing Desk,5.0,497.91,2489.55,Credit Card,East,FALSE,Active
+TXN-1070,Frank Brown,CUST-0060,2024-02-05,Furniture,Storage Cabinet,3.0,292.03,876.09,Cash,West,Not Returned,Active
+TXN-1071,Carol Anderson,CUST-0043,2024-02-08,Furniture,Bookshelf,4.0,216.0,864.0,Cash,West,Not Returned,Active
+TXN-1072,Carol Taylor,CUST-0047,2024-02-19,Books,Data Science 101,4.0,43.64,174.56,Cash,North,Not Returned,Churned
+TXN-1073,Henry Thomas,CUST-0021,2024-02-26,Books,Atomic Habits,4.0,34.14,136.56,PayPal,west,Returned,Active
+TXN-1074,Emma Smith,CUST-0011,2024-02-22,Books,Clean Code,4.0,38.82,155.28,Credit Card,West,Returned,Active
+TXN-1075,Bob Jackson,CUST-0012,2024-02-12,Furniture,Office Chair,4.0,182.14,728.56,Debit Card,South,FALSE,Active
+TXN-1076,Emma Thomas,CUST-0058,2024-02-16,Beauty,Lip Balm Set,3.0,28.52,85.56,Credit Card,West,No,Active
+TXN-1077,Henry Jones,CUST-0055,2024-02-19,Books,The Lean Startup,4.0,36.68,146.72,Debit Card,West,FALSE,Active
+TXN-1078,Emma Brown,CUST-0054,2024-02-10,Books,Data Science 101,4.0,47.57,190.28,Credit Card,West,No,Active
+TXN-1079,Henry Smith,CUST-0051,2024-02-07,Beauty,Vitamin C Cream,2.0,57.93,115.86,Credit Card,East,FALSE,Churned
+TXN-1080,Carol Davis,CUST-0054,2024-02-10,BOOKS,The Lean Startup,2.0,17.21,34.42,PayPal,East,No,Active
+TXN-1081,Iris Wilson,CUST-0055,2024-02-10,Books,Data Science 101,1.0,28.28,9850.0,Debit Card,West,Yes,Churned
+TXN-1082,David Anderson,CUST-0044,2024-02-18,Electronics,Webcam HD,3.0,125.09,375.27,PayPal,North,TRUE,Active
+TXN-1083,Carol Smith,CUST-0008,2024-02-20,Clothing,Cotton Tee,4.0,73.52,294.08,PayPal,West,No,Active
+TXN-1084,Carol Taylor,CUST-0038,2024-02-04,Electronics,USB-C Hub,2.0,239.2,478.4,PayPal,West,No,Active
+TXN-1085,Frank Thomas,CUST-0044,2024-02-09,Electronics,Bluetooth Speaker,4.0,91.8,367.2,PayPal,North,FALSE,Active
+TXN-1086,Frank Brown,CUST-0004,2024-02-13,Books,Clean Code,4.0,47.2,188.8,Debit Card,North,FALSE,Active
+TXN-1087,Carol Williams,CUST-0018,2024-02-27,Beauty,Lip Balm Set,2.0,51.9,103.8,Debit Card,North,Not Returned,Churned
+TXN-1088,Alice Williams,CUST-0017,,Electronics,USB-C Hub,2.0,47.27,94.54,Credit Card,South,FALSE,Churned
+TXN-1089,Alice Thomas,CUST-0040,2024-02-03,Furniture,Lamp Set,5.0,426.42,2132.1,Cash,South,FALSE,Active
+TXN-1090,Bob Wilson,CUST-0058,2024-02-02,furniture,Lamp Set,1.0,265.46,265.46,Cash,north,Not Returned,Churned
+TXN-1091,Jack Taylor,CUST-0033,2024-02-20,Beauty,Sunscreen SPF50,4.0,60.2,240.8,PayPal,West,TRUE,Churned
+TXN-1092,Bob Wilson,CUST-0027,2024-02-21,Beauty,Lip Balm Set,2.0,41.58,83.16,Cash,West,FALSE,Active
+TXN-1093,Carol Thomas,CUST-0052,2024-02-05,Furniture,Bookshelf,1.0,112.14,112.14,Credit Card,East,TRUE,Active
+TXN-1094,Emma Wilson,CUST-0039,2024-02-22,Electronics,Webcam HD,4.0,121.79,487.16,Credit Card,East,TRUE,Active
+TXN-1095,Emma Jackson,CUST-0049,2024-02-22,Furniture,Office Chair,3.0,458.11,1374.33,PayPal,North,No,Active
+TXN-1096,Emma Davis,CUST-0012,2024-02-25,Beauty,Sunscreen SPF50,5.0,57.75,312.51,PayPal,North,No,Churned
+TXN-1097,Iris Brown,CUST-0048,,Clothing,Wool Sweater,1.0,75.45,75.45,Credit Card,North,No,Active
+TXN-1098,Jack Smith,CUST-0011,2024-02-12,Books,Atomic Habits,5.0,39.96,199.8,Credit Card,South,No,Active
+TXN-1099,Bob Davis,CUST-0028,2024-02-14,Furniture,Storage Cabinet,3.0,272.68,818.04,Credit Card,East,FALSE,Active
+TXN-1100,Emma Davis,CUST-0049,2024-02-22,Books,Data Science 101,5.0,18.9,85.15,Debit Card,South,Not Returned,Active
+TXN-1101,Alice Taylor,CUST-0026,2024-02-14,Clothing,Slim Jeans,2.0,51.06,102.12,PayPal,North,Returned,Active
+TXN-1102,Carol Jackson,CUST-0021,2024-02-19,Furniture,Storage Cabinet,4.0,255.46,1021.84,Cash,North,FALSE,Active
+TXN-1103,Emma Wilson,CUST-0056,2024-02-03,Furniture,Bookshelf,5.0,181.74,908.7,Credit Card,West,Not Returned,Churned
+TXN-1104,Carol Davis,CUST-0007,2024-02-21,Electronics,Mechanical Keyboard,3.0,156.19,468.57,Debit Card,South,FALSE,Active
+TXN-1105,Frank Williams,CUST-0056,2024-02-25,Electronics,USB-C Hub,,253.28,1013.12,Cash,East,No,Active
+TXN-1106,Emma Jones,CUST-0024,2024-02-10,Books,Deep Work,5.0,12.69,61.26,Credit Card,north,Not Returned,Active
+TXN-1107,Henry Thomas,CUST-0039,2024-02-17,Furniture,Lamp Set,1.0,335.96,335.96,Debit Card,East,Not Returned,Active
+TXN-1108,Frank Davis,CUST-0024,2024-02-26,Books,Data Science 101,2.0,29.65,60.9,Cash,South,No,Active
+TXN-1109,Jack Williams,CUST-0047,2024-02-02,Books,Data Science 101,5.0,23.04,115.2,PayPal,East,FALSE,Active
+TXN-1110,Carol Thomas,CUST-0053,2024-02-12,Books,The Lean Startup,1.0,15.44,15.44,Cash,East,TRUE,Active
+TXN-1111,Carol Williams,CUST-0015,2024-02-12,Electronics,Bluetooth Speaker,2.0,111.95,223.9,Cash,South,Returned,Active
+TXN-1112,Carol Jackson,CUST-0011,2024-02-18,Beauty,Face Serum,5.0,56.89,284.45,Cash,South,Not Returned,Active
+TXN-1113,Iris Brown,CUST-0015,2024-02-02,Furniture,Standing Desk,2.0,379.9,759.8,PayPal,West,No,Active
+TXN-1114,David Jackson,CUST-0011,2024-02-07,Books,Deep Work,4.0,47.81,191.24,Cash,West,No,Churned
+TXN-1115,Carol Davis,CUST-0049,2024-02-16,  Books  ,Deep Work,5.0,45.91,229.55,PayPal,North,FALSE,Churned
+TXN-1116,Iris Wilson,CUST-0026,2024-02-14,Electronics,USB-C Hub,3.0,223.67,671.01,Cash,North,Not Returned,Active
+TXN-1117,Henry Williams,CUST-0019,2024-02-01,Books,Data Science 101,3.0,42.31,126.93,Debit Card,North,No,Active
+TXN-1118,Emma Brown,CUST-0050,2024-02-01,Electronics,Wireless Mouse,2.0,100.3,200.6,Cash,North,Not Returned,Active
+TXN-1119,Carol Davis,CUST-0046,2024-02-21,Beauty,Hair Mask,4.0,17.35,69.4,Credit Card,South,FALSE,Active
+TXN-1120,Iris Thomas,CUST-0034,2024-02-19,Furniture,Office Chair,1.0,374.42,374.42,PayPal,North,FALSE,Active
+TXN-1121,David Jones,CUST-0023,2024-03-13,Furniture,Lamp Set,3.0,424.9,1274.7,PayPal,North,FALSE,Active
+TXN-1122,Carol Williams,CUST-0041,2024-03-05,Electronics,Bluetooth Speaker,2.0,182.43,364.86,Cash,West,Yes,Churned
+TXN-1123,David Davis,CUST-0003,2024-03-07,Electronics,Wireless Mouse,3.0,92.81,278.43,Cash,East,Not Returned,Active
+TXN-1124,Henry Anderson,CUST-0012,2024-03-11,Furniture,Standing Desk,4.0,221.19,884.76,Cash,East,FALSE,Active
+TXN-1125,Frank Davis,CUST-0006,2024-03-03,Furniture,Storage Cabinet,2.0,430.16,860.32,PayPal,North,FALSE,Active
+TXN-1126,Alice Jones,CUST-0041,2024-03-06,Furniture,Bookshelf,3.0,329.72,989.16,Cash,East,No,Active
+TXN-1127,Jack Smith,CUST-0025,2024-03-26,Clothing,Slim Jeans,4.0,75.5,261.78,PayPal,East,FALSE,Active
+TXN-1128,Bob Smith,CUST-0016,2024-03-12,Books,Data Science 101,5.0,26.41,132.05,PayPal,East,No,Active
+TXN-1129,Bob Williams,CUST-0013,2024-03-18,Furniture,Standing Desk,2.0,321.19,642.38,PayPal,West,No,Active
+TXN-1130,Carol Williams,CUST-0055,2024-03-23,Furniture,Standing Desk,1.0,307.64,307.64,PayPal,East,FALSE,Active
+TXN-1131,Bob Jones,CUST-0040,2024-03-07,Furniture,Lamp Set,5.0,67.44,337.2,Cash,South,FALSE,Active
+TXN-1132,Iris Wilson,CUST-0044,2024-03-17,Furniture,Storage Cabinet,,,255.63,,,FALSE,Active
+TXN-1133,David Wilson,CUST-0021,2024-03-06,Clothing,Cotton Tee,5.0,74.26,371.3,Debit Card,South,FALSE,Active
+TXN-1134,Jack Williams,CUST-0038,2024-03-28,Furniture,Storage Cabinet,3.0,160.35,481.05,Credit Card,South,FALSE,Active
+TXN-1135,Jack Taylor,CUST-0050,2024-03-20,Books,Deep Work,1.0,9.92,9.92,PayPal,South,Not Returned,Active
+TXN-1136,Henry Taylor,CUST-0011,2024-03-21,Furniture,Standing Desk,4.0,238.41,953.64,Credit Card,North,Not Returned,Active
+TXN-1137,Iris Jones,CUST-0033,2024-03-05,Books,Atomic Habits,3.0,31.37,94.11,Debit Card,East,No,Churned
+TXN-1138,Carol Wilson,CUST-0056,2024-03-15,Furniture,Bookshelf,4.0,166.26,665.04,Cash,South,FALSE,Active
+TXN-1139,Henry Brown,CUST-0033,2024-03-25,Clothing,Wool Sweater,3.0,48.01,144.03,Credit Card,West,No,Churned
+TXN-1140,Emma Wilson,CUST-0057,2024-03-10,Furniture,Lamp Set,1.0,164.58,164.58,Cash,South,No,Churned
+TXN-1141,Jack Jackson,CUST-0053,2024-03-02,Beauty,Vitamin C Cream,1.0,40.67,40.67,Cash,East,Returned,Active
+TXN-1142,Alice Williams,CUST-0003,2024-03-26,Books,Atomic Habits,2.0,32.01,64.02,Cash,North,No,Active
+TXN-1143,Frank Thomas,CUST-0038,2024-03-05,Beauty,Lip Balm Set,5.0,28.51,142.55,Cash,East,FALSE,Active
+TXN-1144,Henry Davis,CUST-0039,2024-03-19,Books,Data Science 101,1.0,20.04,20.04,PayPal,North,FALSE,Active
+TXN-1145,David Smith,CUST-0053,2024-03-24,Electronics,USB-C Hub,5.0,130.36,651.8,Cash,South,FALSE,Churned
+TXN-1146,Carol Thomas,CUST-0046,2024-03-01,Furniture,Office Chair,2.0,212.21,424.42,Cash,North,No,Active
+TXN-1147,Henry Brown,CUST-0040,2024-03-16,Beauty,Lip Balm Set,5.0,35.62,178.1,PayPal,East,No,Active
+TXN-1148,Bob Jackson,CUST-0019,2024-03-08,Books,Clean Code,4.0,30.01,120.04,PayPal,East,No,Active
+TXN-1149,Henry Davis,CUST-0060,2024-03-13,Books,Clean Code,3.0,17.63,52.89,Credit Card,East,Not Returned,Active
+TXN-1150,Iris Brown,CUST-0004,2024-03-18,Books,Atomic Habits,5.0,12.89,64.45,Debit Card,South,Not Returned,Churned
+TXN-1151,Henry Anderson,CUST-0042,2024-03-11,Furniture,Office Chair,5.0,59.54,297.7,Debit Card,West,No,Active
+TXN-1152,Carol Smith,CUST-0027,2024-03-21,Electronics,Wireless Mouse,2.0,153.41,306.82,Credit Card,South,No,Active
+TXN-1153,Iris Thomas,CUST-0030,2024-03-06,Books,Data Science 101,5.0,17.88,89.4,PayPal,East,Not Returned,Active
+TXN-1154,Frank Davis,CUST-0048,2024-03-15,Furniture,Bookshelf,4.0,181.41,725.64,Debit Card,North,Not Returned,Active
+TXN-1155,Frank Brown,CUST-0031,2024-03-28,Furniture,Storage Cabinet,4.0,180.38,721.52,Debit Card,South,Yes,Active
+TXN-1156,Bob Anderson,CUST-0043,2024-03-25,Books,Atomic Habits,5.0,26.67,135.14,Debit Card,North,No,Active
+TXN-1157,Henry Jackson,CUST-0010,2024-03-23,Books,Atomic Habits,2.0,20.02,40.04,Debit Card,West,FALSE,Active
+TXN-1158,Frank Jones,CUST-0034,2024-03-16,Beauty,Lip Balm Set,5.0,51.94,259.7,Credit Card,West,Not Returned,Churned
+TXN-1159,David Jackson,CUST-0044,2024-03-18,Furniture,Storage Cabinet,3.0,113.7,341.1,Cash,North,FALSE,Active
+TXN-1160,Emma Smith,CUST-0026,2024-03-02,Furniture,Lamp Set,1.0,228.63,228.63,PayPal,North,FALSE,Churned
+TXN-1161,Grace Williams,CUST-0019,2024-03-14,Books,Deep Work,1.0,39.42,39.42,Cash,North,FALSE,Active
+TXN-1162,Carol Thomas,CUST-0008,2024-03-21,Furniture,Lamp Set,4.0,225.53,902.12,Debit Card,East,Not Returned,Active
+TXN-1163,Henry Wilson,CUST-0016,2024-03-08,Electronics,Bluetooth Speaker,5.0,119.34,596.7,Cash,South,Not Returned,Active
+TXN-1164,Alice Anderson,CUST-0039,2024-03-24,Furniture,Lamp Set,1.0,287.83,287.83,Credit Card,North,FALSE,Active
+TXN-1165,Jack Wilson,CUST-0053,2024-03-08,Electronics,USB-C Hub,1.0,133.16,133.16,PayPal,South,FALSE,Active
+TXN-1166,Henry Smith,CUST-0036,2024-03-08,Books,Deep Work,3.0,15.48,46.44,Debit Card,West,FALSE,Active
+TXN-1167,David Davis,CUST-0055,2024-03-26,Furniture,Lamp Set,3.0,210.45,631.35,Cash,South,Not Returned,Active
+TXN-1168,Bob Anderson,CUST-0022,2024-03-02,Beauty,Hair Mask,2.0,40.89,8200.0,PayPal,South,Not Returned,Active
+TXN-1169,Frank Davis,CUST-0014,2024-03-27,Furniture,Lamp Set,5.0,309.82,1344.92,Debit Card,West,Not Returned,Active
+TXN-1170,Frank Davis,CUST-0036,2024-03-07,Electronics,Webcam HD,5.0,200.6,1003.0,Cash,South,FALSE,Active
+TXN-1171,Frank Taylor,CUST-0024,2024-03-10,Books,The Lean Startup,4.0,23.07,92.28,PayPal,South,Returned,Active
+TXN-1172,Grace Jackson,CUST-0015,2024-03-01,Books,Deep Work,4.0,26.57,106.28,Debit Card,East,No,Active
+TXN-1173,Iris Anderson,CUST-0009,2024-03-22,Furniture,Lamp Set,4.0,419.46,1677.84,PayPal,South,FALSE,Active
+TXN-1174,David Jones,CUST-0054,2024-03-02,Furniture,Bookshelf,1.0,411.48,411.48,Cash,South,Not Returned,Active
+TXN-1175,Iris Davis,CUST-0002,2024-03-15,Furniture,Storage Cabinet,4.0,399.33,1570.25,Cash,North,No,Churned
+TXN-1176,Iris Davis,CUST-0040,2024-03-27,Furniture,Office Chair,1.0,97.67,97.67,Debit Card,South,No,Active
+TXN-1177,Grace Taylor,CUST-0006,2024-03-03,Books,The Lean Startup,2.0,26.13,52.26,Credit Card,North,No,Churned
+TXN-1178,David Jackson,CUST-0015,2024-03-01,Furniture,Lamp Set,3.0,299.05,897.15,Credit Card,North,Not Returned,Active
+TXN-1179,Jack Williams,CUST-0014,2024-03-22,Books,Deep Work,2.0,29.02,58.04,PayPal,North,FALSE,Active
+TXN-1180,Carol Jones,CUST-0049,2024-03-03,Furniture,Office Chair,,,1079.08,,,No,Churned
+TXN-1117,Henry Williams,CUST-0019,2024-02-01,Books,Data Science 101,3.0,42.31,126.93,Debit Card,North,No,Active
+TXN-1113,Iris Brown,CUST-0015,2024-02-02,Furniture,Standing Desk,2.0,379.9,759.8,PayPal,West,No,Active
+TXN-1100,Emma Davis,CUST-0049,2024-02-22,Books,Data Science 101,,,85.15,,,Not Returned,Active
+TXN-1162,Carol Thomas,CUST-0008,2024-03-21,Furniture,Lamp Set,4.0,225.53,902.12,Debit Card,East,Not Returned,Active
