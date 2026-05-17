@@ -108,3 +108,73 @@ def test_build_insight_payload_validates_on_construction():
     bad_kpis = {"total_revenue": 100, "row_indices": [0, 1, 2, 3]}
     with pytest.raises(ValueError, match="blocked key"):
         build_insight_payload(bad_kpis, {}, {}, [], {})
+
+
+# ---------------------------------------------------------------------------
+# Static drivers and generic EDA in payload
+# ---------------------------------------------------------------------------
+
+_STATIC_DRIVERS = {
+    "static_by_category": [
+        {"value": "Electronics", "count": 10, "total_revenue": 5000.0, "return_rate": 0.1},
+        {"value": "Furniture", "count": 5, "total_revenue": 2000.0, "return_rate": 0.2},
+    ],
+    "dimensions_analyzed": ["category"],
+    "concentration_warning": None,
+    "mode": "static",
+}
+
+_GENERIC_EDA = {
+    "overall_return_rate": 0.12,
+    "overall_churn_rate": 0.08,
+    "numeric_correlations": [{"col_a": "revenue", "col_b": "quantity", "correlation": 0.75}],
+}
+
+
+def test_payload_includes_static_drivers():
+    payload = build_insight_payload(
+        _GOOD_KPIS, _GOOD_EDA, _GOOD_TRENDS, _GOOD_ANOMALIES, _GOOD_DRIVERS,
+        static_drivers=_STATIC_DRIVERS,
+    )
+    assert "static_drivers" in payload
+    assert payload["static_drivers"]["mode"] == "static"
+
+
+def test_payload_includes_generic_eda():
+    payload = build_insight_payload(
+        _GOOD_KPIS, _GOOD_EDA, _GOOD_TRENDS, _GOOD_ANOMALIES, _GOOD_DRIVERS,
+        generic_eda=_GENERIC_EDA,
+    )
+    assert "generic_eda" in payload
+    assert "overall_return_rate" in payload["generic_eda"]
+
+
+def test_fallback_summary_includes_static_drivers_section():
+    payload = build_insight_payload(
+        _GOOD_KPIS, _GOOD_EDA, _GOOD_TRENDS, [], _GOOD_DRIVERS,
+        static_drivers=_STATIC_DRIVERS,
+    )
+    summary = generate_fallback_summary(payload)
+    assert "Segment" in summary or "Electronics" in summary
+
+
+def test_fallback_summary_includes_generic_eda_section():
+    payload = build_insight_payload(
+        _GOOD_KPIS, _GOOD_EDA, _GOOD_TRENDS, [], {},
+        generic_eda=_GENERIC_EDA,
+    )
+    summary = generate_fallback_summary(payload)
+    assert "return rate" in summary.lower() or "churn" in summary.lower()
+
+
+def test_fallback_no_dollar_signs():
+    payload = build_insight_payload(_GOOD_KPIS, _GOOD_EDA, _GOOD_TRENDS, _GOOD_ANOMALIES, _GOOD_DRIVERS)
+    summary = generate_fallback_summary(payload)
+    assert "$" not in summary, "Dollar signs must not appear in fallback summary"
+
+
+def test_revenue_provenance_in_limitations():
+    kpis_with_source = {**_GOOD_KPIS, "revenue_source_column": "Transaction Value", "revenue_label": "Total Transaction Value"}
+    payload = build_insight_payload(kpis_with_source, _GOOD_EDA, _GOOD_TRENDS, [], {})
+    summary = generate_fallback_summary(payload)
+    assert "Transaction Value" in summary

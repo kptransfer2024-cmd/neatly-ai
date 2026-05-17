@@ -106,3 +106,66 @@ def test_empty_df_does_not_crash():
     df = pd.DataFrame(columns=["date", "revenue", "order_id"])
     kpis = calculate_kpis(df, _SCHEMA)
     assert isinstance(kpis, dict)
+
+
+# ---------------------------------------------------------------------------
+# New tests: Transaction Value column, labels, churn, payment methods
+# ---------------------------------------------------------------------------
+
+def test_revenue_label_and_source_column():
+    df = pd.DataFrame({
+        "Transaction Value": [100.0, 200.0],
+        "order_id": ["O1", "O2"],
+    })
+    schema = {k: None for k in _SCHEMA}
+    schema["revenue"] = "Transaction Value"
+    schema["order_id"] = "order_id"
+    kpis = calculate_kpis(df, schema)
+    assert "revenue_label" in kpis
+    assert "revenue_source_column" in kpis
+    assert kpis["revenue_source_column"] == "Transaction Value"
+    assert "transaction" in kpis["revenue_label"].lower() or "revenue" in kpis["revenue_label"].lower()
+
+
+def test_transaction_value_computes_correctly():
+    df = pd.DataFrame({
+        "Transaction Value": [150.0, 250.0, 100.0],
+        "order_id": ["O1", "O2", "O3"],
+    })
+    schema = {k: None for k in _SCHEMA}
+    schema["revenue"] = "Transaction Value"
+    schema["order_id"] = "order_id"
+    kpis = calculate_kpis(df, schema)
+    assert kpis["total_revenue"] == pytest.approx(500.0)
+
+
+def test_churn_rate_computed():
+    df = _base_df().copy()
+    df["churn_status"] = ["Churned", "Active", "Churned", "Active"]
+    schema = {**_SCHEMA, "churn_flag": "churn_status"}
+    kpis = calculate_kpis(df, schema)
+    assert "churn_rate" in kpis
+    assert kpis["churn_rate"] == pytest.approx(0.5)
+
+
+def test_churn_rate_missing_column_skips():
+    df = _base_df()
+    schema = {**_SCHEMA, "churn_flag": "nonexistent"}
+    kpis = calculate_kpis(df, schema)
+    assert "churn_rate" not in kpis
+
+
+def test_top_payment_methods_by_revenue():
+    df = _base_df().copy()
+    df["payment"] = ["Credit Card", "Cash", "Credit Card", "Debit"]
+    schema = {**_SCHEMA, "payment_method": "payment"}
+    kpis = calculate_kpis(df, schema)
+    assert "top_payment_methods_by_revenue" in kpis
+    top = kpis["top_payment_methods_by_revenue"]
+    assert len(top) >= 3
+    # _top_by_revenue uses the actual column name as the key
+    dim_key = [k for k in top[0] if k != "revenue"][0]
+    # All three payment methods must appear
+    values = {row[dim_key] for row in top}
+    assert "Credit Card" in values
+    assert "Cash" in values

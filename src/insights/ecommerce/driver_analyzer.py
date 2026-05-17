@@ -1,9 +1,19 @@
-"""Revenue driver decomposition by dimension (category/product/region/channel)."""
+"""Revenue driver decomposition — time-based and static modes.
+
+Time-based: requires date + revenue + ≥2 completed periods.
+Static: works with any available dimension + metric, no date required.
+"""
 from __future__ import annotations
 
 import pandas as pd
 import numpy as np
 
+_TRUE_VALS = frozenset({"1", "true", "yes", "returned", "refund", "y", "churned"})
+
+
+# ---------------------------------------------------------------------------
+# Time-based driver analysis (requires date + revenue)
+# ---------------------------------------------------------------------------
 
 def analyze_revenue_drivers(df: pd.DataFrame, schema: dict, period: str = "M") -> dict:
     """Compare latest vs previous period and decompose revenue change by all dimensions."""
@@ -14,7 +24,7 @@ def analyze_revenue_drivers(df: pd.DataFrame, schema: dict, period: str = "M") -
     result: dict = {"overall_change": overall}
     prev_mask, curr_mask = _period_masks(df, schema, period)
 
-    for dim_field in ("category", "product", "region", "channel"):
+    for dim_field in ("category", "product", "region", "channel", "payment_method"):
         dim_col = schema.get(dim_field)
         if dim_col and dim_col in df.columns:
             drivers = decompose_revenue_change_by_dimension(df, schema, dim_field, period)
@@ -87,6 +97,113 @@ def decompose_revenue_change_by_dimension(
     }
 
 
+# ---------------------------------------------------------------------------
+# Static driver analysis (no date required)
+# ---------------------------------------------------------------------------
+
+def analyze_static_drivers(df: pd.DataFrame, schema: dict) -> dict:
+    """Identify top performers and concentration by available dimensions and metrics.
+
+    Does NOT require a date column. Works with any dimension + revenue/quantity.
+    Returns per-dimension top-value tables ranked by revenue, plus flag rates.
+    """
+    rev_col = schema.get("revenue")
+    qty_col = schema.get("quantity")
+    ret_col = schema.get("return_flag")
+    churn_col = schema.get("churn_flag")
+
+    has_revenue = bool(rev_col and rev_col in df.columns)
+    has_qty = bool(qty_col and qty_col in df.columns)
+
+    if not has_revenue and not has_qty:
+        return {"error": "no revenue or quantity column available for static analysis"}
+
+    result: dict = {}
+    dimensions_analyzed: list[str] = []
+
+    for dim_field in ("category", "product", "region", "channel", "payment_method"):
+        dim_col = schema.get(dim_field)
+        if not dim_col or dim_col not in df.columns:
+            continue
+        summary = _static_dimension_table(
+            df, dim_col, rev_col, qty_col, ret_col, churn_col
+        )
+        if summary:
+            result[f"static_by_{dim_field}"] = summary
+            dimensions_analyzed.append(dim_field)
+
+    if not result:
+        return {"error": "no usable dimensions found for static analysis"}
+
+    result["dimensions_analyzed"] = dimensions_analyzed
+    result["mode"] = "static"
+
+    # Concentration: which single category drives >50% of total revenue
+    if has_revenue and "static_by_category" in result:
+        totals = [(r["value"], r.get("total_revenue", 0)) for r in result["static_by_category"]]
+        grand_total = sum(v for _, v in totals)
+        if grand_total > 0:
+            top_name, top_val = max(totals, key=lambda x: x[1])
+            top_pct = top_val / grand_total * 100
+            result["concentration_warning"] = (
+                f"'{top_name}' accounts for {top_pct:.1f}% of total revenue."
+                if top_pct > 40 else None
+            )
+
+    return result
+
+
+def _static_dimension_table(
+    df: pd.DataFrame,
+    dim_col: str,
+    rev_col: str | None,
+    qty_col: str | None,
+    ret_col: str | None,
+    churn_col: str | None,
+    max_vals: int = 10,
+) -> list[dict]:
+    """Return per-dimension-value aggregate stats (no date required)."""
+    clean = df[dim_col].astype(str).str.strip().str.title()
+    unique_vals = [v for v in clean.unique() if v not in ("Nan", "None", "")]
+    if len(unique_vals) > 50:
+        return []  # skip high-cardinality dimensions
+
+    rows: list[dict] = []
+    for val in unique_vals:
+        mask = clean == val
+        row: dict = {"value": val, "count": int(mask.sum())}
+        if rev_col and rev_col in df.columns:
+            rev = pd.to_numeric(df.loc[mask, rev_col], errors="coerce")
+            row["total_revenue"] = round(float(rev.sum()), 2)
+            row["avg_revenue"] = round(float(rev.mean()), 2) if rev.notna().any() else None
+        if qty_col and qty_col in df.columns:
+            qty = pd.to_numeric(df.loc[mask, qty_col], errors="coerce")
+            row["total_units"] = float(qty.sum())
+        if ret_col and ret_col in df.columns:
+            row["return_rate"] = round(float(_flag_series(df.loc[mask, ret_col]).mean()), 4)
+        if churn_col and churn_col in df.columns:
+            row["churn_rate"] = round(float(_flag_series(df.loc[mask, churn_col]).mean()), 4)
+        rows.append(row)
+
+    # Sort by total_revenue desc, else count desc
+    if rows and "total_revenue" in rows[0]:
+        rows.sort(key=lambda x: x.get("total_revenue", 0), reverse=True)
+    else:
+        rows.sort(key=lambda x: x["count"], reverse=True)
+
+    return rows[:max_vals]
+
+
+def _flag_series(series: pd.Series) -> pd.Series:
+    if series.dtype == "bool":
+        return series
+    return series.astype(str).str.lower().str.strip().isin(_TRUE_VALS)
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers for time-based analysis
+# ---------------------------------------------------------------------------
+
 def _overall_change(df: pd.DataFrame, schema: dict, period: str) -> dict:
     """Compute aggregate revenue change between last two completed periods."""
     date_col = schema.get("date")
@@ -136,7 +253,9 @@ def _period_masks(df: pd.DataFrame, schema: dict, period: str):
 
 def _completed_periods(periods: pd.Series) -> list:
     """Return sorted list of unique completed (non-current) periods."""
-    now_period = pd.Timestamp.now().to_period(periods.iloc[0].freqstr if len(periods) > 0 else "M")
+    if len(periods) == 0:
+        return []
+    now_period = pd.Timestamp.now().to_period(periods.iloc[0].freqstr)
     unique = sorted(periods.unique())
     return [p for p in unique if p < now_period]
 
@@ -161,17 +280,14 @@ def _mechanism_summary(
         curr_qty = pd.to_numeric(df.loc[curr_mask, qty_col], errors="coerce").sum()
         prev_aov = prev_rev / prev_qty if prev_qty > 0 else 0.0
         curr_aov = curr_rev / curr_qty if curr_qty > 0 else 0.0
-        units_effect = round(float((curr_qty - prev_qty) * prev_aov), 2)
-        price_effect = round(float((curr_aov - prev_aov) * curr_qty), 2)
-        result["units_effect"] = units_effect
-        result["price_effect"] = price_effect
+        result["units_effect"] = round(float((curr_qty - prev_qty) * prev_aov), 2)
+        result["price_effect"] = round(float((curr_aov - prev_aov) * curr_qty), 2)
 
     if ret_col and ret_col in df.columns:
-        true_vals = {"1", "true", "yes", "returned", "refund", "y"}
-        returns = df[ret_col].astype(str).str.lower().str.strip().isin(true_vals)
-        prev_ret = returns[prev_mask].mean() if prev_mask is not None else None
-        curr_ret = returns[curr_mask].mean() if curr_mask is not None else None
+        returns = _flag_series(df[ret_col])
+        prev_ret = float(returns[prev_mask].mean()) if prev_mask is not None else None
+        curr_ret = float(returns[curr_mask].mean()) if curr_mask is not None else None
         if prev_ret is not None and curr_ret is not None:
-            result["return_effect"] = round(float(curr_ret - prev_ret), 4)
+            result["return_effect"] = round(curr_ret - prev_ret, 4)
 
     return result

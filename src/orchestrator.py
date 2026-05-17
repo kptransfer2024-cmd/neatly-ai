@@ -193,18 +193,20 @@ def run_ecommerce_insights(df: pd.DataFrame) -> dict[str, Any]:
     """Run full e-commerce KPI and EDA insight pipeline on a cleaned DataFrame."""
     from insights.ecommerce.schema_mapper import infer_ecommerce_schema
     from insights.ecommerce.kpi_calculator import calculate_kpis, calculate_period_kpis
-    from insights.ecommerce.eda_analyzer import summarize_dataset
+    from insights.ecommerce.eda_analyzer import summarize_dataset, generic_business_eda
     from insights.ecommerce.trend_analyzer import analyze_kpi_trends
     from insights.ecommerce.anomaly_detector import detect_kpi_anomalies
-    from insights.ecommerce.driver_analyzer import analyze_revenue_drivers
+    from insights.ecommerce.driver_analyzer import analyze_revenue_drivers, analyze_static_drivers
 
     schema = infer_ecommerce_schema(df)
     kpis: dict = {}
     period_kpis: dict = {}
     eda: dict = {}
+    generic_eda: dict = {}
     trends: dict = {}
     anomalies: dict = {}
     drivers: dict = {}
+    static_drivers: dict = {}
 
     try:
         kpis = calculate_kpis(df, schema)
@@ -222,6 +224,11 @@ def run_ecommerce_insights(df: pd.DataFrame) -> dict[str, Any]:
         logger.error("[orchestrator] eda_analyzer failed: %s", exc)
 
     try:
+        generic_eda = generic_business_eda(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] generic_business_eda failed: %s", exc)
+
+    try:
         trends = analyze_kpi_trends(df, schema)
     except Exception as exc:
         logger.error("[orchestrator] trend_analyzer failed: %s", exc)
@@ -236,13 +243,21 @@ def run_ecommerce_insights(df: pd.DataFrame) -> dict[str, Any]:
     except Exception as exc:
         logger.error("[orchestrator] driver_analyzer failed: %s", exc)
 
+    # Always run static drivers — useful even when time-based fails
+    try:
+        static_drivers = analyze_static_drivers(df, schema)
+    except Exception as exc:
+        logger.error("[orchestrator] static_driver_analyzer failed: %s", exc)
+
     return {
         "schema": schema,
         "kpis": {**kpis, **period_kpis},
         "eda": eda,
+        "generic_eda": generic_eda,
         "trends": trends,
         "anomalies": anomalies,
         "drivers": drivers,
+        "static_drivers": static_drivers,
     }
 
 
@@ -258,6 +273,8 @@ def build_executive_report(df: pd.DataFrame) -> dict[str, Any]:
             trends=insights["trends"],
             anomalies=insights["anomalies"],
             drivers=insights["drivers"],
+            static_drivers=insights.get("static_drivers"),
+            generic_eda=insights.get("generic_eda"),
         )
     except Exception as exc:
         logger.error("[orchestrator] build_insight_payload failed: %s", exc)

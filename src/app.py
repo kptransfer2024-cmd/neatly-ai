@@ -202,6 +202,7 @@ from code_editor import code_editor
 from utils.analytics import init_session, log_event
 from utils.context_summary import summarize_data_context
 from utils.session_state import init_state
+from utils.pdf_export import generate_executive_pdf
 
 load_dotenv()
 
@@ -2157,10 +2158,45 @@ def render_insights() -> None:
     """Run and display the e-commerce insight pipeline on the cleaned DataFrame."""
     _render_stage_bar('insights')
 
+    # Inject insights-specific CSS
+    st.markdown("""
+    <style>
+    .ins-section-title {
+        font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em;
+        text-transform: uppercase; color: var(--muted);
+        margin: 0 0 0.9rem 0; padding: 0.4rem 0.75rem;
+        border-left: 3px solid #22c55e;
+        border-bottom: 1px solid var(--border);
+    }
+    .ins-mapping-card {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--border);
+        border-radius: 6px;
+        padding: 0.55rem 0.75rem;
+        margin-bottom: 0.4rem;
+        transition: border-color 0.2s;
+    }
+    .ins-mapping-card.conf-high  { border-left-color: #22c55e; }
+    .ins-mapping-card.conf-medium { border-left-color: #f59e0b; }
+    .ins-mapping-card.conf-low   { border-left-color: #6b7280; }
+    .ins-field-role  { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.15rem; }
+    .ins-field-col   { font-size: 0.9rem; color: #e2e8f0; font-weight: 500; }
+    .ins-field-meta  { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+    .ins-conf-bar    { height: 3px; border-radius: 2px; margin-top: 0.35rem; background: var(--border); }
+    .ins-conf-fill   { height: 3px; border-radius: 2px; }
+    .ins-kpi-label   { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
+    .ins-avail-box   { border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.9rem; margin-bottom: 0.5rem; font-size: 0.85rem; }
+    .ins-avail-box.ok   { border-color: #22c55e22; background: #22c55e0a; }
+    .ins-avail-box.warn { border-color: #f59e0b22; background: #f59e0b0a; }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown(
-        '<h2 style="margin:0 0 0.25rem 0;">Sales Insights</h2>'
-        '<p style="color:var(--muted);margin:0 0 1.5rem 0;font-size:0.95rem;">'
-        'Deterministic KPI analysis on your cleaned data. AI narrative requires ANTHROPIC_API_KEY.</p>',
+        '<h2 style="margin:0 0 0.2rem 0;">Sales Insights</h2>'
+        '<p style="color:var(--muted);margin:0 0 1.25rem 0;font-size:0.9rem;">'
+        'Deterministic KPI analysis on your cleaned data. '
+        'AI narrative is available when <code>ANTHROPIC_API_KEY</code> is set.</p>',
         unsafe_allow_html=True,
     )
 
@@ -2176,31 +2212,80 @@ def render_insights() -> None:
         st.session_state['schema'] = report['insights']['schema']
         st.session_state['insights'] = report['insights']
 
-    report = st.session_state['executive_report']
-    insights = report['insights']
-    schema = insights.get('schema', {})
-    kpis = insights.get('kpis', {})
-    trends = insights.get('trends', {})
-    anomalies = insights.get('anomalies', {})
-    drivers = insights.get('drivers', {})
-    eda = insights.get('eda', {})
-    summary = report.get('executive_summary', '')
+    report         = st.session_state['executive_report']
+    insights       = report['insights']
+    schema         = insights.get('schema', {})
+    kpis           = insights.get('kpis', {})
+    trends         = insights.get('trends', {})
+    anomalies      = insights.get('anomalies', {})
+    drivers        = insights.get('drivers', {})
+    static_drivers = insights.get('static_drivers', {})
+    eda            = insights.get('eda', {})
+    summary        = report.get('executive_summary', '')
 
-    _render_schema_summary(schema)
+    # ── 1. Snapshot strip ────────────────────────────────────────────────────
+    _render_snapshot_bar(kpis, trends, anomalies, eda)
     st.divider()
-    _render_kpi_cards(kpis)
+
+    # ── 2. KPI Metrics ───────────────────────────────────────────────────────
+    _render_kpi_cards(kpis, schema)
     st.divider()
-    _render_trend_section(trends, kpis)
+
+    # ── 3. Performance tabs: Trend | Anomalies ───────────────────────────────
+    anom_n = _count_anomalies(anomalies)
+    tab_trend, tab_anom = st.tabs([
+        '📈 Revenue Trend',
+        f'⚠️ Anomalies ({anom_n})' if anom_n else '⚠️ Anomalies',
+    ])
+    with tab_trend:
+        _render_trend_section(trends, kpis)
+    with tab_anom:
+        _render_anomaly_section(anomalies)
     st.divider()
-    _render_top_performers(kpis)
-    st.divider()
-    _render_anomaly_section(anomalies)
-    st.divider()
-    _render_driver_section(drivers)
-    st.divider()
+
+    # ── 4. Analysis tabs: Drivers | Segments | Top Performers ────────────────
+    has_time_drivers = bool(drivers and 'error' not in drivers and 'overall_change' in drivers)
+    has_static       = bool(static_drivers and 'error' not in static_drivers and
+                            static_drivers.get('dimensions_analyzed'))
+    has_top = any(kpis.get(k) for k in (
+        'top_categories_by_revenue', 'top_products_by_revenue',
+        'top_regions_by_revenue', 'top_channels_by_revenue',
+    ))
+
+    analysis_tabs_spec = []
+    if has_time_drivers:
+        analysis_tabs_spec.append(('🔍 Period Drivers', 'period'))
+    if has_static:
+        analysis_tabs_spec.append(('📊 Segments', 'segments'))
+    if has_top:
+        analysis_tabs_spec.append(('🏆 Top Performers', 'top'))
+
+    if analysis_tabs_spec:
+        analysis_tabs = st.tabs([t[0] for t in analysis_tabs_spec])
+        for tab_widget, (_, tab_key) in zip(analysis_tabs, analysis_tabs_spec):
+            with tab_widget:
+                if tab_key == 'period':
+                    _render_driver_section(drivers)
+                elif tab_key == 'segments':
+                    _render_static_driver_section(static_drivers, kpis)
+                elif tab_key == 'top':
+                    _render_top_performers(kpis)
+        st.divider()
+    elif not has_time_drivers:
+        # Graceful fallback: show the unavailability message once
+        _render_driver_section(drivers)
+        st.divider()
+
+    # ── 5. Executive Summary ─────────────────────────────────────────────────
     _render_executive_summary_section(summary)
     st.divider()
+
+    # ── 6. Export ────────────────────────────────────────────────────────────
     _render_insights_export(df, report)
+
+    # ── 7. Column Mapping (collapsed) ────────────────────────────────────────
+    with st.expander('🔎 Column Mapping Details', expanded=False):
+        _render_schema_summary(schema)
     st.divider()
 
     col_next, col_skip = st.columns([2, 1])
@@ -2212,51 +2297,235 @@ def render_insights() -> None:
         st.rerun()
 
 
+def _count_anomalies(anomalies: dict | list) -> int:
+    """Return total anomaly count regardless of input shape."""
+    if isinstance(anomalies, list):
+        return len(anomalies)
+    return sum(len(v) for v in (anomalies or {}).values() if isinstance(v, list))
+
+
+def _render_snapshot_bar(kpis: dict, trends: dict, anomalies: dict | list, eda: dict) -> None:
+    """At-a-glance status strip: trend direction, anomaly count, date range, dataset size."""
+    rev_trend   = (trends or {}).get('revenue_trend', {})
+    trend_label = rev_trend.get('trend_label', '') if rev_trend and 'error' not in rev_trend else ''
+
+    if isinstance(anomalies, list):
+        anom_list = anomalies
+    else:
+        anom_list = [a for v in (anomalies or {}).values() if isinstance(v, list) for a in v]
+    high_count = sum(1 for a in anom_list if a.get('severity') == 'high')
+
+    date_cov  = (eda or {}).get('date_coverage', {})
+    min_date  = date_cov.get('min_date', '')
+    max_date  = date_cov.get('max_date', '')
+    row_count = (eda or {}).get('row_count')
+    col_count = (eda or {}).get('column_count')
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        if trend_label:
+            st.metric('Revenue Trend', f'{trend_emoji(trend_label)} {trend_label.title()}')
+        else:
+            st.metric('Revenue Trend', '— No date data',
+                      help='Trend analysis requires a mapped date column.')
+    with c2:
+        if anom_list:
+            delta_str   = f'{high_count} high-severity' if high_count else None
+            delta_color = 'inverse' if high_count else 'off'
+            st.metric('Anomalies Found', str(len(anom_list)),
+                      delta=delta_str, delta_color=delta_color)
+        else:
+            st.metric('Anomalies Found', 'None detected')
+    with c3:
+        if min_date and max_date:
+            # Show YYYY-MM shortform for compactness
+            st.metric('Date Range', f'{min_date[:7]} – {max_date[:7]}',
+                      help=f'{min_date} to {max_date}')
+        else:
+            st.metric('Date Range', 'Not available')
+    with c4:
+        if row_count:
+            size_str = fmt_number(row_count) + ' rows'
+            if col_count:
+                size_str += f' × {col_count} cols'
+            st.metric('Dataset Size', size_str)
+        else:
+            st.metric('Dataset Size', '—')
+
+
 def _render_schema_summary(schema: dict) -> None:
-    """Show which columns were mapped to e-commerce semantic fields."""
-    mapped = {k: v for k, v in schema.items() if k not in ('confidence', 'missing_recommended_fields') and v}
+    """Show column mapping cards with confidence scores and inference reasons."""
+    _SKIP = {'confidence', 'missing_recommended_fields', 'mapping_details'}
+    mapped = {k: v for k, v in schema.items() if k not in _SKIP and v}
     missing = schema.get('missing_recommended_fields', [])
     confidence = schema.get('confidence', {})
+    details = schema.get('mapping_details', {})
 
-    st.markdown('**Column Mapping**')
-    cols = st.columns(min(len(mapped), 5) or 1)
-    for i, (field, col_name) in enumerate(list(mapped.items())[:10]):
-        conf = confidence.get(field, 'low')
-        conf_color = {'high': 'var(--success)', 'medium': 'var(--warning)', 'low': 'var(--muted)'}.get(conf, 'var(--muted)')
-        cols[i % len(cols)].markdown(
-            f'<div style="padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:5px;margin-bottom:0.4rem;">'
-            f'<div style="font-size:11px;color:{conf_color};font-weight:600;text-transform:uppercase;">{field}</div>'
-            f'<div style="font-size:13px;color:#e2e8f0;">{col_name}</div></div>',
-            unsafe_allow_html=True,
-        )
+    st.markdown('<div class="ins-section-title">Column Mapping</div>', unsafe_allow_html=True)
+
+    if not mapped:
+        st.warning('No e-commerce columns could be detected. Results will be limited to generic EDA.')
+        return
+
+    # Render in rows of 4
+    items = list(mapped.items())[:12]
+    n_cols = min(len(items), 4)
+    col_groups = [items[i:i + n_cols] for i in range(0, len(items), n_cols)]
+
+    for group in col_groups:
+        cols = st.columns(n_cols)
+        for col_widget, (field, col_name) in zip(cols, group):
+            conf = confidence.get(field, 'low')
+            detail = details.get(field, {})
+            conf_score = detail.get('confidence', 0.5 if conf == 'medium' else (0.9 if conf == 'high' else 0.3))
+            match_type = detail.get('match_type', '')
+            reason = detail.get('reason', '')
+            alternatives = detail.get('alternatives', [])
+
+            conf_color = {'high': '#22c55e', 'medium': '#f59e0b', 'low': '#6b7280'}.get(conf, '#6b7280')
+            fill_pct = int(conf_score * 100)
+            alt_text = f'Alt: {alternatives[0]}' if alternatives else ''
+
+            type_badge = {
+                'exact_alias': '✓ exact',
+                'fuzzy_alias': '~ fuzzy',
+                'dtype_inference': '⟳ inferred',
+            }.get(match_type, '')
+
+            col_widget.markdown(
+                f'<div class="ins-mapping-card conf-{conf}">'
+                f'  <div class="ins-field-role">{field.replace("_", " ")}</div>'
+                f'  <div class="ins-field-col">{col_name}</div>'
+                f'  <div class="ins-conf-bar"><div class="ins-conf-fill" style="width:{fill_pct}%;background:{conf_color};"></div></div>'
+                f'  <div class="ins-field-meta">{type_badge} &nbsp;·&nbsp; {int(conf_score*100)}% confidence'
+                f'  {f"&nbsp;·&nbsp; {alt_text}" if alt_text else ""}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     if missing:
-        st.caption(f'Recommended fields not detected: {", ".join(missing)}. Results will be limited to available columns.')
+        st.caption(
+            f'Recommended fields not detected: **{", ".join(missing)}**. '
+            'Analysis will degrade gracefully to what is available.'
+        )
+
+    # Expand for full reasons
+    with st.expander('Show inference details', expanded=False):
+        for field, detail in details.items():
+            reason = detail.get('reason', '')
+            alts = detail.get('alternatives', [])
+            alt_str = f' Alternatives: {", ".join(alts)}.' if alts else ''
+            st.caption(f'**{field}** → `{detail.get("column", "?")}` — {reason}{alt_str}')
 
 
-def _render_kpi_cards(kpis: dict) -> None:
-    """Display primary KPI metrics as styled cards."""
-    st.markdown('**Key Performance Indicators**')
+def _render_analysis_availability(schema: dict, trends: dict, drivers: dict, static_drivers: dict) -> None:
+    """Show which analysis modes are available based on detected schema."""
+    rev_trend = trends.get('revenue_trend', {})
+    has_trend = bool(rev_trend and 'error' not in rev_trend)
+    has_drivers = bool(drivers and 'error' not in drivers and 'overall_change' in drivers)
+    has_static = bool(static_drivers and 'error' not in static_drivers)
+    has_date = bool(schema.get('date'))
+    has_revenue = bool(schema.get('revenue'))
+
+    st.markdown('<div class="ins-section-title">Analysis Availability</div>', unsafe_allow_html=True)
+    cols = st.columns(3)
+
+    with cols[0]:
+        if has_trend:
+            st.markdown(
+                '<div class="ins-avail-box ok">📈 <strong>Trend Analysis</strong><br>'
+                '<span style="font-size:0.8rem;color:var(--muted);">Date + revenue detected — period-over-period trend available.</span></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            reason = 'No reliable date column detected.' if not has_date else 'No revenue column detected.' if not has_revenue else 'Fewer than 2 completed periods.'
+            st.markdown(
+                f'<div class="ins-avail-box warn">📈 <strong>Trend Analysis</strong><br>'
+                f'<span style="font-size:0.8rem;color:var(--muted);">Unavailable — {reason}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+    with cols[1]:
+        if has_drivers:
+            st.markdown(
+                '<div class="ins-avail-box ok">🔍 <strong>Time-Based Drivers</strong><br>'
+                '<span style="font-size:0.8rem;color:var(--muted);">Period comparison available.</span></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="ins-avail-box warn">🔍 <strong>Time-Based Drivers</strong><br>'
+                '<span style="font-size:0.8rem;color:var(--muted);">Unavailable — requires date + revenue + 2 periods.</span></div>',
+                unsafe_allow_html=True,
+            )
+
+    with cols[2]:
+        if has_static:
+            dims = static_drivers.get('dimensions_analyzed', [])
+            dim_str = ', '.join(d.replace('_', ' ') for d in dims[:3]) if dims else 'available dimensions'
+            st.markdown(
+                f'<div class="ins-avail-box ok">📊 <strong>Segment Analysis</strong><br>'
+                f'<span style="font-size:0.8rem;color:var(--muted);">Static analysis on: {dim_str}.</span></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="ins-avail-box warn">📊 <strong>Segment Analysis</strong><br>'
+                '<span style="font-size:0.8rem;color:var(--muted);">No usable dimensions detected.</span></div>',
+                unsafe_allow_html=True,
+            )
+
+
+def _render_kpi_cards(kpis: dict, schema: dict | None = None) -> None:
+    """Display primary KPI metrics as styled cards with dynamic labels and provenance."""
+    st.markdown('<div class="ins-section-title">Key Performance Indicators</div>', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric('Total Revenue', fmt_currency(kpis.get('total_revenue')))
+    # Dynamic revenue label
+    revenue_label = kpis.get('revenue_label', 'Total Revenue')
+    rev_source = kpis.get('revenue_source_column', '')
+    rev_help = f'Source column: {rev_source}' if rev_source else None
+
+    c1.metric(revenue_label, fmt_currency(kpis.get('total_revenue')), help=rev_help)
     c2.metric('Total Orders', fmt_number(kpis.get('total_orders')))
     c3.metric('Avg Order Value', fmt_currency(kpis.get('average_order_value')))
     c4.metric('Unique Customers', fmt_number(kpis.get('unique_customers')))
 
-    if any(k in kpis for k in ('total_units_sold', 'return_rate', 'discount_rate', 'revenue_per_customer')):
-        c5, c6, c7, c8 = st.columns(4)
-        c5.metric('Units Sold', fmt_number(kpis.get('total_units_sold')))
-        c6.metric('Return Rate', fmt_pct(kpis.get('return_rate')))
-        c7.metric('Discount Rate', fmt_pct(kpis.get('discount_rate')))
-        c8.metric('Revenue / Customer', fmt_currency(kpis.get('revenue_per_customer')))
+    row2_keys = ('total_units_sold', 'return_rate', 'churn_rate', 'discount_rate', 'revenue_per_customer')
+    if any(k in kpis for k in row2_keys):
+        cols = st.columns(4)
+        col_idx = 0
+        for key, label, fmt_fn in [
+            ('total_units_sold', 'Units Sold', fmt_number),
+            ('return_rate', 'Return Rate', fmt_pct),
+            ('churn_rate', 'Churn Rate', fmt_pct),
+            ('discount_rate', 'Discount Rate', fmt_pct),
+            ('revenue_per_customer', 'Revenue / Customer', fmt_currency),
+        ]:
+            if key in kpis and col_idx < 4:
+                cols[col_idx].metric(label, fmt_fn(kpis.get(key)))
+                col_idx += 1
+
+    # Provenance note
+    if rev_source:
+        st.caption(f'Revenue proxy: **{rev_source}** (mapped as {revenue_label})')
 
 
 def _render_trend_section(trends: dict, kpis: dict) -> None:
     """Render revenue trend chart and trend label."""
     rev_trend = trends.get('revenue_trend', {})
     if not rev_trend or 'error' in rev_trend:
-        st.info('Trend analysis requires a date column and revenue column.')
+        err = (rev_trend or {}).get('error', '')
+        if 'date' in err.lower() or 'revenue' in err.lower() or not err:
+            st.markdown(
+                '<div class="ins-avail-box warn" style="margin-bottom:0;">'
+                '⚠️ <strong>Time trend analysis unavailable</strong> — no reliable date or revenue column was detected. '
+                'Static segment analysis is still available below based on your data dimensions.'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.info(f'Trend analysis unavailable: {err}')
         return
 
     label = rev_trend.get('trend_label', 'unknown')
@@ -2287,12 +2556,13 @@ def _render_trend_section(trends: dict, kpis: dict) -> None:
 
 
 def _render_top_performers(kpis: dict) -> None:
-    """Render top categories/products/regions/channels tables."""
+    """Render top categories/products/regions/channels/payment methods tables."""
     tabs_data = [
         ('Categories', kpis.get('top_categories_by_revenue', [])),
         ('Products', kpis.get('top_products_by_revenue', [])),
         ('Regions', kpis.get('top_regions_by_revenue', [])),
         ('Channels', kpis.get('top_channels_by_revenue', [])),
+        ('Payment Methods', kpis.get('top_payment_methods_by_revenue', [])),
     ]
     available = [(name, data) for name, data in tabs_data if data]
     if not available:
@@ -2315,10 +2585,72 @@ def _render_top_table(data: list[dict]) -> None:
     if not data:
         st.caption('No data available.')
         return
-    df = _pd.DataFrame(data)
+    df = pd.DataFrame(data)
     df.columns = [c.replace('_', ' ').title() for c in df.columns]
     if 'Revenue' in df.columns:
         df['Revenue'] = df['Revenue'].apply(lambda v: fmt_currency(float(v)) if v else 'N/A')
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def _render_static_driver_section(static_drivers: dict, kpis: dict) -> None:
+    """Render static segment analysis (no date required)."""
+    if not static_drivers or 'error' in static_drivers:
+        return
+
+    dims = static_drivers.get('dimensions_analyzed', [])
+    if not dims:
+        return
+
+    st.markdown('<div class="ins-section-title">Segment Analysis</div>', unsafe_allow_html=True)
+    warn = static_drivers.get('concentration_warning')
+    if warn:
+        st.warning(f'Concentration risk: {warn}')
+
+    dim_labels = {
+        'category': 'Categories',
+        'product': 'Products',
+        'region': 'Regions',
+        'channel': 'Channels',
+        'payment_method': 'Payment Methods',
+    }
+    tabs_data = [(dim_labels.get(d, d.title()), static_drivers.get(f'static_by_{d}', [])) for d in dims]
+    available = [(name, data) for name, data in tabs_data if data]
+    if not available:
+        return
+
+    if len(available) == 1:
+        _render_static_dim_table(available[0][1])
+        return
+
+    tab_labels = [t[0] for t in available]
+    tabs = st.tabs(tab_labels)
+    for tab, (_, data) in zip(tabs, available):
+        with tab:
+            _render_static_dim_table(data)
+
+
+def _render_static_dim_table(rows: list[dict]) -> None:
+    """Render a static dimension table with revenue, return/churn rates."""
+    if not rows:
+        st.caption('No data.')
+        return
+    df = pd.DataFrame(rows)
+    rename = {
+        'value': 'Segment',
+        'count': 'Orders',
+        'total_revenue': 'Total Revenue',
+        'avg_revenue': 'Avg Revenue',
+        'total_units': 'Units',
+        'return_rate': 'Return Rate',
+        'churn_rate': 'Churn Rate',
+    }
+    df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
+    for col in ('Total Revenue', 'Avg Revenue'):
+        if col in df.columns:
+            df[col] = df[col].apply(lambda v: fmt_currency(float(v)) if v is not None else 'N/A')
+    for col in ('Return Rate', 'Churn Rate'):
+        if col in df.columns:
+            df[col] = df[col].apply(lambda v: f'{float(v)*100:.1f}%' if v is not None else 'N/A')
     st.dataframe(df, use_container_width=True, hide_index=True)
 
 
@@ -2353,30 +2685,38 @@ def _render_anomaly_section(anomalies: dict | list) -> None:
 
 
 def _render_driver_section(drivers: dict) -> None:
-    """Render revenue driver decomposition table."""
+    """Render period-over-period revenue driver decomposition."""
     if not drivers or 'error' in drivers:
-        st.info('Driver analysis requires date and revenue columns with ≥2 time periods.')
+        err = (drivers or {}).get('error', '')
+        st.markdown(
+            '<div class="ins-avail-box warn" style="margin-bottom:0;">'
+            '⚠️ <strong>Period-over-period driver analysis unavailable</strong>'
+            + (f' — {err}.' if err else ' — requires a date column and ≥2 completed periods.')
+            + ' Segment analysis above shows static top performers.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
         return
 
     overall = drivers.get('overall_change', {})
     if overall and 'error' not in overall:
-        st.markdown('**Revenue Driver Analysis**')
+        st.markdown('**Period-over-Period Revenue Drivers**')
         change = overall.get('change', 0)
         pct = overall.get('change_pct')
         prev_p = overall.get('previous_period', '')
         curr_p = overall.get('latest_period', '')
         direction = 'increase' if change >= 0 else 'decline'
-        delta_str = f'{fmt_delta(change, "$")}' + (f' ({pct:+.1f}%)' if pct else '')
+        delta_str = fmt_currency(abs(change)) + (f' ({pct:+.1f}%)' if pct is not None else '')
         st.markdown(
             f'<div class="neat-card sev-{"low" if change >= 0 else "medium"}">'
-            f'Revenue **{direction}** of {delta_str} from {prev_p} → {curr_p}</div>',
+            f'Revenue <strong>{direction}</strong> of {delta_str} from {prev_p} → {curr_p}</div>',
             unsafe_allow_html=True,
         )
 
-    for dim in ('category', 'product', 'region', 'channel'):
+    for dim in ('category', 'product', 'region', 'channel', 'payment_method'):
         dim_drivers = drivers.get(f'drivers_by_{dim}', [])
         if dim_drivers:
-            with st.expander(f'By {dim.title()} ({len(dim_drivers)} entries)', expanded=(dim == 'category')):
+            with st.expander(f'By {dim.replace("_", " ").title()} ({len(dim_drivers)} entries)', expanded=(dim == 'category')):
                 df = pd.DataFrame(dim_drivers)
                 df.columns = [c.replace('_', ' ').title() for c in df.columns]
                 for col in ('Previous Revenue', 'Latest Revenue', 'Absolute Change'):
@@ -2400,37 +2740,53 @@ def _render_driver_section(drivers: dict) -> None:
 
 
 def _render_executive_summary_section(summary: str) -> None:
-    """Render the executive summary text with a styled card."""
-    st.markdown('**Executive Summary**')
+    """Render the executive summary text with proper Markdown rendering."""
+    st.markdown('<div class="ins-section-title">Executive Summary</div>', unsafe_allow_html=True)
     if not summary:
         st.info('Summary unavailable.')
         return
-    st.markdown(
-        f'<div class="neat-card" style="line-height:1.7;white-space:pre-wrap;">{summary}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(summary)
 
 
 def _render_insights_export(df, report: dict) -> None:
-    """Provide download buttons for cleaned data and insight report."""
-    st.markdown('**Export**')
-    col1, col2 = st.columns(2)
+    """Provide download buttons for cleaned CSV, insight JSON, and executive PDF."""
+    st.markdown('<div class="ins-section-title">Export</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+
+    # Cleaned CSV
     csv_bytes = df.to_csv(index=False).encode('utf-8')
     col1.download_button(
-        '📥 Download Cleaned CSV', csv_bytes, 'cleaned_data.csv', 'text/csv',
+        '📥 Cleaned Data (CSV)', csv_bytes, 'cleaned_data.csv', 'text/csv',
         use_container_width=True,
+        help='Download the cleaned dataset as a CSV file.',
     )
+
+    # Insight JSON
     report_bytes = json.dumps({
         'kpis': report['insights']['kpis'],
         'trends': report['insights']['trends'],
         'anomalies': report['insights']['anomalies'],
         'drivers': report['insights']['drivers'],
+        'static_drivers': report['insights'].get('static_drivers', {}),
         'executive_summary': report['executive_summary'],
     }, indent=2, default=str).encode('utf-8')
     col2.download_button(
-        '📊 Download Insight Report (JSON)', report_bytes, 'insight_report.json', 'application/json',
+        '📊 Insight Report (JSON)', report_bytes, 'insight_report.json', 'application/json',
         use_container_width=True,
+        help='Machine-readable KPIs, trends, anomalies, and drivers.',
     )
+
+    # Executive PDF
+    try:
+        pdf_bytes = generate_executive_pdf(report, df)
+        col3.download_button(
+            '📄 Executive Report (PDF)', pdf_bytes, 'executive_report.pdf', 'application/pdf',
+            use_container_width=True,
+            help='Professional one-page PDF summary for stakeholders.',
+        )
+    except Exception as exc:
+        col3.error(f'PDF unavailable: {exc}')
+    st.caption('All exports contain only aggregate statistics — no individual row data is included.')
 
 
 # ---------------------------------------------------------------------------

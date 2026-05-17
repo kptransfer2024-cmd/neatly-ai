@@ -20,15 +20,21 @@ def build_insight_payload(
     trends: dict,
     anomalies: dict | list,
     drivers: dict,
+    static_drivers: dict | None = None,
+    generic_eda: dict | None = None,
 ) -> dict:
     """Assemble a privacy-safe insight payload from module outputs."""
-    payload = {
+    payload: dict = {
         "kpis": kpis,
         "eda": eda,
         "trends": trends,
         "anomalies": anomalies,
         "drivers": drivers,
     }
+    if static_drivers:
+        payload["static_drivers"] = static_drivers
+    if generic_eda:
+        payload["generic_eda"] = generic_eda
     validate_no_raw_rows_in_insight_payload(payload)
     return payload
 
@@ -55,7 +61,6 @@ def _check_for_blocked_keys(obj: Any, depth: int = 0) -> None:
     elif isinstance(obj, list):
         for item in obj:
             _check_for_blocked_keys(item, depth + 1)
-
 
 
 def _validate_no_list_of_dicts_with_row_data(obj: Any, depth: int = 0) -> None:
@@ -89,7 +94,7 @@ def generate_executive_summary(payload: dict, use_ai: bool = True) -> str:
         prompt = _build_ai_prompt(payload)
         message = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1024,
+            max_tokens=1200,
             messages=[{"role": "user", "content": prompt}],
         )
         return message.content[0].text
@@ -107,6 +112,8 @@ def generate_fallback_summary(payload: dict) -> str:
     sections.append(_summarize_trends(payload.get("trends", {})))
     sections.append(_summarize_anomalies(payload.get("anomalies", {})))
     sections.append(_summarize_drivers(payload.get("drivers", {})))
+    sections.append(_summarize_static_drivers(payload.get("static_drivers", {})))
+    sections.append(_summarize_generic_eda(payload.get("generic_eda", {}), payload.get("kpis", {})))
     sections.append(_limitations_section(payload))
     sections.append(_recommended_questions(payload))
 
@@ -119,32 +126,59 @@ def _build_ai_prompt(payload: dict) -> str:
     trends = payload.get("trends", {})
     anomalies = payload.get("anomalies", {})
     drivers = payload.get("drivers", {})
+    static_drivers = payload.get("static_drivers", {})
+    generic_eda = payload.get("generic_eda", {})
     eda = payload.get("eda", {})
 
+    revenue_label = kpis.get("revenue_label", "Revenue")
+    rev_source = kpis.get("revenue_source_column", "")
+    provenance_note = (
+        f"Note: '{rev_source}' is used as the {revenue_label} metric."
+        if rev_source else ""
+    )
+
     prompt_parts = [
-        "You are a senior business analyst. Write a concise executive report (max 400 words) based ONLY on the aggregate data below.",
+        "You are a senior business analyst. Write a concise executive report (max 450 words) based ONLY on the aggregate data below.",
         "Use hedged language: 'suggests', 'appears to', 'may indicate', 'should be investigated'.",
         "Never claim causal certainty. Structure: 1) Key Metrics 2) Trend 3) Anomalies 4) Main Drivers 5) Recommended Follow-ups 6) Limitations.",
+        "IMPORTANT: Do NOT use dollar signs ($) anywhere — use 'USD' prefix instead (e.g. 'USD 1,234').",
+        "Include column provenance where relevant (e.g. 'based on Transaction Value column').",
+        provenance_note,
         "",
-        f"AGGREGATE DATA (no individual rows):\n{json.dumps({'kpis': kpis, 'trends': trends, 'anomalies': anomalies, 'drivers': drivers, 'eda_summary': eda}, default=str, indent=2)}",
+        f"AGGREGATE DATA (no individual rows):\n{json.dumps({'kpis': kpis, 'trends': trends, 'anomalies': anomalies, 'drivers': drivers, 'static_drivers': static_drivers, 'generic_eda_summary': generic_eda, 'eda_summary': eda}, default=str, indent=2)}",
     ]
-    return "\n".join(prompt_parts)
+    return "\n".join(p for p in prompt_parts if p is not None)
+
+
+# ---------------------------------------------------------------------------
+# Fallback summary sections
+# ---------------------------------------------------------------------------
+
+def _fmt_usd(value: float) -> str:
+    """Format a monetary value without dollar signs (Streamlit Markdown-safe)."""
+    return f"USD {value:,.2f}"
 
 
 def _summarize_kpis(kpis: dict) -> str:
     if not kpis:
         return ""
+    revenue_label = kpis.get("revenue_label", "Total Revenue")
+    rev_source = kpis.get("revenue_source_column", "")
     lines = ["### Key Metrics"]
     if "total_revenue" in kpis:
-        lines.append(f"- Total Revenue: **${kpis['total_revenue']:,.2f}**")
+        label = revenue_label
+        source_note = f" *(source: {rev_source})*" if rev_source else ""
+        lines.append(f"- {label}: **{_fmt_usd(kpis['total_revenue'])}**{source_note}")
     if "total_orders" in kpis:
         lines.append(f"- Total Orders: **{kpis['total_orders']:,}**")
     if "average_order_value" in kpis and kpis["average_order_value"] is not None:
-        lines.append(f"- Average Order Value: **${kpis['average_order_value']:,.2f}**")
+        lines.append(f"- Average Order Value: **{_fmt_usd(kpis['average_order_value'])}**")
     if "unique_customers" in kpis:
         lines.append(f"- Unique Customers: **{kpis['unique_customers']:,}**")
     if "return_rate" in kpis:
         lines.append(f"- Return Rate: **{kpis['return_rate'] * 100:.1f}%**")
+    if "churn_rate" in kpis:
+        lines.append(f"- Churn Rate: **{kpis['churn_rate'] * 100:.1f}%**")
     return "\n".join(lines)
 
 
@@ -153,13 +187,15 @@ def _summarize_trends(trends: dict) -> str:
     if not rev_trend or "error" in rev_trend:
         return ""
     label = rev_trend.get("trend_label", "unknown")
-    latest = rev_trend.get("latest_period", "")
     notes = rev_trend.get("notes", [])
     lines = [f"### Trend Analysis\nRevenue trend appears **{label}**."]
     lines.extend(notes)
     if rev_trend.get("largest_drop"):
         d = rev_trend["largest_drop"]
-        lines.append(f"Largest single-period decline: **{d['pct_change']:.1f}%** in {d['period']} — this may indicate a seasonal effect or business disruption and should be investigated.")
+        lines.append(
+            f"Largest single-period decline: **{d['pct_change']:.1f}%** in {d['period']} "
+            "— this may indicate a seasonal effect or business disruption and should be investigated."
+        )
     return "\n".join(lines)
 
 
@@ -190,10 +226,11 @@ def _summarize_drivers(drivers: dict) -> str:
     prev = overall.get("previous_period", "")
     curr = overall.get("latest_period", "")
     direction = "increase" if change >= 0 else "decline"
-    lines = [f"### Main Business Drivers\nRevenue suggests a **{direction}** of ${abs(change):,.2f}"]
+    line = f"### Period-over-Period Drivers\nRevenue suggests a **{direction}** of {_fmt_usd(abs(change))}"
     if pct is not None:
-        lines[0] += f" ({abs(pct):.1f}%)"
-    lines[0] += f" from {prev} to {curr}."
+        line += f" ({abs(pct):.1f}%)"
+    line += f" from {prev} to {curr}."
+    lines = [line]
 
     for dim in ("category", "product", "region", "channel"):
         key = f"drivers_by_{dim}"
@@ -202,22 +239,89 @@ def _summarize_drivers(drivers: dict) -> str:
             top = dim_drivers[0]
             if top["absolute_change"] < 0:
                 lines.append(
-                    f"- **{dim.title()}**: '{top['dimension_value']}' may indicate the largest negative contribution "
-                    f"(${abs(top['absolute_change']):,.2f}, {abs(top['contribution_to_total_change_pct']):.1f}% of total change)."
+                    f"- **{dim.title()}**: '{top['dimension_value']}' may indicate the largest "
+                    f"negative contribution ({_fmt_usd(abs(top['absolute_change']))}, "
+                    f"{abs(top['contribution_to_total_change_pct']):.1f}% of total change)."
                 )
             break
     return "\n".join(lines)
 
 
+def _summarize_static_drivers(static_drivers: dict) -> str:
+    if not static_drivers or "error" in static_drivers:
+        return ""
+    dims = static_drivers.get("dimensions_analyzed", [])
+    if not dims:
+        return ""
+    lines = ["### Segment Analysis (Static)"]
+    lines.append(
+        f"Based on available data, the following dimensions were analyzed: "
+        f"{', '.join(d.replace('_', ' ').title() for d in dims)}."
+    )
+    for dim in dims:
+        rows = static_drivers.get(f"static_by_{dim}", [])
+        if not rows:
+            continue
+        top = rows[0]
+        rev_info = f" — {_fmt_usd(top['total_revenue'])} total revenue" if "total_revenue" in top else ""
+        ret_info = f", return rate {top['return_rate']*100:.1f}%" if "return_rate" in top else ""
+        churn_info = f", churn rate {top['churn_rate']*100:.1f}%" if "churn_rate" in top else ""
+        lines.append(
+            f"- Top {dim.replace('_', ' ').title()}: **{top['value']}**{rev_info}{ret_info}{churn_info}."
+        )
+    warn = static_drivers.get("concentration_warning")
+    if warn:
+        lines.append(f"- **Concentration risk**: {warn} This may indicate over-reliance and should be investigated.")
+    return "\n".join(lines)
+
+
+def _summarize_generic_eda(generic_eda: dict, kpis: dict) -> str:
+    if not generic_eda:
+        return ""
+    lines = ["### Data Distribution Overview"]
+    overall_return = generic_eda.get("overall_return_rate")
+    overall_churn = generic_eda.get("overall_churn_rate")
+    if overall_return is not None:
+        lines.append(f"- Overall return rate appears to be **{overall_return*100:.1f}%** of transactions.")
+    if overall_churn is not None:
+        lines.append(f"- Overall churn rate appears to be **{overall_churn*100:.1f}%** of customers.")
+    correlations = generic_eda.get("numeric_correlations", [])
+    if correlations:
+        top_corr = correlations[0]
+        lines.append(
+            f"- Strong correlation ({top_corr['correlation']:+.2f}) detected between "
+            f"'{top_corr['col_a']}' and '{top_corr['col_b']}' — may indicate a structural relationship."
+        )
+    if len(lines) == 1:
+        return ""
+    return "\n".join(lines)
+
+
 def _limitations_section(payload: dict) -> str:
     eda = payload.get("eda", {})
+    kpis = payload.get("kpis", {})
+    trends = payload.get("trends", {})
     missing_pct = eda.get("missing_pct", 0)
     lines = ["### Limitations"]
     lines.append("- All findings are based on aggregate statistics and should be validated against source systems.")
     lines.append("- Correlations in this report suggest but do not confirm causal relationships.")
     if missing_pct and missing_pct > 5:
         lines.append(f"- Data contains approximately {missing_pct:.1f}% missing values, which may affect accuracy.")
-    lines.append("- Anomaly detection uses statistical thresholds and may surface false positives.")
+
+    # Note if trend analysis was unavailable
+    rev_trend = trends.get("revenue_trend", {})
+    if not rev_trend or "error" in rev_trend:
+        lines.append("- Time-series trend analysis was unavailable (no reliable date or revenue column detected).")
+    else:
+        lines.append("- Anomaly detection uses statistical thresholds and may surface false positives.")
+
+    # Note revenue proxy
+    rev_source = kpis.get("revenue_source_column", "")
+    details = payload.get("kpis", {})
+    if rev_source:
+        revenue_label = kpis.get("revenue_label", "Revenue")
+        lines.append(f"- '{rev_source}' was used as the {revenue_label} metric (column provenance).")
+
     return "\n".join(lines)
 
 

@@ -31,6 +31,10 @@ coverage.xml
 # Streamlit
 .streamlit/secrets.toml
 
+# Uploaded user files — never commit raw data
+uploads/
+neatly.db
+
 # Data files (never commit raw data)
 data/*.csv
 data/*.tsv

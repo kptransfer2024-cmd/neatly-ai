@@ -4,6 +4,7 @@ import pytest
 from insights.ecommerce.driver_analyzer import (
     analyze_revenue_drivers,
     decompose_revenue_change_by_dimension,
+    analyze_static_drivers,
 )
 
 
@@ -97,4 +98,116 @@ def test_insufficient_periods_returns_error():
 def test_empty_dataframe_does_not_crash():
     df = pd.DataFrame(columns=["date", "revenue", "category", "product", "quantity", "region", "channel", "order_id"])
     result = analyze_revenue_drivers(df, _SCHEMA)
+    assert isinstance(result, dict)
+
+
+# ---------------------------------------------------------------------------
+# Static driver analysis (no date required)
+# ---------------------------------------------------------------------------
+
+_STATIC_SCHEMA = {
+    "date": None,
+    "revenue": "revenue",
+    "order_id": None,
+    "customer_id": None,
+    "product": "product",
+    "category": "category",
+    "quantity": None,
+    "discount": None,
+    "return_flag": "returned",
+    "churn_flag": None,
+    "region": None,
+    "channel": None,
+    "payment_method": None,
+    "price": None,
+    "customer_name": None,
+}
+
+
+def _static_df() -> pd.DataFrame:
+    return pd.DataFrame({
+        "revenue": [500.0, 300.0, 200.0, 100.0, 400.0, 600.0],
+        "category": ["Electronics", "Furniture", "Electronics", "Furniture", "Electronics", "Electronics"],
+        "product": ["A", "B", "A", "B", "C", "A"],
+        "returned": ["No", "Yes", "No", "No", "No", "Yes"],
+    })
+
+
+def test_static_drivers_returns_dict():
+    df = _static_df()
+    result = analyze_static_drivers(df, _STATIC_SCHEMA)
+    assert isinstance(result, dict)
+
+
+def test_static_drivers_no_date_required():
+    df = _static_df()
+    result = analyze_static_drivers(df, _STATIC_SCHEMA)
+    assert "error" not in result
+
+
+def test_static_drivers_includes_dimensions_analyzed():
+    df = _static_df()
+    result = analyze_static_drivers(df, _STATIC_SCHEMA)
+    assert "dimensions_analyzed" in result
+    assert "category" in result["dimensions_analyzed"]
+
+
+def test_static_drivers_sorted_by_revenue_desc():
+    df = _static_df()
+    result = analyze_static_drivers(df, _STATIC_SCHEMA)
+    cats = result.get("static_by_category", [])
+    assert len(cats) >= 2
+    assert cats[0]["total_revenue"] >= cats[1]["total_revenue"]
+
+
+def test_static_drivers_top_category_is_electronics():
+    df = _static_df()
+    result = analyze_static_drivers(df, _STATIC_SCHEMA)
+    cats = result.get("static_by_category", [])
+    assert cats[0]["value"] == "Electronics"
+
+
+def test_static_drivers_includes_return_rate():
+    df = _static_df()
+    result = analyze_static_drivers(df, _STATIC_SCHEMA)
+    cats = result.get("static_by_category", [])
+    assert "return_rate" in cats[0]
+
+
+def test_static_drivers_concentration_warning_high():
+    df = pd.DataFrame({
+        "revenue": [900.0, 50.0, 50.0],
+        "category": ["Dominant", "Other", "Other"],
+    })
+    schema = {**_STATIC_SCHEMA, "category": "category"}
+    result = analyze_static_drivers(df, schema)
+    assert result.get("concentration_warning") is not None
+
+
+def test_static_drivers_no_concentration_warning_when_even():
+    df = pd.DataFrame({
+        "revenue": [100.0, 100.0, 100.0],
+        "category": ["A", "B", "C"],
+    })
+    schema = {**_STATIC_SCHEMA, "category": "category"}
+    result = analyze_static_drivers(df, schema)
+    assert not result.get("concentration_warning")
+
+
+def test_static_drivers_mode_field():
+    df = _static_df()
+    result = analyze_static_drivers(df, _STATIC_SCHEMA)
+    assert result.get("mode") == "static"
+
+
+def test_static_drivers_no_revenue_no_qty_returns_error():
+    df = pd.DataFrame({"category": ["A", "B"]})
+    schema = {**_STATIC_SCHEMA, "revenue": None, "quantity": None}
+    result = analyze_static_drivers(df, schema)
+    assert "error" in result
+
+
+def test_static_drivers_empty_dataframe():
+    df = pd.DataFrame(columns=["revenue", "category"])
+    result = analyze_static_drivers(df, _STATIC_SCHEMA)
     assert isinstance(result, dict)
